@@ -11,6 +11,8 @@ sezione della sua versione, oppure `[Unreleased]` se non la trova.
 
 ## [Unreleased]
 
+## [0.1.0] - 2026-10-17
+
 ### Fixed
 
 - Revisione dei bug di runtime (106 finding verificati, 95 correzioni):
