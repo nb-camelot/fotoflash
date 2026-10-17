@@ -1,0 +1,27 @@
+# Gradle / Android
+.gradle/
+build/
+**/build/
+local.properties
+.idea/
+*.iml
+captures/
+.externalNativeBuild/
+.cxx/
+*.apk
+*.aab
+
+# Firma release: mai nel repo (il keystore di debug in signing/ invece si committa)
+*.jks
+*.keystore
+signing/release*
+
+# OpenCode (generato a runtime dalla CI)
+.opencode/
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.vscode/
+*.log
+*.swp

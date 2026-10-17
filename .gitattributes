@@ -1,0 +1,7 @@
+* text=auto eol=lf
+*.p12 binary
+*.png binary
+*.webp binary
+*.jpg binary
+*.ttf binary
+*.jar binary

@@ -1,0 +1,110 @@
+name: CI
+
+# Build + test su ogni push (qualsiasi branch) e su ogni PR. Non pubblica nulla:
+# le release partono solo dai tag creati da bump-version su main.
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  checks: write
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Build e test
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    env:
+      HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Java 17
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Pacchetti Android SDK
+        run: |
+          set -e
+          SDKM=$(find "${ANDROID_HOME:-$ANDROID_SDK_ROOT}/cmdline-tools" -maxdepth 3 -type f -name sdkmanager 2>/dev/null | sort -V | tail -n 1)
+          if [ -z "$SDKM" ]; then SDKM=$(command -v sdkmanager || true); fi
+          if [ -z "$SDKM" ]; then echo "::error::sdkmanager non trovato"; exit 1; fi
+          yes | "$SDKM" --licenses > /dev/null || true
+          "$SDKM" "platform-tools" "platforms;android-35" "build-tools;35.0.0" > /dev/null
+
+      - name: Gradle
+        uses: gradle/actions/setup-gradle@v5
+        with:
+          gradle-version: "8.10.2"
+
+      - name: Build e test
+        run: |
+          set -o pipefail
+          gradle --no-daemon --stacktrace \
+            :core-thermal:test :app:testDebugUnitTest :app:assembleDebug 2>&1 | tee build.log
+
+      - name: Rapporto errori (annotazioni + check run leggibile via API)
+        if: failure()
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          [ -f build.log ] || { echo "nessun build.log"; exit 0; }
+          WS="$GITHUB_WORKSPACE/"
+          # Errori Kotlin: "e: file:///.../File.kt:12:5 messaggio"
+          grep -E '^e: ' build.log | sed -E "s#^e: (file://)?##; s#${WS}##" > kotlin-errors.txt || true
+          head -n 10 kotlin-errors.txt | while IFS= read -r line; do
+            f=$(echo "$line" | sed -E 's#^([^:]+):([0-9]+):([0-9]+) (.*)$#\1#')
+            l=$(echo "$line" | sed -E 's#^([^:]+):([0-9]+):([0-9]+) (.*)$#\2#')
+            c=$(echo "$line" | sed -E 's#^([^:]+):([0-9]+):([0-9]+) (.*)$#\3#')
+            m=$(echo "$line" | sed -E 's#^([^:]+):([0-9]+):([0-9]+) (.*)$#\4#')
+            echo "::error file=$f,line=$l,col=$c::$m"
+          done
+          {
+            echo "## Errori Kotlin ($(wc -l < kotlin-errors.txt))"
+            cat kotlin-errors.txt
+            echo
+            echo "## Risorse / AAPT / manifest"
+            grep -E 'AAPT|error: |ERROR:|Manifest merger failed' build.log | grep -v '^e: ' | sed "s#${WS}##g" | head -n 60 || true
+            echo
+            echo "## Test falliti"
+            grep -E ' FAILED$|AssertionError|Exception at ' build.log | head -n 60 || true
+            echo
+            echo "## Gradle: What went wrong"
+            awk '/\* What went wrong:/{f=1} /\* Try:/{f=0} f' build.log | sed "s#${WS}##g" | head -n 80
+          } > report.md
+          head -c 60000 report.md > report.trim.md
+          jq -n --arg sha "$HEAD_SHA" --rawfile text report.trim.md \
+            '{name: "FotoFlash build report", head_sha: $sha, status: "completed", conclusion: "failure",
+              output: {title: "Errori di build", summary: "Estratto degli errori di Gradle/Kotlin di questa build.", text: $text}}' > payload.json
+          curl -sS -o /dev/null -w "check run: %{http_code}\n" -X POST \
+            -H "Authorization: Bearer $GH_TOKEN" -H "Accept: application/vnd.github+json" \
+            "$GITHUB_API_URL/repos/$GITHUB_REPOSITORY/check-runs" -d @payload.json || true
+          cat report.trim.md >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Report dei test
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: test-reports-${{ github.run_number }}
+          path: |
+            **/build/reports/tests/
+          if-no-files-found: ignore
+
+      - name: APK di debug
+        if: success()
+        uses: actions/upload-artifact@v7
+        with:
+          name: fotoflash-debug-${{ github.run_number }}
+          path: app/build/outputs/apk/debug/*.apk
+          if-no-files-found: error
