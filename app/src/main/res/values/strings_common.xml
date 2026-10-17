@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Payoff del marchio -->
+    <string name="common_payoff">Snap. Print. Smile.</string>
+
+    <!-- Azioni generiche -->
+    <string name="common_back">Back</string>
+    <string name="common_close">Close</string>
+    <string name="common_ok">OK</string>
+    <string name="common_cancel">Cancel</string>
+    <string name="common_retry">Try again</string>
+    <string name="common_done">Done</string>
+    <string name="common_loading">Please wait…</string>
+
+    <!-- Otturatore -->
+    <string name="common_shutter">Take photo</string>
+    <string name="common_shutter_busy">Processing the photo</string>
+    <string name="common_shutter_countdown">Countdown: %1$d</string>
+
+    <!-- Chip di stato della stampante: testi brevi, devono stare in una pillola -->
+    <string name="common_printer_open">Printer settings</string>
+    <string name="common_printer_not_configured">Choose printer</string>
+    <string name="common_printer_connecting">Connecting…</string>
+    <string name="common_printer_printing">Printing %1$d%%</string>
+    <string name="common_printer_state_ready">connected and ready</string>
+    <string name="common_printer_state_idle">on standby, connects when you print</string>
+    <string name="common_printer_cd">Printer: %1$s</string>
+    <string name="common_printer_cd_device">Printer %1$s: %2$s</string>
+    <string name="common_printer_failure_detail">%1$s. %2$s</string>
+    <string name="common_printer_err_no_printer">No printer</string>
+    <string name="common_printer_err_no_permission">Permission needed</string>
+    <string name="common_printer_err_bluetooth_off">Bluetooth off</string>
+    <string name="common_printer_err_not_bonded">Not paired</string>
+    <string name="common_printer_err_connect">Unreachable</string>
+    <string name="common_printer_err_write">Print failed</string>
+    <string name="common_printer_err_busy">Printer busy</string>
+</resources>

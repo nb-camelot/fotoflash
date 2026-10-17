@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Splash (Android 12+ e core-splashscreen): il marchio con tre scintille, su sfondo Flash.
+     Il sistema ritaglia un cerchio di 72 dp al centro: tutto il disegno sta entro 35 dp dal centro. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <group
+        android:pivotX="54"
+        android:pivotY="54"
+        android:scaleX="0.88"
+        android:scaleY="0.88">
+        <group
+            android:rotation="-8"
+            android:pivotX="54"
+            android:pivotY="54">
+            <!-- ombra piena, tono su tono: profondita senza gradienti -->
+            <group
+                android:translateX="3"
+                android:translateY="3">
+                <path
+                    android:fillColor="#E0A800"
+                    android:pathData="M34,33 A4,4 0 0 1 38,29 L68,29 A4,4 0 0 1 72,33 L72,73.2 L68.2,77 L64.4,73.2 L60.6,77 L56.8,73.2 L53,77 L49.2,73.2 L45.4,77 L41.6,73.2 L37.8,77 L34,73.2 Z" />
+            </group>
+            <!-- carta termica con il bordo strappato a dente di sega -->
+            <path
+                android:fillColor="#FBF8F1"
+                android:strokeColor="#16130F"
+                android:strokeWidth="3.5"
+                android:strokeLineCap="round"
+                android:strokeLineJoin="round"
+                android:pathData="M34,33 A4,4 0 0 1 38,29 L68,29 A4,4 0 0 1 72,33 L72,73.2 L68.2,77 L64.4,73.2 L60.6,77 L56.8,73.2 L53,77 L49.2,73.2 L45.4,77 L41.6,73.2 L37.8,77 L34,73.2 Z" />
+            <!-- la foto -->
+            <path
+                android:fillColor="#16130F"
+                android:pathData="M41,33.5 L65,33.5 A2.5,2.5 0 0 1 67.5,36 L67.5,60 A2.5,2.5 0 0 1 65,62.5 L41,62.5 A2.5,2.5 0 0 1 38.5,60 L38.5,36 A2.5,2.5 0 0 1 41,33.5 Z" />
+            <!-- il lampo -->
+            <path
+                android:fillColor="#FFCC00"
+                android:pathData="M49.98,36.45 L59.88,36.45 L55.48,44.7 L61.53,44.7 L48.33,59.55 L51.08,49.1 L44.48,49.1 Z" />
+            <!-- la didascalia -->
+            <path
+                android:strokeColor="#16130F"
+                android:strokeWidth="2.6"
+                android:strokeLineCap="round"
+                android:strokeLineJoin="round"
+                android:pathData="M45,68 L61,68" />
+        </group>
+    </group>
+    <!-- scintille del flash -->
+    <path
+        android:fillColor="#16130F"
+        android:pathData="M76.67,28.59 Q77.57,32.69 81.67,33.59 Q77.57,34.49 76.67,38.59 Q75.77,34.49 71.67,33.59 Q75.77,32.69 76.67,28.59 Z M31.33,70.41 Q32.05,73.69 35.33,74.41 Q32.05,75.13 31.33,78.41 Q30.61,75.13 27.33,74.41 Q30.61,73.69 31.33,70.41 Z M85.3,44.55 Q85.8,46.85 88.1,47.35 Q85.8,47.85 85.3,50.15 Q84.8,47.85 82.5,47.35 Q84.8,46.85 85.3,44.55 Z" />
+</vector>

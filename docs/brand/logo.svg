@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="22 22 64 64" width="512" height="512">
+  <title>FotoFlash</title>
+  <!-- Marchio FotoFlash: foglietto di carta termica inclinato con foto, lampo e didascalia.
+       Stessa geometria di ic_launcher_foreground.xml; qui l'ombra e Flash perche il fondo e libero. -->
+  <g transform="translate(54 54) rotate(-8) translate(-54 -54)">
+    <g transform="translate(3 3)">
+      <path d="M34,33 A4,4 0 0 1 38,29 L68,29 A4,4 0 0 1 72,33 L72,73.2 L68.2,77 L64.4,73.2 L60.6,77 L56.8,73.2 L53,77 L49.2,73.2 L45.4,77 L41.6,73.2 L37.8,77 L34,73.2 Z" fill="#FFCC00"/>
+    </g>
+    <path d="M34,33 A4,4 0 0 1 38,29 L68,29 A4,4 0 0 1 72,33 L72,73.2 L68.2,77 L64.4,73.2 L60.6,77 L56.8,73.2 L53,77 L49.2,73.2 L45.4,77 L41.6,73.2 L37.8,77 L34,73.2 Z" fill="#FBF8F1" stroke="#16130F" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M41,33.5 L65,33.5 A2.5,2.5 0 0 1 67.5,36 L67.5,60 A2.5,2.5 0 0 1 65,62.5 L41,62.5 A2.5,2.5 0 0 1 38.5,60 L38.5,36 A2.5,2.5 0 0 1 41,33.5 Z" fill="#16130F"/>
+    <path d="M49.98,36.45 L59.88,36.45 L55.48,44.7 L61.53,44.7 L48.33,59.55 L51.08,49.1 L44.48,49.1 Z" fill="#FFCC00"/>
+    <path d="M45,68 L61,68" fill="none" stroke="#16130F" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/>
+  </g>
+</svg>

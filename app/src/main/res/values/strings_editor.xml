@@ -1,0 +1,105 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Editor -->
+    <string name="ed_title">Your print</string>
+    <string name="ed_preview_cd">Print preview</string>
+    <string name="ed_preview_paper">%1$d mm of paper</string>
+    <string name="ed_rendering">Updating the preview</string>
+    <string name="ed_render_failed">Couldn\'t compose the print. Try another template or photo.</string>
+    <string name="ed_error_render">The print couldn\'t be composed</string>
+
+    <!-- Schede dei controlli -->
+    <string name="ed_tab_template">Template</string>
+    <string name="ed_tab_text">Text</string>
+    <string name="ed_tab_adjust">Adjust</string>
+
+    <!-- Modelli -->
+    <string name="ed_template_polaroid">Polaroid</string>
+    <string name="ed_template_full">Full</string>
+    <string name="ed_template_strip">Strip</string>
+    <string name="ed_template_receipt">Receipt</string>
+    <string name="ed_template_polaroid_desc">Square photo with a white band for the caption, just like an instant.</string>
+    <string name="ed_template_full_desc">Edge-to-edge 3:4 photo, with caption and date underneath.</string>
+    <string name="ed_template_strip_desc">Photo-booth strip: your shots in a column, with event title and footer.</string>
+    <string name="ed_template_receipt_desc">Souvenir receipt with header, number, date and a thank-you.</string>
+
+    <!-- Didascalia -->
+    <string name="ed_caption_label">Caption</string>
+    <string name="ed_caption_placeholder">Write something to remember</string>
+    <string name="ed_caption_counter">%1$d/%2$d</string>
+    <string name="ed_caption_clear">Clear caption</string>
+    <string name="ed_caption_hint">Event title, hashtag, date and numbering are set in Settings.</string>
+
+    <!-- Regolazioni -->
+    <string name="ed_adjust_brightness">Brightness</string>
+    <string name="ed_adjust_contrast">Contrast</string>
+    <string name="ed_adjust_sharpen">Sharpness</string>
+    <string name="ed_adjust_value_signed">%1$+d</string>
+    <string name="ed_adjust_value">%1$d</string>
+    <string name="ed_adjust_autolevels">Auto levels</string>
+    <string name="ed_adjust_autolevels_hint">Spreads the tones so the photo pops on thermal paper</string>
+    <string name="ed_adjust_dither">Dithering</string>
+    <string name="ed_adjust_reset">Reset</string>
+    <string name="ed_dither_atkinson">Atkinson</string>
+    <string name="ed_dither_floyd">Floyd-Steinberg</string>
+    <string name="ed_dither_bayer">Bayer</string>
+    <string name="ed_dither_threshold">Threshold</string>
+
+    <!-- Copie e azioni -->
+    <plurals name="ed_copies">
+        <item quantity="one">%d copy</item>
+        <item quantity="other">%d copies</item>
+    </plurals>
+    <string name="ed_copies_short">×%1$d</string>
+    <string name="ed_copies_less">Fewer copies</string>
+    <string name="ed_copies_more">More copies</string>
+    <string name="ed_print">Print</string>
+    <string name="ed_save">Save</string>
+    <string name="ed_share">Share</string>
+    <string name="ed_share_title">Share the print</string>
+    <string name="ed_saved">Saved to the gallery</string>
+    <string name="ed_save_failed">Couldn\'t save the image</string>
+    <string name="ed_save_permission">Allow storage access to save to the gallery</string>
+    <string name="ed_share_failed">Couldn\'t share the image</string>
+
+    <!-- Nessuna foto -->
+    <string name="ed_empty_title">No photo to print</string>
+    <string name="ed_empty_message">Take a photo or pick one from the gallery, then come back here.</string>
+    <string name="ed_empty_action">Back to the camera</string>
+
+    <!-- Testi stampati sulla carta (modello Scontrino) -->
+    <string name="ed_footer_thanks">Thanks for the smile!</string>
+    <string name="ed_print_number">MEMORY NO. %1$04d</string>
+
+    <!-- Foglio di avanzamento della stampa -->
+    <string name="ed_sheet_preparing">Getting the print ready</string>
+    <string name="ed_sheet_connecting">Connecting to %1$s</string>
+    <string name="ed_sheet_printing">Printing</string>
+    <string name="ed_sheet_percent">%1$d%%</string>
+    <string name="ed_sheet_keep_close">Keep the phone close to the printer</string>
+    <string name="ed_sheet_done">Printed!</string>
+    <string name="ed_sheet_done_hint">Tear off the sheet and enjoy the memory.</string>
+    <string name="ed_sheet_new_photo">New photo</string>
+    <string name="ed_sheet_reprint">Print again</string>
+    <string name="ed_sheet_retry">Try again</string>
+    <string name="ed_sheet_printer">Printer</string>
+    <string name="ed_sheet_choose_printer">Choose printer</string>
+    <string name="ed_sheet_open_bluetooth">Open Bluetooth</string>
+    <string name="ed_sheet_detail">Details: %1$s</string>
+
+    <!-- Errori di stampa: titolo + cosa fare -->
+    <string name="ed_fail_no_printer_title">No printer chosen</string>
+    <string name="ed_fail_no_printer_hint">Pick your thermal printer among the paired Bluetooth devices.</string>
+    <string name="ed_fail_no_permission_title">Bluetooth permission needed</string>
+    <string name="ed_fail_no_permission_hint">Allow \"Nearby devices\" so FotoFlash can talk to the printer.</string>
+    <string name="ed_fail_bluetooth_off_title">Bluetooth is off</string>
+    <string name="ed_fail_bluetooth_off_hint">Turn on Bluetooth, then try again.</string>
+    <string name="ed_fail_not_bonded_title">Printer not paired</string>
+    <string name="ed_fail_not_bonded_hint">Pair it in the phone\'s Bluetooth settings, then choose it again.</string>
+    <string name="ed_fail_connect_title">The printer isn\'t answering</string>
+    <string name="ed_fail_connect_hint">Check that it\'s switched on, charged and close by.</string>
+    <string name="ed_fail_write_title">Printing interrupted</string>
+    <string name="ed_fail_write_hint">The connection dropped while sending. Check the paper and try again.</string>
+    <string name="ed_fail_busy_title">Printer busy</string>
+    <string name="ed_fail_busy_hint">Another print is on its way: wait for it to finish, then try again.</string>
+</resources>

@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Modalita di scatto (etichette brevi in maiuscolo, stile scontrino) -->
+    <string name="cam_mode_photo">FOTO</string>
+    <string name="cam_mode_strip">STRISCIA</string>
+
+    <!-- Descrizioni dei comandi per TalkBack -->
+    <string name="cam_cd_flash">Flash: %1$s</string>
+    <string name="cam_flash_auto">automatico</string>
+    <string name="cam_flash_on">acceso</string>
+    <string name="cam_flash_off">spento</string>
+    <string name="cam_cd_timer">Autoscatto: %1$s</string>
+    <string name="cam_timer_off">spento</string>
+    <string name="cam_timer_seconds">%1$d secondi</string>
+    <string name="cam_cd_thermal">Anteprima di stampa termica: %1$s</string>
+    <string name="cam_state_on">attiva</string>
+    <string name="cam_state_off">disattivata</string>
+    <string name="cam_cd_switch_camera">Cambia fotocamera</string>
+    <string name="cam_cd_gallery">Stampa una foto della galleria</string>
+    <string name="cam_cd_gallery_strip">Scegli fino a 4 foto per una striscia</string>
+    <string name="cam_cd_history">Storico delle stampe</string>
+    <string name="cam_cd_settings">Impostazioni</string>
+
+    <!-- Mirino -->
+    <string name="cam_instant_print">STAMPA ISTANTANEA</string>
+    <string name="cam_printing">STAMPA IN CORSO…</string>
+    <string name="cam_printing_percent">STAMPA %1$d%%</string>
+    <string name="cam_printing_queue">+%1$d IN CODA</string>
+    <string name="cam_printed">STAMPATA! STRAPPALA</string>
+    <string name="cam_strip_hint">%1$d SCATTI · 3-2-1 PRIMA DI OGNUNO</string>
+    <string name="cam_strip_progress">SCATTO %1$d DI %2$d</string>
+    <string name="cam_tap_to_cancel">TOCCA L\'OTTURATORE PER ANNULLARE</string>
+    <string name="cam_unavailable_title">Fotocamera non disponibile</string>
+    <string name="cam_unavailable_message">Forse la sta usando un\'altra app. Chiudila e torna qui.</string>
+
+    <!-- Avvisi -->
+    <string name="cam_action_printer">Stampante</string>
+    <string name="cam_queue_full">Un attimo: la stampante sta ancora lavorando alle ultime foto.</string>
+    <string name="cam_error_capture">Non sono riuscito a scattare. Riprova.</string>
+    <string name="cam_error_import">Non riesco ad aprire questa immagine. Provane un\'altra.</string>
+    <string name="cam_error_picker">Su questo telefono non c\'è un selettore di foto.</string>
+    <string name="cam_error_print_generic">La foto non è stata stampata. Riprova.</string>
+    <string name="cam_print_failed_no_printer">Prima scegli una stampante.</string>
+    <string name="cam_print_failed_no_permission">Consenti l\'accesso al Bluetooth per stampare.</string>
+    <string name="cam_print_failed_bluetooth_off">Il Bluetooth è spento: accendilo per stampare.</string>
+    <string name="cam_print_failed_not_bonded">La stampante non è associata a questo telefono.</string>
+    <string name="cam_print_failed_connect">Non raggiungo la stampante. È accesa e vicina?</string>
+    <string name="cam_print_failed_write">Stampa interrotta. Controlla la carta e la batteria.</string>
+    <string name="cam_print_failed_busy">La stampante è occupata. Riprova tra un momento.</string>
+
+    <!-- Permesso fotocamera -->
+    <string name="cam_perm_title">Accendiamo la fotocamera</string>
+    <string name="cam_perm_message">FotoFlash usa la fotocamera per scattare le foto da stampare. Le tue foto restano su questo telefono.</string>
+    <string name="cam_perm_message_blocked">L\'accesso alla fotocamera è disattivato per FotoFlash. Puoi attivarlo nelle impostazioni dell\'app, alla voce Autorizzazioni.</string>
+    <string name="cam_perm_allow">Consenti la fotocamera</string>
+    <string name="cam_perm_open_settings">Apri le impostazioni dell\'app</string>
+    <string name="cam_perm_gallery">Stampa dalla galleria</string>
+</resources>

@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Storico stampe (prefisso hist_) -->
+    <string name="hist_title">Storico</string>
+    <string name="hist_detail_title">Ricordo</string>
+
+    <string name="hist_empty_title">Ancora nessuna stampa</string>
+    <string name="hist_empty_message">Ogni foto che stampi o salvi finisce qui, pronta per essere ristampata.</string>
+    <string name="hist_empty_action">Scatta una foto</string>
+
+    <string name="hist_not_printed">Non stampata</string>
+    <string name="hist_print_number">N. %1$04d</string>
+    <string name="hist_thumb_cd">Stampa del %1$s</string>
+    <string name="hist_preview_cd">Anteprima della stampa</string>
+
+    <string name="hist_label_date">Data</string>
+    <string name="hist_label_template">Modello</string>
+    <string name="hist_label_caption">Didascalia</string>
+    <string name="hist_label_number">Numero</string>
+    <string name="hist_label_status">Stato</string>
+    <string name="hist_status_printed">Stampata</string>
+    <string name="hist_status_saved">Salvata, non ancora stampata</string>
+
+    <string name="hist_template_polaroid">Polaroid</string>
+    <string name="hist_template_full">Pieno</string>
+    <string name="hist_template_strip">Striscia</string>
+    <string name="hist_template_receipt">Scontrino</string>
+
+    <string name="hist_action_reprint">Ristampa</string>
+    <string name="hist_action_share">Condividi</string>
+    <string name="hist_action_save">Salva</string>
+    <string name="hist_action_delete">Elimina dallo storico</string>
+    <string name="hist_share_chooser">Condividi la stampa</string>
+    <string name="hist_printing">In stampa… %1$d%%</string>
+
+    <string name="hist_delete_title">Eliminare questa stampa?</string>
+    <string name="hist_delete_message">La stampa e le sue foto originali verranno rimosse da FotoFlash. Le copie salvate in galleria restano dove sono.</string>
+    <string name="hist_delete_confirm">Elimina</string>
+    <string name="hist_cancel">Annulla</string>
+
+    <string name="hist_msg_printed">Stampata!</string>
+    <string name="hist_msg_saved">Salvata in Immagini/FotoFlash</string>
+    <string name="hist_msg_save_failed">Non è stato possibile salvare l\'immagine</string>
+    <string name="hist_msg_share_failed">Non è stato possibile condividere l\'immagine</string>
+    <string name="hist_msg_load_failed">Il file di questa stampa è danneggiato</string>
+    <string name="hist_msg_storage_permission">Su questa versione di Android serve il permesso di archiviazione per salvare in galleria</string>
+
+    <string name="hist_fail_no_printer">Prima scegli una stampante (Impostazioni › Stampante)</string>
+    <string name="hist_fail_no_permission">FotoFlash non ha il permesso di usare il Bluetooth</string>
+    <string name="hist_fail_bluetooth_off">Il Bluetooth è spento: accendilo e riprova</string>
+    <string name="hist_fail_not_bonded">La stampante non è più accoppiata con questo telefono</string>
+    <string name="hist_fail_connect">La stampante non risponde: è accesa e vicina?</string>
+    <string name="hist_fail_write">La stampa si è interrotta a metà: controlla la carta e riprova</string>
+    <string name="hist_fail_busy">La stampante è occupata con un\'altra stampa</string>
+
+    <string name="hist_not_found_title">Stampa non trovata</string>
+    <string name="hist_not_found_message">Forse è stata eliminata.</string>
+    <string name="hist_back">Torna allo storico</string>
+</resources>

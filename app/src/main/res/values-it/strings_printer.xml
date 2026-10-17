@@ -1,0 +1,148 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Schermata "Stampante e carta", messaggi di PrinterManager e pagina di prova. Prefisso prn_ -->
+    <string name="prn_title">Stampante e carta</string>
+    <string name="prn_unknown_printer">la stampante</string>
+
+    <!-- Scheda di stato -->
+    <string name="prn_status_no_bluetooth_title">Niente Bluetooth</string>
+    <string name="prn_status_no_bluetooth_body">FotoFlash parla con la stampante via Bluetooth, e questo dispositivo non ce l\'ha.</string>
+    <string name="prn_status_permission_title">Consenti l\'accesso al Bluetooth</string>
+    <string name="prn_status_permission_body">FotoFlash ha bisogno del permesso «Dispositivi nelle vicinanze» per vedere la stampante accoppiata e mandarle le foto. Non cerca dispositivi intorno e non usa la tua posizione.</string>
+    <string name="prn_status_bt_off_title">Bluetooth spento</string>
+    <string name="prn_status_bt_off_body">Accendi il Bluetooth per stampare. Basta un tocco.</string>
+    <string name="prn_status_none_title">Nessuna stampante scelta</string>
+    <string name="prn_status_none_body_pick">Scegli la tua stampante termica dall\'elenco qui sotto.</string>
+    <string name="prn_status_none_body_pair">Accendi la stampante e accoppiala nelle impostazioni Bluetooth di Android, poi torna qui per sceglierla.</string>
+    <string name="prn_status_ready_title">Pronta a stampare</string>
+    <string name="prn_status_ready_body">FotoFlash si collega da solo quando stampi. Stampa una pagina di prova per controllare carta e intensità.</string>
+    <string name="prn_status_connecting_title">Connessione…</string>
+    <string name="prn_status_connecting_body">In attesa che la stampante risponda.</string>
+    <string name="prn_status_connected_title">Collegata</string>
+    <string name="prn_status_connected_body">Il collegamento resta aperto per un po\', così la prossima stampa parte subito. Scollega per lasciare la stampante a un altro telefono.</string>
+    <string name="prn_status_printing_title">Stampa… %1$d%%</string>
+    <string name="prn_status_printing_body">Tieni il telefono vicino alla stampante finché la carta non si ferma.</string>
+
+    <string name="prn_error_title_permission">Serve un permesso</string>
+    <string name="prn_error_title_bt_off">Bluetooth spento</string>
+    <string name="prn_error_title_not_bonded">Stampante non accoppiata</string>
+    <string name="prn_error_title_connect">Stampante irraggiungibile</string>
+    <string name="prn_error_title_write">Stampa interrotta</string>
+    <string name="prn_error_title_no_printer">Nessuna stampante scelta</string>
+    <string name="prn_error_title_busy">Stampante occupata</string>
+
+    <!-- Azioni -->
+    <string name="prn_action_grant">Consenti accesso</string>
+    <string name="prn_action_app_settings">Apri impostazioni app</string>
+    <string name="prn_action_enable_bt">Accendi il Bluetooth</string>
+    <string name="prn_action_choose">Scegli la stampante</string>
+    <string name="prn_action_pair">Apri impostazioni Bluetooth</string>
+    <string name="prn_action_test">Stampa pagina di prova</string>
+    <string name="prn_action_retry">Riprova</string>
+    <string name="prn_action_disconnect">Scollega</string>
+    <string name="prn_action_forget">Dimentica questa stampante</string>
+
+    <!-- Dispositivi accoppiati -->
+    <string name="prn_section_printers">Dispositivi accoppiati</string>
+    <string name="prn_printers_hint">Qui compaiono solo i dispositivi già accoppiati con il telefono. Le stampanti tascabili si chiamano spesso MTP-II, PT-210 o BlueTooth Printer; il PIN di accoppiamento di solito è 0000 o 1234.</string>
+    <string name="prn_printers_permission">Consenti l\'accesso al Bluetooth per vedere i dispositivi accoppiati.</string>
+    <string name="prn_printers_bt_off">Accendi il Bluetooth per vedere i dispositivi accoppiati.</string>
+    <string name="prn_printers_empty_title">Nessun dispositivo accoppiato</string>
+    <string name="prn_printers_empty_body">Accendi la stampante e accoppiala nelle impostazioni Bluetooth di Android. Comparirà qui.</string>
+    <string name="prn_printer_likely">STAMPANTE</string>
+    <string name="prn_printer_selected">IN USO</string>
+    <string name="prn_pair_new">Accoppia una nuova stampante</string>
+    <string name="prn_forget_title">Dimenticare %1$s?</string>
+    <string name="prn_forget_body">FotoFlash smetterà di usare questa stampante. Resta accoppiata al telefono e puoi sceglierla di nuovo quando vuoi.</string>
+    <string name="prn_forget_confirm">Dimentica</string>
+    <string name="prn_cancel">Annulla</string>
+    <string name="prn_settings_unavailable">Questo telefono non riesce ad aprire quella schermata delle impostazioni.</string>
+
+    <!-- Carta -->
+    <string name="prn_section_paper">Carta</string>
+    <string name="prn_paper_width">Larghezza carta</string>
+    <string name="prn_paper_width_hint">%1$d punti per riga. Quasi tutte le stampanti tascabili usano rotoli da 58 mm.</string>
+    <string name="prn_paper_58">58 mm</string>
+    <string name="prn_paper_80">80 mm</string>
+    <string name="prn_feed_lines">Avanzamento dopo la stampa</string>
+    <string name="prn_feed_lines_value">%1$d righe</string>
+    <string name="prn_feed_lines_hint">Carta bianca dopo la foto, per strapparla senza tagliarla.</string>
+    <string name="prn_cut">Taglio carta</string>
+    <string name="prn_cut_hint">Solo per stampanti con taglierina automatica.</string>
+
+    <!-- Intensita -->
+    <string name="prn_section_heat">Intensità di stampa</string>
+    <string name="prn_heat_title">Calore della testina</string>
+    <string name="prn_heat_level_0">Default stampante</string>
+    <string name="prn_heat_level_1">Chiara</string>
+    <string name="prn_heat_level_2">Media</string>
+    <string name="prn_heat_level_3">Scura</string>
+    <string name="prn_heat_level_4">Massima</string>
+    <string name="prn_heat_hint">Più calore dà neri più pieni e grigi più ricchi, ma stampa più lentamente e consuma più batteria. «Default stampante» non invia nessuna impostazione: sceglilo se la tua stampante si comporta male con le altre.</string>
+
+    <!-- Calibrazione avanzata -->
+    <string name="prn_section_advanced">Calibrazione avanzata</string>
+    <string name="prn_advanced_summary">Dimensione blocco, pausa e altezza banda</string>
+    <string name="prn_advanced_expand">Mostra la calibrazione avanzata</string>
+    <string name="prn_advanced_collapse">Nascondi la calibrazione avanzata</string>
+    <string name="prn_advanced_hint">Una foto pesa circa dieci volte uno scontrino e le stampanti economiche hanno poca memoria. Se la stampa si spezza, si ferma a metà o diventa una fila di caratteri a caso, manda blocchi più piccoli e più lentamente, poi stampa una pagina di prova.</string>
+    <string name="prn_chunk_size">Dimensione blocco</string>
+    <string name="prn_chunk_size_value">%1$d byte</string>
+    <string name="prn_chunk_delay">Pausa tra blocchi</string>
+    <string name="prn_chunk_delay_value">%1$d ms</string>
+    <string name="prn_band_height">Altezza banda</string>
+    <string name="prn_band_height_value">%1$d righe</string>
+    <string name="prn_band_height_hint">L\'immagine viaggia a strisce orizzontali. Bande basse sono più sicure per le stampanti con poca memoria; bande alte stampano un po\' più fluide.</string>
+    <string name="prn_recommended">Consigliato: %1$d</string>
+    <string name="prn_speed_estimate">Velocità massima di invio: circa %1$d KB/s</string>
+    <string name="prn_speed_unlimited">Velocità massima di invio: nessun limite (nessuna pausa tra i blocchi)</string>
+    <string name="prn_reset">Ripristina i valori consigliati</string>
+    <string name="prn_reset_done">Calibrazione riportata ai valori consigliati</string>
+    <string name="prn_test_sent">Pagina di prova inviata alla stampante</string>
+
+    <!-- Problemi? -->
+    <string name="prn_section_help">Problemi?</string>
+    <string name="prn_tip_number">%1$d. %2$s</string>
+    <string name="prn_tip_blank_title">La carta esce bianca</string>
+    <string name="prn_tip_blank_body">Il rotolo è al contrario: il lato trattato deve guardare la testina. Graffia la carta con un\'unghia: il lato che si annerisce è quello su cui si stampa.</string>
+    <string name="prn_tip_pale_title">Stampe chiare o a chiazze</string>
+    <string name="prn_tip_pale_body">Alza l\'intensità e ricarica la stampante: con la batteria scarica le stampe vengono chiare. Anche la carta economica o vecchia stampa più chiaro.</string>
+    <string name="prn_tip_broken_title">La foto si spezza o si ferma a metà</string>
+    <string name="prn_tip_broken_body">Apri la Calibrazione avanzata: abbassa la dimensione del blocco, aumenta la pausa e abbassa l\'altezza banda. Stampa una pagina di prova dopo ogni modifica.</string>
+    <string name="prn_tip_connect_title">Non si collega</string>
+    <string name="prn_tip_connect_body">La stampante parla con un telefono alla volta: scollegala da altri telefoni o computer, spegnila e riaccendila e tienila entro un paio di metri.</string>
+    <string name="prn_tip_missing_title">La stampante non è nell\'elenco</string>
+    <string name="prn_tip_missing_body">Prima accoppiala nelle impostazioni Bluetooth di Android. FotoFlash funziona con le stampanti Bluetooth classiche; quelle solo Bluetooth Low Energy non sono supportate.</string>
+
+    <!-- Errori riportati da PrinterManager -->
+    <string name="prn_err_busy">C\'è già una stampa in corso. Aspetta che finisca.</string>
+    <string name="prn_err_no_printer">Nessuna stampante scelta. Sceglila in Stampante e carta.</string>
+    <string name="prn_err_no_bluetooth">Questo dispositivo non ha il Bluetooth, quindi non può parlare con la stampante.</string>
+    <string name="prn_err_bluetooth_off">Il Bluetooth è spento. Accendilo e riprova.</string>
+    <string name="prn_err_permission">FotoFlash ha bisogno del permesso «Dispositivi nelle vicinanze» per parlare con la stampante.</string>
+    <string name="prn_err_not_bonded">%1$s non è più accoppiata con questo telefono. Accoppiala di nuovo nelle impostazioni Bluetooth.</string>
+    <string name="prn_err_connect">Impossibile collegarsi a %1$s. Controlla che sia accesa, vicina e non collegata a un altro telefono.</string>
+    <string name="prn_err_connect_timeout">%1$s non ha risposto entro %2$d secondi. Controlla che sia accesa, vicina e non collegata a un altro telefono.</string>
+    <string name="prn_err_write">Il collegamento con %1$s si è interrotto durante la stampa. Controlla batteria e carta, poi riprova.</string>
+    <string name="prn_err_write_stalled">%1$s ha smesso di ricevere dati. Forse è finita la carta o il coperchio è aperto.</string>
+    <string name="prn_err_unexpected">Stampa non riuscita: %1$s</string>
+
+    <!-- Pagina di prova: sulla carta finisce solo ASCII (gli accenti vengono tolti) -->
+    <string name="prn_test_payoff">Scatta. Stampa. Sorridi.</string>
+    <string name="prn_test_printer">Stampante: %1$s</string>
+    <string name="prn_test_date">Data: %1$s</string>
+    <string name="prn_test_paper">Carta: %1$d mm, %2$d punti</string>
+    <string name="prn_test_heat">Intensità: %1$s (%2$d/4)</string>
+    <string name="prn_test_transfer">Banda %1$d righe | blocco %2$d B | pausa %3$d ms</string>
+    <string name="prn_test_width">Controllo larghezza: i due bordi laterali di questo riquadro devono stare sulla carta.</string>
+    <string name="prn_test_dither">Metodi di retino, dal nero al bianco:</string>
+    <string name="prn_test_dither_current">%1$s (il tuo predefinito)</string>
+    <string name="prn_dither_atkinson">Atkinson</string>
+    <string name="prn_dither_floyd_steinberg">Floyd-Steinberg</string>
+    <string name="prn_dither_bayer">Bayer 8x8</string>
+    <string name="prn_dither_threshold">Soglia</string>
+    <string name="prn_test_tip_pale">Stampa chiara? Aumenta l\'intensità.</string>
+    <string name="prn_test_tip_broken">Bande rotte o caratteri strani? Abbassa la dimensione del blocco o aumenta la pausa.</string>
+    <string name="prn_test_tip_blank">Carta bianca? Gira il rotolo.</string>
+    <string name="prn_test_end">Pagina di prova completata</string>
+</resources>

@@ -1,0 +1,84 @@
+name: Funzionalita
+description: Un'idea nuova o un miglioramento, scritto in modo che l'agente possa realizzarlo.
+title: "feat: "
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Le richieste migliori dicono **perche** serve, **cosa** deve fare e **come verifichiamo** che funziona.
+        Il titolo resta in stile conventional commit (`feat(editor): cornici stagionali`): diventa il titolo della PR
+        e decide il numero di versione (feat = versione minore).
+        Ci sono piani gia pronti in `issue_plans/`: per usarne uno basta citarlo, per esempio `issue_plans/collage-2x2.md`.
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: Perche serve
+      description: Il problema o il momento d'uso (festa, matrimonio, gioco con i bambini...).
+      placeholder: Alle feste le persone vogliono un adesivo da attaccare, non solo una foto su scontrino.
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Cosa deve fare
+      description: Il comportamento atteso, dal punto di vista di chi usa l'app. Schizzi e immagini sono benvenuti.
+    validations:
+      required: true
+
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Criteri di accettazione
+      description: |
+        Una checklist di criteri oggettivi, verificabili in CI (test JUnit in core-thermal o test JVM in app, build,
+        risorse presenti in inglese e italiano). L'agente lavora finche non sono tutti soddisfatti.
+      placeholder: |
+        - [ ] Nuovo modello STICKER in TemplateKind, con layout testato in TemplateGeometryTest
+        - [ ] Chip "Adesivo" nell'editor, stringhe ed_* in values e values-it
+        - [ ] gradle :core-thermal:test :app:testDebugUnitTest :app:assembleDebug verde
+    validations:
+      required: true
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      multiple: true
+      options:
+        - Stampa e Bluetooth
+        - Motore termico (core-thermal)
+        - Fotocamera e scatto
+        - Editor e modelli di stampa
+        - Storico, salvataggio, condivisione
+        - Impostazioni
+        - Brand, grafica, testi
+        - Repository, CI, documentazione
+    validations:
+      required: true
+
+  - type: textarea
+    id: files
+    attributes:
+      label: File e contratti coinvolti (facoltativo)
+      description: Se li conosci. Un contratto di docs/ARCHITECTURE.md si cambia solo aggiornando il documento e tutti i chiamanti.
+      placeholder: |
+        core-thermal/.../Model.kt (TemplateKind), TemplateGeometry.kt, print/PrintRenderer.kt, editor/EditorScreen.kt
+
+  - type: textarea
+    id: constraints
+    attributes:
+      label: Vincoli e cose da non fare (facoltativo)
+      placeholder: Niente dipendenze nuove; deve funzionare anche su carta da 80 mm.
+
+  - type: textarea
+    id: agent
+    attributes:
+      label: Affida all'agente (facoltativo)
+      description: |
+        Scrivi /oc su questa riga per far partire subito l'agente OpenCode (solo owner, collaboratori e utenti in OPENCODE_ALLOWED_USERS).
+        Puoi aggiungere istruzioni e il modello, per esempio: /oc --model opencode/big-pickle segui issue_plans/collage-2x2.md
+        Lascia vuoto per decidere dopo: basta un commento che comincia con /oc.
+      placeholder: /oc

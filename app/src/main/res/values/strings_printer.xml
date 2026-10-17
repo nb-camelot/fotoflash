@@ -1,0 +1,148 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Schermata "Stampante e carta", messaggi di PrinterManager e pagina di prova. Prefisso prn_ -->
+    <string name="prn_title">Printer &amp; paper</string>
+    <string name="prn_unknown_printer">the printer</string>
+
+    <!-- Scheda di stato -->
+    <string name="prn_status_no_bluetooth_title">No Bluetooth here</string>
+    <string name="prn_status_no_bluetooth_body">FotoFlash talks to the printer over Bluetooth, and this device doesn\'t have it.</string>
+    <string name="prn_status_permission_title">Allow Bluetooth access</string>
+    <string name="prn_status_permission_body">FotoFlash needs the “Nearby devices” permission to see your paired printer and send it photos. It doesn\'t scan around or use your location.</string>
+    <string name="prn_status_bt_off_title">Bluetooth is off</string>
+    <string name="prn_status_bt_off_body">Turn Bluetooth on to print. It only takes a tap.</string>
+    <string name="prn_status_none_title">No printer chosen</string>
+    <string name="prn_status_none_body_pick">Pick your thermal printer from the list below.</string>
+    <string name="prn_status_none_body_pair">Switch the printer on and pair it in Android\'s Bluetooth settings, then come back here to pick it.</string>
+    <string name="prn_status_ready_title">Ready to print</string>
+    <string name="prn_status_ready_body">FotoFlash connects by itself when you print. Print a test page to check paper and intensity.</string>
+    <string name="prn_status_connecting_title">Connecting…</string>
+    <string name="prn_status_connecting_body">Waiting for the printer to answer.</string>
+    <string name="prn_status_connected_title">Connected</string>
+    <string name="prn_status_connected_body">The link stays open for a little while, so the next print starts right away. Disconnect to free the printer for another phone.</string>
+    <string name="prn_status_printing_title">Printing… %1$d%%</string>
+    <string name="prn_status_printing_body">Keep the phone close to the printer until the paper stops.</string>
+
+    <string name="prn_error_title_permission">Permission needed</string>
+    <string name="prn_error_title_bt_off">Bluetooth is off</string>
+    <string name="prn_error_title_not_bonded">Printer not paired</string>
+    <string name="prn_error_title_connect">Can\'t reach the printer</string>
+    <string name="prn_error_title_write">Print interrupted</string>
+    <string name="prn_error_title_no_printer">No printer chosen</string>
+    <string name="prn_error_title_busy">Printer busy</string>
+
+    <!-- Azioni -->
+    <string name="prn_action_grant">Allow access</string>
+    <string name="prn_action_app_settings">Open app settings</string>
+    <string name="prn_action_enable_bt">Turn on Bluetooth</string>
+    <string name="prn_action_choose">Choose a printer</string>
+    <string name="prn_action_pair">Open Bluetooth settings</string>
+    <string name="prn_action_test">Print test page</string>
+    <string name="prn_action_retry">Try again</string>
+    <string name="prn_action_disconnect">Disconnect</string>
+    <string name="prn_action_forget">Forget this printer</string>
+
+    <!-- Dispositivi accoppiati -->
+    <string name="prn_section_printers">Paired devices</string>
+    <string name="prn_printers_hint">Only devices already paired with this phone show up here. Pocket printers are often called MTP-II, PT-210 or BlueTooth Printer; the pairing PIN is usually 0000 or 1234.</string>
+    <string name="prn_printers_permission">Allow Bluetooth access to see your paired devices.</string>
+    <string name="prn_printers_bt_off">Turn on Bluetooth to see your paired devices.</string>
+    <string name="prn_printers_empty_title">No paired devices</string>
+    <string name="prn_printers_empty_body">Switch the printer on and pair it in Android\'s Bluetooth settings. It will show up here.</string>
+    <string name="prn_printer_likely">PRINTER</string>
+    <string name="prn_printer_selected">IN USE</string>
+    <string name="prn_pair_new">Pair a new printer</string>
+    <string name="prn_forget_title">Forget %1$s?</string>
+    <string name="prn_forget_body">FotoFlash will stop using this printer. It stays paired with the phone, and you can pick it again at any time.</string>
+    <string name="prn_forget_confirm">Forget</string>
+    <string name="prn_cancel">Cancel</string>
+    <string name="prn_settings_unavailable">This phone can\'t open that settings screen.</string>
+
+    <!-- Carta -->
+    <string name="prn_section_paper">Paper</string>
+    <string name="prn_paper_width">Paper width</string>
+    <string name="prn_paper_width_hint">%1$d dots per line. Most pocket printers use 58 mm rolls.</string>
+    <string name="prn_paper_58">58 mm</string>
+    <string name="prn_paper_80">80 mm</string>
+    <string name="prn_feed_lines">Paper feed after printing</string>
+    <string name="prn_feed_lines_value">%1$d lines</string>
+    <string name="prn_feed_lines_hint">Blank paper after the photo, so you can tear it off without cutting into it.</string>
+    <string name="prn_cut">Cut paper</string>
+    <string name="prn_cut_hint">Only for printers with an automatic cutter.</string>
+
+    <!-- Intensita -->
+    <string name="prn_section_heat">Print intensity</string>
+    <string name="prn_heat_title">Print head heat</string>
+    <string name="prn_heat_level_0">Printer default</string>
+    <string name="prn_heat_level_1">Light</string>
+    <string name="prn_heat_level_2">Medium</string>
+    <string name="prn_heat_level_3">Dark</string>
+    <string name="prn_heat_level_4">Maximum</string>
+    <string name="prn_heat_hint">More heat gives deeper blacks and richer grays, but prints slower and drains the battery faster. “Printer default” sends no setting at all: choose it if your printer acts strangely with the others.</string>
+
+    <!-- Calibrazione avanzata -->
+    <string name="prn_section_advanced">Advanced calibration</string>
+    <string name="prn_advanced_summary">Block size, pause and band height</string>
+    <string name="prn_advanced_expand">Show advanced calibration</string>
+    <string name="prn_advanced_collapse">Hide advanced calibration</string>
+    <string name="prn_advanced_hint">A photo is about ten times bigger than a receipt, and cheap printers have tiny memories. If prints break up, stop halfway or turn into random characters, send smaller blocks more slowly, then print a test page.</string>
+    <string name="prn_chunk_size">Block size</string>
+    <string name="prn_chunk_size_value">%1$d bytes</string>
+    <string name="prn_chunk_delay">Pause between blocks</string>
+    <string name="prn_chunk_delay_value">%1$d ms</string>
+    <string name="prn_band_height">Band height</string>
+    <string name="prn_band_height_value">%1$d rows</string>
+    <string name="prn_band_height_hint">The image is sent in horizontal bands. Lower bands are safer for printers with little memory; taller ones print a bit more smoothly.</string>
+    <string name="prn_recommended">Recommended: %1$d</string>
+    <string name="prn_speed_estimate">Top sending speed: about %1$d KB/s</string>
+    <string name="prn_speed_unlimited">Top sending speed: no limit (no pause between blocks)</string>
+    <string name="prn_reset">Reset to recommended</string>
+    <string name="prn_reset_done">Calibration back to the recommended values</string>
+    <string name="prn_test_sent">Test page sent to the printer</string>
+
+    <!-- Problemi? -->
+    <string name="prn_section_help">Problems?</string>
+    <string name="prn_tip_number">%1$d. %2$s</string>
+    <string name="prn_tip_blank_title">The paper comes out blank</string>
+    <string name="prn_tip_blank_body">The roll is in upside down: the coated side must face the print head. Scratch the paper with a fingernail: the side that turns dark is the one to print on.</string>
+    <string name="prn_tip_pale_title">Prints are pale or patchy</string>
+    <string name="prn_tip_pale_body">Raise the intensity and charge the printer: a low battery makes pale prints. Cheap or old paper also prints lighter.</string>
+    <string name="prn_tip_broken_title">The photo breaks up or stops halfway</string>
+    <string name="prn_tip_broken_body">Open Advanced calibration: lower the block size, raise the pause and lower the band height. Print a test page after each change.</string>
+    <string name="prn_tip_connect_title">It won\'t connect</string>
+    <string name="prn_tip_connect_body">The printer talks to one phone at a time: disconnect it from other phones or computers, switch it off and on again and keep it within a couple of meters.</string>
+    <string name="prn_tip_missing_title">The printer isn\'t in the list</string>
+    <string name="prn_tip_missing_body">Pair it first in Android\'s Bluetooth settings. FotoFlash works with classic Bluetooth printers; printers that only offer Bluetooth Low Energy are not supported.</string>
+
+    <!-- Errori riportati da PrinterManager -->
+    <string name="prn_err_busy">Another print is in progress. Wait for it to finish.</string>
+    <string name="prn_err_no_printer">No printer chosen yet. Pick one in Printer &amp; paper.</string>
+    <string name="prn_err_no_bluetooth">This device has no Bluetooth, so it can\'t talk to the printer.</string>
+    <string name="prn_err_bluetooth_off">Bluetooth is off. Turn it on and try again.</string>
+    <string name="prn_err_permission">FotoFlash needs the “Nearby devices” permission to talk to the printer.</string>
+    <string name="prn_err_not_bonded">%1$s is no longer paired with this phone. Pair it again in Bluetooth settings.</string>
+    <string name="prn_err_connect">Couldn\'t connect to %1$s. Check that it\'s on, nearby and not connected to another phone.</string>
+    <string name="prn_err_connect_timeout">%1$s didn\'t answer within %2$d seconds. Check that it\'s on, nearby and not connected to another phone.</string>
+    <string name="prn_err_write">The connection to %1$s dropped while printing. Check the battery and the paper, then try again.</string>
+    <string name="prn_err_write_stalled">%1$s stopped accepting data. It may be out of paper or have the cover open.</string>
+    <string name="prn_err_unexpected">Printing failed: %1$s</string>
+
+    <!-- Pagina di prova: sulla carta finisce solo ASCII (gli accenti vengono tolti) -->
+    <string name="prn_test_payoff">Snap. Print. Smile.</string>
+    <string name="prn_test_printer">Printer: %1$s</string>
+    <string name="prn_test_date">Date: %1$s</string>
+    <string name="prn_test_paper">Paper: %1$d mm, %2$d dots</string>
+    <string name="prn_test_heat">Intensity: %1$s (%2$d/4)</string>
+    <string name="prn_test_transfer">Band %1$d rows | block %2$d B | pause %3$d ms</string>
+    <string name="prn_test_width">Width check: both side edges of this frame must be on the paper.</string>
+    <string name="prn_test_dither">Halftone methods, black to white:</string>
+    <string name="prn_test_dither_current">%1$s (your default)</string>
+    <string name="prn_dither_atkinson">Atkinson</string>
+    <string name="prn_dither_floyd_steinberg">Floyd-Steinberg</string>
+    <string name="prn_dither_bayer">Bayer 8x8</string>
+    <string name="prn_dither_threshold">Threshold</string>
+    <string name="prn_test_tip_pale">Pale print? Raise the intensity.</string>
+    <string name="prn_test_tip_broken">Bands broken or garbled? Lower the block size or raise the pause.</string>
+    <string name="prn_test_tip_blank">Blank paper? Flip the roll.</string>
+    <string name="prn_test_end">Test page complete</string>
+</resources>

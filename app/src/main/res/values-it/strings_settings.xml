@@ -1,0 +1,86 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Impostazioni (prefisso set_) -->
+    <string name="set_title">Impostazioni</string>
+    <string name="set_ok">OK</string>
+    <string name="set_cancel">Annulla</string>
+    <string name="set_open_failed">Nessuna app può aprire questo link</string>
+    <string name="set_tagline">Scatta. Stampa. Sorridi.</string>
+
+    <!-- Stampante e carta -->
+    <string name="set_section_printer">Stampante e carta</string>
+    <string name="set_printer_none">Nessuna stampante scelta</string>
+    <string name="set_printer_hint_none">Tocca per scegliere una stampante Bluetooth accoppiata</string>
+    <string name="set_printer_paper">Carta da %1$d mm · tocca per carta e calibrazione</string>
+    <string name="set_printer_open_cd">Apri le impostazioni della stampante</string>
+
+    <!-- Immagine -->
+    <string name="set_section_image">Immagine</string>
+    <string name="set_dither_label">Retino predefinito</string>
+    <string name="set_dither_atkinson">Atkinson</string>
+    <string name="set_dither_floyd">Floyd-Steinberg</string>
+    <string name="set_dither_bayer">Bayer</string>
+    <string name="set_dither_threshold">Soglia</string>
+    <string name="set_dither_desc_atkinson">Nitido e luminoso: il migliore per volti e feste.</string>
+    <string name="set_dither_desc_floyd">Sfumature più morbide, con una grana più fine.</string>
+    <string name="set_dither_desc_bayer">Una trama regolare da giornale, uguale su ogni stampa.</string>
+    <string name="set_dither_desc_threshold">Bianco e nero puro: ottimo per disegni e scritte.</string>
+    <string name="set_brightness">Luminosità</string>
+    <string name="set_contrast">Contrasto</string>
+    <string name="set_sharpen">Nitidezza</string>
+    <string name="set_gamma">Mezzitoni (gamma)</string>
+    <string name="set_auto_levels">Auto-livelli</string>
+    <string name="set_auto_levels_desc">Allarga i toni di ogni foto prima della stampa</string>
+    <string name="set_image_help">Valori di partenza dell\'editor: ogni foto si può comunque ritoccare.</string>
+    <string name="set_image_reset">Ripristina</string>
+
+    <!-- Evento -->
+    <string name="set_section_event">Evento</string>
+    <string name="set_event_title">Titolo dell\'evento</string>
+    <string name="set_event_title_placeholder">Es. Il compleanno di Anna</string>
+    <string name="set_hashtag">Hashtag</string>
+    <string name="set_hashtag_placeholder">#festa</string>
+    <string name="set_event_help">Titolo e hashtag compaiono sui modelli Striscia e Scontrino.</string>
+    <string name="set_show_date">Stampa la data</string>
+    <string name="set_show_number">Numera le stampe</string>
+    <string name="set_show_number_desc">Un numero progressivo di ricordo sullo scontrino</string>
+    <string name="set_counter">Contatore</string>
+    <string name="set_counter_value">Ultima stampa: n. %1$04d</string>
+    <string name="set_counter_zero">Ancora nessuna stampa numerata</string>
+    <string name="set_counter_reset">Azzera</string>
+    <string name="set_counter_reset_title">Azzerare il contatore?</string>
+    <string name="set_counter_reset_message">La prossima stampa avrà il numero 0001. Le stampe già nello storico mantengono il loro numero.</string>
+    <string name="set_default_template">Modello predefinito</string>
+    <string name="set_template_polaroid">Polaroid</string>
+    <string name="set_template_full">Pieno</string>
+    <string name="set_template_strip">Striscia</string>
+    <string name="set_template_receipt">Scontrino</string>
+
+    <!-- Scatto -->
+    <string name="set_section_capture">Scatto</string>
+    <string name="set_instant_print">Stampa istantanea</string>
+    <string name="set_instant_print_desc">Stampa subito dopo ogni scatto, come una fotocamera per bambini</string>
+    <string name="set_timer">Timer predefinito</string>
+    <string name="set_timer_off">No</string>
+    <string name="set_timer_seconds">%1$d s</string>
+    <string name="set_strip_shots">Scatti per la striscia</string>
+    <string name="set_strip_shots_value">%1$d scatti</string>
+    <string name="set_shutter_sound">Suono dell\'otturatore</string>
+    <string name="set_live_preview">Anteprima termica</string>
+    <string name="set_live_preview_desc">Mostra il mirino a puntini bianchi e neri, proprio come sulla carta</string>
+
+    <!-- Informazioni -->
+    <string name="set_section_about">Informazioni</string>
+    <string name="set_version">Versione</string>
+    <string name="set_github">Progetto su GitHub</string>
+    <string name="set_github_desc">Codice sorgente, segnalazioni e nuove idee</string>
+    <string name="set_licenses">Licenze dei font</string>
+    <string name="set_licenses_desc">Righteous e Space Mono</string>
+    <string name="set_licenses_title">Licenze dei font</string>
+    <string name="set_font_righteous">Righteous</string>
+    <string name="set_font_space_mono">Space Mono</string>
+    <string name="set_license_righteous">Copyright (c) 2011 by Brian J. Bonislawsky DBA Astigmatic (AOETI), con nome riservato «Righteous».</string>
+    <string name="set_license_space_mono">Copyright 2016 The Space Mono Project Authors (https://github.com/googlefonts/spacemono).</string>
+    <string name="set_licenses_ofl">Entrambi i caratteri sono distribuiti con la SIL Open Font License, versione 1.1, e sono inclusi in FotoFlash senza modifiche.</string>
+    <string name="set_licenses_read">Leggi la licenza</string>
+</resources>

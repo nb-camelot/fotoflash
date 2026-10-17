@@ -1,0 +1,727 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>FotoFlash Brand</title>
+<meta name="description" content="Brand sheet di FotoFlash: marchio, icona, colori, caratteri, schermate e modelli di stampa su carta termica.">
+<meta name="color-scheme" content="light">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Righteous&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  /* Token del brand: stessi valori di res/values/colors.xml (ff_*) */
+  :root {
+    --ink: #16130F; --night: #0E0C0A; --paper: #FBF8F1; --fog: #EDE8DE; --graphite: #4A4640;
+    --flash: #FFCC00; --flash-deep: #E0A800; --coral: #FF5B45; --mint: #22B89A; --sky: #3D8BFF;
+    --error: #C4321E;
+    --display: "Righteous", "Trebuchet MS", system-ui, sans-serif;
+    --mono: "Space Mono", ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+    --body: Roboto, system-ui, -apple-system, "Segoe UI", sans-serif;
+    --gutter: 16px;
+  }
+  * { box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; }
+  body { margin: 0; background: var(--paper); color: var(--ink); font: 16px/1.55 var(--body); overflow-x: hidden; }
+  img, svg, canvas { display: block; max-width: 100%; }
+  a { color: inherit; text-decoration-color: var(--flash-deep); text-decoration-thickness: 2px; text-underline-offset: 3px; }
+  .wrap { max-width: 1120px; margin: 0 auto; padding: 0 var(--gutter); }
+  .eyebrow { font: 700 12px/1.3 var(--mono); letter-spacing: .08em; text-transform: uppercase; color: var(--graphite); margin: 0 0 8px; }
+  h1, h2, h3 { font-family: var(--display); font-weight: 400; line-height: 1.1; margin: 0; }
+  h2 { font-size: clamp(30px, 6vw, 44px); margin-bottom: 12px; }
+  h3 { font-size: 22px; margin-bottom: 6px; }
+  p { margin: 0 0 12px; }
+  .lead { font-size: 18px; max-width: 64ch; color: var(--graphite); }
+  .mono { font-family: var(--mono); }
+  section { padding: 64px 0 24px; }
+  .grid { display: grid; gap: 20px; }
+
+  /* Bordo strappato a dente di sega: denti 12x6 come TornPaperShape */
+  .torn-b, .torn-tb { --z: 6px; }
+  .torn-b {
+    -webkit-mask: conic-gradient(from -45deg at bottom, #000 90deg, #0000 0) 0 100% / calc(2 * var(--z)) var(--z) repeat-x,
+                  linear-gradient(#000 0 0) 0 0 / 100% calc(100% - var(--z)) no-repeat;
+            mask: conic-gradient(from -45deg at bottom, #000 90deg, #0000 0) 0 100% / calc(2 * var(--z)) var(--z) repeat-x,
+                  linear-gradient(#000 0 0) 0 0 / 100% calc(100% - var(--z)) no-repeat;
+  }
+  .torn-tb {
+    -webkit-mask: conic-gradient(from 135deg at top, #000 90deg, #0000 0) 0 0 / calc(2 * var(--z)) var(--z) repeat-x,
+                  linear-gradient(#000 0 0) 0 var(--z) / 100% calc(100% - 2 * var(--z)) no-repeat,
+                  conic-gradient(from -45deg at bottom, #000 90deg, #0000 0) 0 100% / calc(2 * var(--z)) var(--z) repeat-x;
+            mask: conic-gradient(from 135deg at top, #000 90deg, #0000 0) 0 0 / calc(2 * var(--z)) var(--z) repeat-x,
+                  linear-gradient(#000 0 0) 0 var(--z) / 100% calc(100% - 2 * var(--z)) no-repeat,
+                  conic-gradient(from -45deg at bottom, #000 90deg, #0000 0) 0 100% / calc(2 * var(--z)) var(--z) repeat-x;
+  }
+
+  /* Hero */
+  .hero { position: relative; background: var(--flash); padding: 40px 0 72px; overflow: hidden; --z: 9px; }
+  .hero .burst { position: absolute; right: -60px; bottom: -40px; width: 420px; height: 420px; pointer-events: none; }
+  .hero-in { position: relative; display: grid; gap: 28px; align-items: center; grid-template-columns: 1fr; }
+  .hero .wm { width: min(520px, 100%); height: auto; }
+  .hero .payoff { font: 700 clamp(20px, 4.4vw, 30px)/1.2 var(--mono); margin: 18px 0 6px; }
+  .hero .payoff-en { font: 400 18px/1.3 var(--mono); color: var(--graphite); margin-bottom: 18px; }
+  .hero .icon-big { width: min(260px, 70vw); justify-self: center; border-radius: 22%; border: 3px solid var(--ink); box-shadow: 10px 12px 0 var(--ink); }
+  .chips { display: flex; flex-wrap: wrap; gap: 8px; padding: 0; margin: 0; list-style: none; }
+  .chip { font: 700 13px/1 var(--mono); border: 2px solid var(--ink); border-radius: 999px; padding: 8px 12px; background: var(--paper); }
+  @media (min-width: 820px) { .hero-in { grid-template-columns: 1.3fr 1fr; } .hero { padding: 64px 0 96px; } }
+
+  nav.toc { position: sticky; top: 0; z-index: 5; background: rgba(251, 248, 241, .94); border-bottom: 2px solid var(--ink); }
+  nav.toc ul { display: flex; gap: 4px 18px; flex-wrap: wrap; list-style: none; margin: 0; padding: 10px 0; }
+  nav.toc a { font: 700 13px/1.6 var(--mono); text-decoration: none; }
+  nav.toc a:hover { text-decoration: underline; }
+
+  /* Card generiche */
+  .card { background: #fff; border: 2px solid var(--ink); border-radius: 18px; padding: 18px; box-shadow: 5px 6px 0 var(--ink); }
+  .card.flat { box-shadow: none; }
+  .label { font: 700 12px/1.4 var(--mono); color: var(--graphite); margin: 10px 0 0; }
+
+  /* Marchio */
+  .brand-grid { grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); }
+  .tile { border-radius: 18px; border: 2px solid var(--ink); aspect-ratio: 1; display: grid; place-items: center; padding: 14%; }
+  .tile.paper { background: var(--paper); } .tile.flash { background: var(--flash); } .tile.night { background: var(--night); } .tile.white { background: #fff; }
+  .tile svg { width: 100%; height: 100%; }
+  .masks { display: flex; flex-wrap: wrap; gap: 14px; align-items: flex-end; }
+  .masks figure { margin: 0; text-align: center; }
+  .masks figcaption { font: 12px/1.4 var(--mono); color: var(--graphite); margin-top: 6px; }
+  .wm-row { display: grid; gap: 14px; }
+  .wm-row > div { border-radius: 18px; border: 2px solid var(--ink); padding: 22px 20px; }
+  .wm-row svg { width: min(340px, 100%); height: auto; }
+
+  /* Palette */
+  .swatches { grid-template-columns: repeat(auto-fill, minmax(min(100%, 200px), 1fr)); }
+  .swatch { border: 2px solid var(--ink); border-radius: 18px; overflow: hidden; background: #fff; }
+  .swatch .chip-color { height: 110px; display: flex; align-items: flex-end; justify-content: space-between; padding: 10px 12px; font: 700 26px/1 var(--display); }
+  .swatch .meta { padding: 12px; }
+  .swatch .meta b { font-family: var(--display); font-weight: 400; font-size: 20px; }
+  .swatch .meta .hex { font: 700 13px/1.5 var(--mono); }
+  .swatch .meta p { font-size: 14px; color: var(--graphite); margin: 4px 0 0; }
+  .ratio { font: 700 12px/1 var(--mono); background: rgba(255,255,255,.85); color: var(--ink); border-radius: 999px; padding: 5px 8px; }
+  table { border-collapse: collapse; width: 100%; font-size: 15px; }
+  .table-wrap { overflow-x: auto; border: 2px solid var(--ink); border-radius: 18px; background: #fff; }
+  th, td { text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--fog); vertical-align: top; }
+  th { font: 700 12px/1.4 var(--mono); text-transform: uppercase; letter-spacing: .06em; color: var(--graphite); }
+  tr:last-child td { border-bottom: 0; }
+  @media (max-width: 480px) { th, td { padding: 8px 6px; font-size: 14px; } .pair { white-space: normal; } }
+  .ok { color: #11795F; font: 700 13px var(--mono); } .no { color: var(--error); font: 700 13px var(--mono); }
+  .pair { display: inline-block; font: 700 14px/1 var(--mono); padding: 6px 9px; border-radius: 8px; border: 1px solid rgba(0,0,0,.08); white-space: nowrap; }
+
+  /* Caratteri */
+  .type-grid { grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr)); }
+  .specimen { font-size: 64px; line-height: 1; margin: 6px 0 12px; overflow-wrap: anywhere; }
+  .specimen.display { font-family: var(--display); }
+  .specimen.mono { font: 700 40px/1.1 var(--mono); }
+  .specimen.body { font: 500 40px/1.1 var(--body); }
+  .glyphs { font-size: 15px; color: var(--graphite); overflow-wrap: anywhere; }
+
+  /* Motivi */
+  .motifs { grid-template-columns: repeat(auto-fit, minmax(min(100%, 240px), 1fr)); }
+  .motif { border: 2px solid var(--ink); border-radius: 18px; background: #fff; padding: 18px; }
+  .motif .stage { height: 150px; display: grid; place-items: center; border-radius: 12px; background: var(--fog); overflow: hidden; position: relative; }
+  .strip-demo { width: 70%; filter: drop-shadow(4px 5px 0 var(--ink)); }
+  .strip-demo > div { height: 110px; background: var(--paper); }
+  .stage canvas { width: 150px; height: 150px; }
+  .sparkles svg { width: 120px; height: 120px; }
+
+  /* Telefoni */
+  .phones { grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr)); justify-items: center; align-items: start; }
+  .phone-fig { margin: 0; width: 100%; max-width: 300px; }
+  .phone-fig figcaption { font: 700 13px/1.4 var(--mono); text-align: center; margin-top: 16px; }
+  .phone-fig figcaption span { display: block; font-weight: 400; color: var(--graphite); }
+  .phone { width: 100%; aspect-ratio: 300 / 620; background: var(--ink); border-radius: 44px; padding: 9px; box-shadow: 9px 11px 0 var(--flash-deep); }
+  .screen { position: relative; height: 100%; border-radius: 36px; overflow: hidden; display: flex; flex-direction: column; background: var(--paper); color: var(--ink); }
+  .screen.dark { background: var(--night); color: var(--paper); }
+  .sb { display: flex; justify-content: space-between; align-items: center; padding: 10px 22px 4px; font: 700 11px/1 var(--mono); }
+  .sb .pill { width: 70px; height: 18px; background: var(--ink); border-radius: 99px; }
+  .screen.dark .sb .pill { background: #000; }
+  .ico { width: 20px; height: 20px; flex: none; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+  .btn-ico { width: 36px; height: 36px; border-radius: 50%; display: grid; place-items: center; }
+  .dark .btn-ico { background: rgba(251, 248, 241, .12); }
+  .cam-top { display: flex; align-items: center; justify-content: space-between; padding: 6px 12px; }
+  .status { display: inline-flex; align-items: center; gap: 7px; font: 700 12px/1 var(--mono); padding: 9px 12px; border-radius: 999px; background: rgba(251, 248, 241, .12); }
+  .status i { width: 9px; height: 9px; border-radius: 50%; background: var(--mint); box-shadow: 0 0 0 3px rgba(34, 184, 154, .25); }
+  .cam-tools { display: flex; justify-content: center; gap: 8px; padding: 2px 0 8px; }
+  .tool { display: inline-flex; align-items: center; gap: 5px; font: 700 11px/1 var(--mono); padding: 7px 10px; border-radius: 999px; background: rgba(251, 248, 241, .12); }
+  .tool.on { background: var(--flash); color: var(--ink); }
+  .tool .ico { width: 15px; height: 15px; }
+  .vf { position: relative; flex: 1; margin: 0 10px; border-radius: 20px; overflow: hidden; background: var(--paper); min-height: 0; }
+  .vf canvas { width: 100%; height: 100%; object-fit: cover; image-rendering: pixelated; }
+  .vf .corner { position: absolute; width: 22px; height: 22px; border: 3px solid var(--flash); }
+  .vf .c1 { top: 12px; left: 12px; border-right: 0; border-bottom: 0; border-radius: 8px 0 0 0; }
+  .vf .c2 { top: 12px; right: 12px; border-left: 0; border-bottom: 0; border-radius: 0 8px 0 0; }
+  .vf .c3 { bottom: 12px; left: 12px; border-right: 0; border-top: 0; border-radius: 0 0 0 8px; }
+  .vf .c4 { bottom: 12px; right: 12px; border-left: 0; border-top: 0; border-radius: 0 0 8px 0; }
+  .vf .badge { position: absolute; left: 50%; bottom: 14px; transform: translateX(-50%); font: 700 10px/1 var(--mono); background: var(--ink); color: var(--paper); padding: 6px 9px; border-radius: 999px; white-space: nowrap; }
+  .modes { display: flex; justify-content: center; gap: 6px; padding: 12px 0 6px; font: 700 12px/1 var(--mono); }
+  .modes span { padding: 7px 12px; border-radius: 999px; opacity: .6; }
+  .modes .on { background: var(--flash); color: var(--ink); opacity: 1; }
+  .cam-bottom { display: flex; align-items: center; justify-content: space-between; padding: 8px 26px 22px; }
+  .thumb { width: 44px; height: 44px; border-radius: 10px; overflow: hidden; background: var(--paper); border: 2px solid var(--paper); }
+  .thumb img { width: 100%; height: 100%; object-fit: cover; object-position: top; }
+  .shutter { width: 76px; height: 76px; border-radius: 50%; border: 4px solid #fff; display: grid; place-items: center; }
+  .shutter i { width: 60px; height: 60px; border-radius: 50%; background: radial-gradient(circle, var(--flash) 62%, var(--flash-deep)); }
+  /* Editor */
+  .topbar { display: flex; align-items: center; gap: 10px; padding: 8px 14px; }
+  .topbar h4 { font: 400 20px/1.1 var(--display); margin: 0; flex: 1; }
+  .ed-stage { background: var(--fog); margin: 0 12px; border-radius: 18px; padding: 14px 0; display: grid; place-items: center; }
+  .sheet { width: 64%; filter: drop-shadow(0 3px 0 rgba(22, 19, 15, .18)); }
+  .sheet > div { background: var(--paper); padding: 12px 0; }
+  .sheet img { width: 100%; }
+  .row-chips { display: flex; gap: 6px; padding: 12px 12px 4px; overflow: hidden; }
+  .tchip { font: 700 11px/1 var(--mono); padding: 8px 10px; border-radius: 999px; border: 2px solid var(--ink); white-space: nowrap; background: #fff; }
+  .tchip.on { background: var(--flash); }
+  .field { margin: 8px 12px 0; border: 2px solid var(--ink); border-radius: 12px; padding: 6px 12px 7px; background: #fff; }
+  .field small { display: block; font: 700 10px/1.3 var(--mono); color: var(--graphite); }
+  .field div { display: flex; justify-content: space-between; font-size: 14px; }
+  .field div span:last-child { font: 11px/1.9 var(--mono); color: var(--graphite); }
+  .slider { margin: 10px 14px 0; font: 700 10px/1 var(--mono); color: var(--graphite); }
+  .slider .track { position: relative; height: 6px; border-radius: 3px; background: var(--fog); margin-top: 8px; }
+  .slider .track::before { content: ""; position: absolute; inset: 0 40% 0 0; background: var(--ink); border-radius: 3px; }
+  .slider .track::after { content: ""; position: absolute; left: 60%; top: 50%; width: 16px; height: 16px; margin: -8px 0 0 -8px; border-radius: 50%; background: var(--flash); border: 2px solid var(--ink); }
+  .actions { margin-top: auto; padding: 12px 12px 18px; display: grid; gap: 8px; }
+  .flash-btn { display: flex; align-items: center; justify-content: center; gap: 8px; font: 400 18px/1 var(--display); background: var(--flash); color: var(--ink); border-radius: 999px; padding: 14px; box-shadow: inset 0 -4px 0 var(--flash-deep); }
+  .ghosts { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .ghost-btn { display: flex; align-items: center; justify-content: center; gap: 6px; font: 700 12px/1 var(--mono); border: 2px solid var(--ink); border-radius: 999px; padding: 10px; }
+  .ghost-btn .ico, .flash-btn .ico { width: 18px; height: 18px; }
+  /* Storico */
+  .hist-sub { font: 12px/1 var(--mono); color: var(--graphite); padding: 0 16px 10px; }
+  .hist-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; padding: 0 12px 16px; overflow: hidden; }
+  .hcard { background: #fff; border: 2px solid var(--ink); border-radius: 14px; padding: 8px; }
+  .hcard .ph { background: var(--paper); aspect-ratio: 3 / 4; overflow: hidden; padding-bottom: 4px; }
+  .hcard img { width: 100%; height: 100%; object-fit: cover; object-position: top; }
+  .hcard .meta { display: flex; justify-content: space-between; align-items: center; font: 700 10px/1.2 var(--mono); margin-top: 7px; }
+  .hcard .meta i { width: 8px; height: 8px; border-radius: 50%; background: var(--mint); flex: none; }
+  .hcard .meta i.not { background: var(--graphite); }
+  .hcard .date { font: 10px/1.2 var(--mono); color: var(--graphite); margin-top: 2px; }
+
+  /* Stampe */
+  /* Fondo Fog: la carta termica deve staccarsi dalla pagina. Colonne da 400: le stampe a 1:1 */
+  #stampe { background: var(--fog); margin-top: 40px; padding-bottom: 56px; }
+  .prints { grid-template-columns: repeat(auto-fit, minmax(min(100%, 400px), 1fr)); align-items: start; }
+  .print-fig { margin: 0; }
+  .print-paper { filter: drop-shadow(5px 6px 0 var(--ink)); max-width: 384px; margin: 0 auto; }
+  .print-paper > div { background: var(--paper); padding: 14px 0; }
+  .print-paper canvas { width: 100%; height: auto; image-rendering: pixelated; background: var(--paper); }
+  .print-fig figcaption { max-width: 384px; margin: 16px auto 0; }
+  .print-fig figcaption b { font: 400 22px/1.1 var(--display); display: block; }
+  .print-fig figcaption span { font: 12px/1.5 var(--mono); color: var(--graphite); }
+  .rules { counter-reset: r; list-style: none; padding: 0; margin: 0; display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr)); }
+  .rules li { border: 2px solid var(--ink); border-radius: 16px; padding: 14px 16px 14px 56px; position: relative; background: #fff; }
+  .rules li::before { counter-increment: r; content: counter(r); position: absolute; left: 14px; top: 12px; width: 30px; height: 30px; border-radius: 50%; background: var(--flash); display: grid; place-items: center; font: 400 17px/1 var(--display); }
+
+  /* Voce, regole */
+  .voice { grid-template-columns: repeat(auto-fit, minmax(min(100%, 320px), 1fr)); }
+  .bubble { border: 2px solid var(--ink); border-radius: 18px; padding: 14px 16px; background: #fff; }
+  .bubble .tag { font: 700 11px/1 var(--mono); text-transform: uppercase; letter-spacing: .06em; color: var(--graphite); }
+  .bubble p { margin: 8px 0 0; }
+  .bubble .en { color: var(--graphite); }
+  .do-dont { grid-template-columns: repeat(auto-fit, minmax(min(100%, 320px), 1fr)); }
+  .do-dont ul { margin: 0; padding-left: 20px; }
+  .do-dont li { margin: 6px 0; }
+  .do { border-top: 8px solid var(--mint); } .dont { border-top: 8px solid var(--coral); }
+
+  footer { margin-top: 64px; background: var(--ink); color: var(--paper); padding: 48px 0 40px; --z: 9px; }
+  footer p { font: 13px/1.6 var(--mono); color: #CFC7BA; }
+  footer .wm-dark { width: 220px; height: auto; margin-bottom: 14px; }
+</style>
+</head>
+<body>
+
+<!-- Simboli condivisi: marchio, monocromatico, lampo, wordmark e icone delle schermate -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
+  <defs>
+    <path id="ff-card-shape" d="M34,33 A4,4 0 0 1 38,29 L68,29 A4,4 0 0 1 72,33 L72,73.2 L68.2,77 L64.4,73.2 L60.6,77 L56.8,73.2 L53,77 L49.2,73.2 L45.4,77 L41.6,73.2 L37.8,77 L34,73.2 Z"/>
+    <symbol id="ff-mark" viewBox="0 0 108 108">
+      <g transform="translate(54 54) rotate(-8) translate(-54 -54)">
+        <use href="#ff-card-shape" transform="translate(3 3)" fill="currentColor"/>
+        <use href="#ff-card-shape" fill="#FBF8F1" stroke="#16130F" stroke-width="3.5" stroke-linejoin="round"/>
+        <path d="M41,33.5 L65,33.5 A2.5,2.5 0 0 1 67.5,36 L67.5,60 A2.5,2.5 0 0 1 65,62.5 L41,62.5 A2.5,2.5 0 0 1 38.5,60 L38.5,36 A2.5,2.5 0 0 1 41,33.5 Z" fill="#16130F"/>
+        <path d="M49.98,36.45 L59.88,36.45 L55.48,44.7 L61.53,44.7 L48.33,59.55 L51.08,49.1 L44.48,49.1 Z" fill="#FFCC00"/>
+        <path d="M45,68 L61,68" stroke="#16130F" stroke-width="2.6" stroke-linecap="round"/>
+      </g>
+    </symbol>
+    <symbol id="ff-mono" viewBox="0 0 108 108">
+      <g transform="translate(54 54) rotate(-8) translate(-54 -54)" fill="none" stroke="currentColor">
+        <use href="#ff-card-shape" stroke-width="3.5" stroke-linejoin="round"/>
+        <path d="M41,33.5 L65,33.5 A2.5,2.5 0 0 1 67.5,36 L67.5,60 A2.5,2.5 0 0 1 65,62.5 L41,62.5 A2.5,2.5 0 0 1 38.5,60 L38.5,36 A2.5,2.5 0 0 1 41,33.5 Z M49.98,36.45 L59.88,36.45 L55.48,44.7 L61.53,44.7 L48.33,59.55 L51.08,49.1 L44.48,49.1 Z" fill="currentColor" fill-rule="evenodd" stroke="none"/>
+        <path d="M45,68 L61,68" stroke-width="2.6" stroke-linecap="round"/>
+      </g>
+    </symbol>
+    <symbol id="ff-bolt" viewBox="0 0 24 24">
+      <path d="M9.5,1.5 L18.5,1.5 L14.5,9 L20,9 L8,22.5 L10.5,13 L4.5,13 Z" fill="#FFCC00" stroke="#16130F" stroke-width="1.5" stroke-linejoin="round"/>
+    </symbol>
+    <symbol id="ff-wordmark" viewBox="0 0 249 48">
+      <path d="M9.5,1.5 L18.5,1.5 L14.5,9 L20,9 L8,22.5 L10.5,13 L4.5,13 Z" fill="#FFCC00" stroke="#16130F" stroke-width="1.5" stroke-linejoin="round" transform="scale(2)"/>
+      <path fill="currentColor" d="M66.07 38.45h-5.79v-28.9h20.24v5.78h-14.45v5.79h8.66v5.78h-8.66v11.55zm35.17-10.98q0 2.42-0.87 4.5q-0.87 2.09-2.36 3.61q-1.49 1.52-3.49 2.4q-2.01 0.88-4.31 0.88q-2.27 0-4.28-0.88q-2.01-0.88-3.51-2.4q-1.5-1.52-2.37-3.61q-0.86-2.08-0.86-4.5q0-2.46 0.86-4.56q0.87-2.09 2.37-3.62q1.5-1.52 3.51-2.38q2.01-0.87 4.28-0.87q2.3 0 4.31 0.81q2 0.82 3.49 2.32q1.49 1.5 2.36 3.61q0.87 2.11 0.87 4.69zm-5.54 0q0-1.33-0.44-2.41q-0.43-1.08-1.18-1.86q-0.74-0.77-1.74-1.19q-1-0.41-2.13-0.41q-1.13 0-2.12 0.41q-1 0.42-1.74 1.19q-0.73 0.78-1.16 1.86q-0.42 1.08-0.42 2.41q0 1.25 0.42 2.31q0.43 1.07 1.16 1.86q0.74 0.79 1.74 1.24q0.99 0.45 2.12 0.45q1.13 0 2.13-0.42q1-0.42 1.74-1.19q0.75-0.77 1.18-1.85q0.44-1.09 0.44-2.4zm19.24 10.98q-1.99 0-3.74-0.75q-1.76-0.76-3.08-2.08q-1.32-1.32-2.07-3.07q-0.76-1.76-0.76-3.75v-6.41h-2.68v-5.48h2.68v-8.63h5.48v8.63h8.35v5.48h-8.35v6.41q0 0.86 0.32 1.62q0.33 0.76 0.89 1.32q0.57 0.56 1.33 0.9q0.77 0.33 1.63 0.33h4.18v5.48h-4.18zm28.12-10.98q0 2.42-0.86 4.5q-0.87 2.09-2.36 3.61q-1.49 1.52-3.5 2.4q-2.01 0.88-4.3 0.88q-2.28 0-4.29-0.88q-2-0.88-3.5-2.4q-1.51-1.52-2.37-3.61q-0.87-2.08-0.87-4.5q0-2.46 0.87-4.56q0.86-2.09 2.37-3.62q1.5-1.52 3.5-2.38q2.01-0.87 4.29-0.87q2.29 0 4.3 0.81q2.01 0.82 3.5 2.32q1.49 1.5 2.36 3.61q0.86 2.11 0.86 4.69zm-5.54 0q0-1.33-0.43-2.41q-0.44-1.08-1.18-1.86q-0.75-0.77-1.75-1.19q-0.99-0.41-2.12-0.41q-1.13 0-2.13 0.41q-1 0.42-1.73 1.19q-0.74 0.78-1.16 1.86q-0.43 1.08-0.43 2.41q0 1.25 0.43 2.31q0.42 1.07 1.16 1.86q0.73 0.79 1.73 1.24q1 0.45 2.13 0.45q1.13 0 2.12-0.42q1-0.42 1.75-1.19q0.74-0.77 1.18-1.85q0.43-1.09 0.43-2.4zm14.96 10.98h-5.79v-28.9h20.24v5.78h-14.45v5.79h8.66v5.78h-8.66v11.55zm22.37 0h-5.54v-30.17h5.54v30.17zm25.09 0h-1.33l-2.13-2.96q-0.79 0.7-1.67 1.32q-0.87 0.61-1.84 1.07q-0.97 0.45-1.99 0.71q-1.01 0.27-2.06 0.27q-2.28 0-4.29-0.77q-2-0.77-3.5-2.23q-1.5-1.46-2.37-3.58q-0.87-2.11-0.87-4.81q0-2.52 0.87-4.63q0.87-2.11 2.37-3.62q1.5-1.51 3.5-2.35q2.01-0.83 4.29-0.83q1.05 0 2.07 0.26q1.03 0.26 2 0.73q0.97 0.46 1.84 1.08q0.88 0.63 1.65 1.35l2.13-2.55h1.33v21.54zm-5.54-10.98q0-1.13-0.43-2.19q-0.44-1.06-1.18-1.87q-0.75-0.82-1.75-1.31q-0.99-0.5-2.12-0.5q-1.13 0-2.13 0.38q-1 0.39-1.73 1.13q-0.74 0.75-1.16 1.85q-0.42 1.1-0.42 2.51q0 1.41 0.42 2.51q0.42 1.09 1.16 1.84q0.73 0.75 1.73 1.13q1 0.38 2.13 0.38q1.13 0 2.12-0.49q1-0.5 1.75-1.31q0.74-0.82 1.18-1.88q0.43-1.05 0.43-2.18zm21.59 10.98h-12.58v-5.48h12.58q0.56 0 0.97-0.4q0.4-0.41 0.4-0.97q0-0.59-0.4-0.77q-0.41-0.18-0.97-0.18h-5.73q-1.43 0-2.68-0.54q-1.25-0.55-2.17-1.48q-0.93-0.94-1.47-2.19q-0.53-1.25-0.53-2.68q0-1.43 0.53-2.68q0.54-1.25 1.47-2.18q0.92-0.93 2.17-1.46q1.25-0.53 2.68-0.53h11.15v5.48h-11.15q-0.56 0-0.96 0.4q-0.41 0.4-0.41 0.97q0 0.58 0.41 1q0.4 0.41 0.96 0.41h5.73q1.41 0 2.66 0.47q1.25 0.48 2.18 1.32q0.92 0.85 1.47 2.04q0.54 1.19 0.54 2.6q0 1.43-0.54 2.67q-0.55 1.24-1.47 2.18q-0.93 0.93-2.18 1.47q-1.25 0.53-2.66 0.53zm15.28 0h-5.51v-30.17h5.51v9.53q0.98-0.74 2.03-1.06q1.05-0.31 2.14-0.31q1.99 0 3.75 0.76q1.75 0.75 3.05 2.07q1.3 1.32 2.06 3.09q0.75 1.76 0.75 3.76v12.33h-5.54v-12.33h0.04q0-0.85-0.32-1.61q-0.32-0.75-0.89-1.32q-0.56-0.56-1.31-0.88q-0.74-0.33-1.59-0.33q-0.87 0-1.63 0.33q-0.77 0.32-1.33 0.88q-0.57 0.57-0.89 1.32q-0.32 0.76-0.32 1.61v12.33z"/>
+    </symbol>
+    <symbol id="i-back" viewBox="0 0 24 24"><path d="M15 5 L8 12 L15 19"/></symbol>
+    <symbol id="i-history" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M12 7.5 V12 L15 14"/></symbol>
+    <symbol id="i-tune" viewBox="0 0 24 24"><path d="M4 7 H13 M19 7 H20 M4 17 H6 M12 17 H20"/><circle cx="16" cy="7" r="2.5"/><circle cx="9" cy="17" r="2.5"/></symbol>
+    <symbol id="i-flash" viewBox="0 0 24 24"><path d="M13 3 L6 13 H11 L10 21 L18 10 H13 Z" fill="currentColor" stroke="none"/></symbol>
+    <symbol id="i-timer" viewBox="0 0 24 24"><circle cx="12" cy="13" r="7.5"/><path d="M12 13 V9.5 M9.5 2.8 H14.5"/></symbol>
+    <symbol id="i-dots" viewBox="0 0 24 24"><g fill="currentColor" stroke="none"><circle cx="6" cy="6" r="2.4"/><circle cx="12" cy="6" r="1.9"/><circle cx="18" cy="6" r="1.4"/><circle cx="6" cy="12" r="1.9"/><circle cx="12" cy="12" r="1.4"/><circle cx="18" cy="12" r="0.9"/><circle cx="6" cy="18" r="1.4"/><circle cx="12" cy="18" r="0.9"/><circle cx="18" cy="18" r="0.5"/></g></symbol>
+    <symbol id="i-flip" viewBox="0 0 24 24"><path d="M4.5 11 A7.5 7.5 0 0 1 18 7 M19.5 13 A7.5 7.5 0 0 1 6 17 M18 3 V7 H14 M6 21 V17 H10"/></symbol>
+    <symbol id="i-share" viewBox="0 0 24 24"><circle cx="18" cy="5.5" r="2.5"/><circle cx="6" cy="12" r="2.5"/><circle cx="18" cy="18.5" r="2.5"/><path d="M8.2 10.8 L15.8 6.7 M8.2 13.2 L15.8 17.3"/></symbol>
+    <symbol id="i-save" viewBox="0 0 24 24"><path d="M12 4 V14 M8 10 L12 14 L16 10 M5 19 H19"/></symbol>
+    <symbol id="i-print" viewBox="0 0 24 24"><path d="M7 9 V4 H17 V9 M7 17 H5 A1 1 0 0 1 4 16 V10 A1 1 0 0 1 5 9 H19 A1 1 0 0 1 20 10 V16 A1 1 0 0 1 19 17 H17 M7 14 H17 V20 H7 Z"/></symbol>
+  </defs>
+</svg>
+
+<header class="hero torn-b">
+  <canvas class="burst" width="420" height="420" data-burst="ink" aria-hidden="true"></canvas>
+  <div class="wrap hero-in">
+    <div>
+      <p class="eyebrow">Brand sheet · v1</p>
+      <h1><svg class="wm" viewBox="0 0 249 48" role="img" aria-label="FotoFlash"><use href="#ff-wordmark" color="#16130F"/></svg></h1>
+      <p class="payoff">Scatta. Stampa. Sorridi.</p>
+      <p class="payoff-en">Snap. Print. Smile.</p>
+      <p style="max-width:52ch">La fotocamera istantanea a carta termica nel telefono: scatti, e in pochi secondi la foto
+        esce dalla stampantina Bluetooth da 58 mm, come le fotocamere per bambini. Questa pagina raccoglie
+        marchio, colori, caratteri, schermate e stampe.</p>
+      <ul class="chips"><li class="chip">Android</li><li class="chip">ESC/POS · Bluetooth SPP</li><li class="chip">58 / 80 mm · 203 dpi</li></ul>
+    </div>
+    <svg class="icon-big" viewBox="18 18 72 72" role="img" aria-label="Icona dell'app FotoFlash"><rect x="18" y="18" width="72" height="72" fill="#FFCC00"/><use href="#ff-mark" width="108" height="108" color="#E0A800"/></svg>
+  </div>
+</header>
+
+<nav class="toc" aria-label="Sezioni">
+  <div class="wrap"><ul>
+    <li><a href="#marchio">Marchio</a></li><li><a href="#colori">Colori</a></li><li><a href="#caratteri">Caratteri</a></li>
+    <li><a href="#motivi">Motivi</a></li><li><a href="#schermate">Schermate</a></li><li><a href="#stampe">Stampe</a></li>
+    <li><a href="#voce">Voce</a></li><li><a href="#regole">Regole</a></li>
+  </ul></div>
+</nav>
+
+<main>
+  <section id="marchio">
+    <div class="wrap">
+      <p class="eyebrow">01 · Marchio e icona</p>
+      <h2>Un foglietto, un lampo</h2>
+      <p class="lead">Una polaroid nata da uno scontrino: carta termica inclinata di −8°, bordo strappato a dente di sega,
+        finestra foto con il lampo e la riga della didascalia. Contorni Ink tondi, ombra piena.</p>
+      <div class="grid brand-grid" style="margin-top:24px">
+        <figure style="margin:0"><div class="tile paper"><svg viewBox="22 22 64 64" role="img" aria-label="Marchio su Paper"><use href="#ff-mark" width="108" height="108" color="#FFCC00"/></svg></div><figcaption class="label">Marchio su Paper · ombra Flash · logo.svg</figcaption></figure>
+        <figure style="margin:0"><div class="tile flash"><svg viewBox="22 22 64 64" role="img" aria-label="Marchio su Flash"><use href="#ff-mark" width="108" height="108" color="#E0A800"/></svg></div><figcaption class="label">Su Flash · ombra Flash Deep · icona e splash</figcaption></figure>
+        <figure style="margin:0"><div class="tile night"><svg viewBox="22 22 64 64" role="img" aria-label="Marchio su Night"><use href="#ff-mark" width="108" height="108" color="#FFCC00"/></svg></div><figcaption class="label">Su Night · il foglio resta carta</figcaption></figure>
+      </div>
+
+      <div class="grid" style="margin-top:28px;grid-template-columns:repeat(auto-fit,minmax(min(100%,320px),1fr))">
+        <div class="card flat">
+          <h3>Icona adattiva</h3>
+          <p style="font-size:15px;color:var(--graphite)">Il launcher ritaglia il livello da 108 dp con la sua maschera: il disegno resta nel cerchio sicuro di 66 dp.</p>
+          <div class="masks">
+            <figure><svg width="96" height="96" viewBox="18 18 72 72" aria-hidden="true"><defs><clipPath id="m-circle"><circle cx="54" cy="54" r="36"/></clipPath></defs><g clip-path="url(#m-circle)"><rect x="18" y="18" width="72" height="72" fill="#FFCC00"/><use href="#ff-mark" width="108" height="108" color="#E0A800"/></g></svg><figcaption>cerchio</figcaption></figure>
+            <figure><svg width="96" height="96" viewBox="18 18 72 72" aria-hidden="true"><defs><clipPath id="m-squircle"><rect x="18" y="18" width="72" height="72" rx="24"/></clipPath></defs><g clip-path="url(#m-squircle)"><rect x="18" y="18" width="72" height="72" fill="#FFCC00"/><use href="#ff-mark" width="108" height="108" color="#E0A800"/></g></svg><figcaption>squircle</figcaption></figure>
+            <figure><svg width="64" height="64" viewBox="18 18 72 72" aria-hidden="true"><g clip-path="url(#m-circle)"><rect x="18" y="18" width="72" height="72" fill="#FFCC00"/><use href="#ff-mark" width="108" height="108" color="#E0A800"/></g></svg><figcaption>48 dp</figcaption></figure>
+            <figure><svg width="64" height="64" viewBox="18 18 72 72" aria-hidden="true"><g clip-path="url(#m-circle)"><rect x="18" y="18" width="72" height="72" fill="#D8E2FF"/><use href="#ff-mono" width="108" height="108" color="#00174B"/></g></svg><figcaption>a tema</figcaption></figure>
+            <figure><svg width="64" height="64" viewBox="18 18 72 72" aria-hidden="true"><g clip-path="url(#m-circle)"><rect x="18" y="18" width="72" height="72" fill="#2B2930"/><use href="#ff-mono" width="108" height="108" color="#E6E1E5"/></g></svg><figcaption>a tema, scuro</figcaption></figure>
+          </div>
+        </div>
+        <div class="card flat">
+          <h3>Zona sicura</h3>
+          <svg viewBox="0 0 108 108" style="width:min(220px,100%);margin-top:6px" role="img" aria-label="Schema della zona sicura">
+            <rect width="108" height="108" fill="#FFCC00"/>
+            <use href="#ff-mark" width="108" height="108" color="#E0A800"/>
+            <circle cx="54" cy="54" r="33" fill="none" stroke="#16130F" stroke-width=".7" stroke-dasharray="2 1.6"/>
+            <circle cx="54" cy="54" r="36" fill="none" stroke="#3D8BFF" stroke-width=".7"/>
+          </svg>
+          <p class="label">Tratteggio: cerchio sicuro 66 dp · Sky: maschera 72 dp · raggio massimo del disegno 32,2 dp</p>
+        </div>
+      </div>
+
+      <h3 style="margin-top:32px">Wordmark</h3>
+      <p style="color:var(--graphite);max-width:64ch">Lampo + «FotoFlash» in Righteous. Testo in corpo 0,86 volte il lampo, stacco 0,2: le proporzioni di <span class="mono">BrandWordmark</span>. Il lampo è giallo con contorno Ink e non cambia sul fondo scuro.</p>
+      <div class="wm-row grid" style="grid-template-columns:repeat(auto-fit,minmax(min(100%,320px),1fr))">
+        <div style="background:var(--paper)"><svg viewBox="0 0 249 48" role="img" aria-label="FotoFlash"><use href="#ff-wordmark" color="#16130F"/></svg></div>
+        <div style="background:var(--night)"><svg viewBox="0 0 249 48" role="img" aria-label="FotoFlash su fondo scuro"><use href="#ff-wordmark" color="#FBF8F1"/></svg></div>
+      </div>
+    </div>
+  </section>
+
+  <section id="colori">
+    <div class="wrap">
+      <p class="eyebrow">02 · Colori</p>
+      <h2>Carta, inchiostro e un lampo giallo</h2>
+      <p class="lead">Paper e Night fanno da fondo, Ink scrive, Flash indica l'azione. Coral, Mint e Sky sono accenti: fondi, icone, spie. Mai testo.</p>
+      <div class="grid swatches" style="margin-top:24px">
+        <div class="swatch"><div class="chip-color" style="background:#FFCC00;color:#16130F">Aa<span class="ratio">Ink 12,25</span></div><div class="meta"><b>Flash</b><div class="hex">#FFCC00 · ff_flash</div><p>Marchio, otturatore, Stampa, selezione.</p></div></div>
+        <div class="swatch"><div class="chip-color" style="background:#E0A800;color:#16130F">Aa<span class="ratio">Ink 8,61</span></div><div class="meta"><b>Flash Deep</b><div class="hex">#E0A800 · ff_flash_deep</div><p>Ombra sul giallo, bordo dei pulsanti gialli.</p></div></div>
+        <div class="swatch"><div class="chip-color" style="background:#16130F;color:#FBF8F1">Aa<span class="ratio">Paper 17,46</span></div><div class="meta"><b>Ink</b><div class="hex">#16130F · ff_ink</div><p>Testi, contorni, il nero della stampa.</p></div></div>
+        <div class="swatch"><div class="chip-color" style="background:#0E0C0A;color:#FFCC00">Aa<span class="ratio">Flash 12,91</span></div><div class="meta"><b>Night</b><div class="hex">#0E0C0A · ff_night</div><p>Tema scuro e mirino.</p></div></div>
+        <div class="swatch"><div class="chip-color" style="background:#FBF8F1;color:#4A4640;border-bottom:1px solid var(--fog)">Aa<span class="ratio">Graphite 8,83</span></div><div class="meta"><b>Paper</b><div class="hex">#FBF8F1 · ff_paper</div><p>Fondo chiaro e ogni foglio stampato.</p></div></div>
+        <div class="swatch"><div class="chip-color" style="background:#EDE8DE;color:#4A4640">Aa<span class="ratio">Graphite 7,67</span></div><div class="meta"><b>Fog</b><div class="hex">#EDE8DE · ff_fog</div><p>Superfici secondarie sul chiaro.</p></div></div>
+        <div class="swatch"><div class="chip-color" style="background:#4A4640;color:#FBF8F1">Aa<span class="ratio">Paper 8,83</span></div><div class="meta"><b>Graphite</b><div class="hex">#4A4640 · ff_graphite</div><p>Testi secondari, stato "non connessa".</p></div></div>
+        <div class="swatch"><div class="chip-color" style="background:#FF5B45;color:#16130F">Aa<span class="ratio">Ink 6,03</span></div><div class="meta"><b>Coral</b><div class="hex">#FF5B45 · ff_coral</div><p>Errori (fondo, icona), cuori. Testo d'errore: #C4321E.</p></div></div>
+        <div class="swatch"><div class="chip-color" style="background:#22B89A;color:#16130F">Aa<span class="ratio">Ink 7,40</span></div><div class="meta"><b>Mint</b><div class="hex">#22B89A · ff_mint</div><p>Stampante pronta, successo.</p></div></div>
+        <div class="swatch"><div class="chip-color" style="background:#3D8BFF;color:#16130F">Aa<span class="ratio">Ink 5,59</span></div><div class="meta"><b>Sky</b><div class="hex">#3D8BFF · ff_sky</div><p>Link, informazioni.</p></div></div>
+      </div>
+
+      <h3 style="margin-top:32px">Contrasti da ricordare</h3>
+      <div class="table-wrap" style="margin-top:10px">
+        <table>
+          <thead><tr><th>Coppia</th><th>Rapporto</th><th>Uso</th></tr></thead>
+          <tbody>
+            <tr><td><span class="pair" style="background:#FFCC00;color:#16130F">Ink su Flash</span></td><td class="mono">12,25 : 1</td><td><span class="ok">AAA</span> testo dei pulsanti gialli</td></tr>
+            <tr><td><span class="pair" style="background:#FBF8F1;color:#4A4640">Graphite su Paper</span></td><td class="mono">8,83 : 1</td><td><span class="ok">AAA</span> testi secondari</td></tr>
+            <tr><td><span class="pair" style="background:#FBF8F1;color:#C4321E">Errore su Paper</span></td><td class="mono">5,18 : 1</td><td><span class="ok">AA</span> testi di errore</td></tr>
+            <tr><td><span class="pair" style="background:#FBF8F1;color:#FF5B45">Coral su Paper</span></td><td class="mono">2,90 : 1</td><td><span class="no">NO</span> solo icone e fondi</td></tr>
+            <tr><td><span class="pair" style="background:#FBF8F1;color:#22B89A">Mint su Paper</span></td><td class="mono">2,36 : 1</td><td><span class="no">NO</span> solo spie e fondi</td></tr>
+            <tr><td><span class="pair" style="background:#FFCC00;color:#FBF8F1">Paper su Flash</span></td><td class="mono">1,43 : 1</td><td><span class="no">MAI</span></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <section id="caratteri">
+    <div class="wrap">
+      <p class="eyebrow">03 · Caratteri</p>
+      <h2>Tondo, da scontrino, chiaro</h2>
+      <div class="grid type-grid" style="margin-top:20px">
+        <div class="card flat"><p class="eyebrow">Righteous · display</p><div class="specimen display">FotoFlash</div><p class="glyphs" style="font-family:var(--display)">Aa Bb Cc 0123456789 ! ?</p><p style="font-size:15px">Marchio, titoli delle schermate, pulsanti grandi, conto alla rovescia; sulla carta titolo dell'evento e intestazione. Solo regular, mai sotto 18 sp.</p></div>
+        <div class="card flat"><p class="eyebrow">Space Mono · regular e bold</p><div class="specimen mono">N. 0042</div><p class="glyphs mono">17/10/26, 18:42 · #giulia7 · 58 mm</p><p style="font-size:15px">Etichette, chip, date e numeri: tutto ciò che sembra uno scontrino. Sulla carta didascalie (bold), date, hashtag, piede.</p></div>
+        <div class="card flat"><p class="eyebrow">Roboto · sistema</p><div class="specimen body">Ciao!</div><p class="glyphs">Il testo che si legge: paragrafi, descrizioni, campi.</p><p style="font-size:15px">Testo corrente dell'interfaccia. Segue la scala dei caratteri scelta dalla persona.</p></div>
+      </div>
+    </div>
+  </section>
+
+  <section id="motivi">
+    <div class="wrap">
+      <p class="eyebrow">04 · Motivi</p>
+      <h2>Carta strappata, retino, lampo</h2>
+      <div class="grid motifs" style="margin-top:20px">
+        <div class="motif"><div class="stage"><div class="strip-demo"><div class="torn-tb"></div></div></div><h3 style="margin-top:12px">Dente di sega</h3><p style="font-size:15px;color:var(--graphite)">Denti 12 × 6, sempre interi, sopra e sotto. Mai sui lati.</p></div>
+        <div class="motif"><div class="stage" style="background:var(--flash)"><canvas width="300" height="300" data-burst="ink" aria-hidden="true"></canvas></div><h3 style="margin-top:12px">Retino</h3><p style="font-size:15px;color:var(--graphite)">Griglia sfalsata, puntini che rimpiccioliscono. Decorativo, mai dietro a un testo.</p></div>
+        <div class="motif"><div class="stage sparkles"><svg viewBox="0 0 120 120" aria-hidden="true"><use href="#ff-bolt" x="30" y="22" width="64" height="64"/><path d="M24 72 Q25.6 78.4 32 80 Q25.6 81.6 24 88 Q22.4 81.6 16 80 Q22.4 78.4 24 72 Z M98 14 Q99.1 18.9 104 20 Q99.1 21.1 98 26 Q96.9 21.1 92 20 Q96.9 18.9 98 14 Z" fill="#16130F"/></svg></div><h3 style="margin-top:12px">Lampo e scintille</h3><p style="font-size:15px;color:var(--graphite)">Il lampo solo nel marchio, nel flash e nei momenti di festa.</p></div>
+      </div>
+    </div>
+  </section>
+
+  <section id="schermate">
+    <div class="wrap">
+      <p class="eyebrow">05 · Schermate</p>
+      <h2>Due tocchi: scatta, stampa</h2>
+      <p class="lead">Il mirino è sempre scuro e mostra in diretta come verrà la foto sulla carta. L'editor è un foglio: quello che vedi è quello che esce.</p>
+      <div class="grid phones" style="margin-top:28px">
+        <figure class="phone-fig">
+          <div class="phone"><div class="screen dark">
+            <div class="sb"><span>9:41</span><span class="pill"></span><span>100%</span></div>
+            <div class="cam-top">
+              <span class="btn-ico"><svg class="ico"><use href="#i-history"/></svg></span>
+              <span class="status"><i></i>MPT-II</span>
+              <span class="btn-ico"><svg class="ico"><use href="#i-tune"/></svg></span>
+            </div>
+            <div class="cam-tools">
+              <span class="tool"><svg class="ico"><use href="#i-flash"/></svg>AUTO</span>
+              <span class="tool"><svg class="ico"><use href="#i-timer"/></svg>3 s</span>
+              <span class="tool on"><svg class="ico"><use href="#i-dots"/></svg>TERMICA</span>
+            </div>
+            <div class="vf"><canvas id="vf" width="150" height="200" aria-label="Anteprima termica dal vivo"></canvas><i class="corner c1"></i><i class="corner c2"></i><i class="corner c3"></i><i class="corner c4"></i><span class="badge">ANTEPRIMA TERMICA</span></div>
+            <div class="modes"><span class="on">FOTO</span><span>STRISCIA</span></div>
+            <div class="cam-bottom">
+              <span class="thumb"><img id="vf-thumb" alt=""></span>
+              <span class="shutter" aria-hidden="true"><i></i></span>
+              <span class="btn-ico" style="width:44px;height:44px"><svg class="ico"><use href="#i-flip"/></svg></span>
+            </div>
+          </div></div>
+          <figcaption>Mirino<span>stato stampante, flash, timer, anteprima termica</span></figcaption>
+        </figure>
+
+        <figure class="phone-fig">
+          <div class="phone"><div class="screen">
+            <div class="sb"><span>9:41</span><span class="pill"></span><span>100%</span></div>
+            <div class="topbar"><svg class="ico"><use href="#i-back"/></svg><h4>La tua stampa</h4><svg class="ico"><use href="#i-share"/></svg></div>
+            <div class="ed-stage"><div class="sheet"><div class="torn-tb"><img id="ed-preview" alt="Anteprima della stampa Polaroid"></div></div></div>
+            <div class="row-chips"><span class="tchip on">Polaroid</span><span class="tchip">Pieno</span><span class="tchip">Striscia</span><span class="tchip">Scontrino</span></div>
+            <div class="field"><small>Didascalia</small><div><span>Ciao Giulia!</span><span>12/40</span></div></div>
+            <div class="slider">CONTRASTO<div class="track"></div></div>
+            <div class="actions">
+              <div class="flash-btn"><svg class="ico"><use href="#i-print"/></svg>Stampa</div>
+              <div class="ghosts"><span class="ghost-btn"><svg class="ico"><use href="#i-save"/></svg>Salva</span><span class="ghost-btn"><svg class="ico"><use href="#i-share"/></svg>Condividi</span></div>
+            </div>
+          </div></div>
+          <figcaption>Editor<span>anteprima WYSIWYG sul foglio, modelli, didascalia</span></figcaption>
+        </figure>
+
+        <figure class="phone-fig">
+          <div class="phone"><div class="screen">
+            <div class="sb"><span>9:41</span><span class="pill"></span><span>100%</span></div>
+            <div class="topbar"><svg class="ico"><use href="#i-back"/></svg><h4>Storico</h4></div>
+            <div class="hist-sub">4 ricordi · più recenti in alto</div>
+            <div class="hist-grid">
+              <div class="hcard"><div class="ph torn-b"><img data-thumb="POLAROID" alt="Stampa Polaroid"></div><div class="meta">Polaroid <i></i></div><div class="date">17/10 · 18:42</div></div>
+              <div class="hcard"><div class="ph torn-b"><img data-thumb="STRIP" alt="Stampa Striscia"></div><div class="meta">Striscia <i></i></div><div class="date">17/10 · 18:31</div></div>
+              <div class="hcard"><div class="ph torn-b"><img data-thumb="RECEIPT" alt="Stampa Scontrino"></div><div class="meta">Scontrino <i></i></div><div class="date">17/10 · 18:20</div></div>
+              <div class="hcard"><div class="ph torn-b"><img data-thumb="FULL" alt="Stampa Pieno"></div><div class="meta">Pieno <i class="not" title="Non stampata"></i></div><div class="date">17/10 · 18:05</div></div>
+            </div>
+          </div></div>
+          <figcaption>Storico<span>miniature in bianco e nero, ristampa in un tocco</span></figcaption>
+        </figure>
+      </div>
+    </div>
+  </section>
+
+  <section id="stampe">
+    <div class="wrap">
+      <p class="eyebrow">06 · Stampe</p>
+      <h2>Come le vedrà la carta</h2>
+      <p class="lead">I quattro modelli su carta da 58 mm (384 punti), resi qui come li manda l'app: testi a soglia, foto retinate con Atkinson, un'unica immagine a 1 bit. Un pixel della pagina è un punto della testina.</p>
+      <div class="grid prints" style="margin-top:28px">
+        <figure class="print-fig"><div class="print-paper"><div class="torn-tb"><canvas data-template="POLAROID" width="384" height="464" aria-label="Modello Polaroid"></canvas></div></div><figcaption><b>Polaroid</b><span>384 × 464 punti · 48 × 58 mm · foto 352 × 352, fascia 96</span></figcaption></figure>
+        <figure class="print-fig"><div class="print-paper"><div class="torn-tb"><canvas data-template="FULL" width="384" height="592" aria-label="Modello Pieno"></canvas></div></div><figcaption><b>Pieno</b><span>384 × 592 punti · 48 × 74 mm · foto 3:4 a filo</span></figcaption></figure>
+        <figure class="print-fig"><div class="print-paper"><div class="torn-tb"><canvas data-template="STRIP" width="384" height="1002" aria-label="Modello Striscia"></canvas></div></div><figcaption><b>Striscia</b><span>384 × 1002 punti · 48 × 125 mm · 3 foto 352 × 264</span></figcaption></figure>
+        <figure class="print-fig"><div class="print-paper"><div class="torn-tb"><canvas data-template="RECEIPT" width="384" height="702" aria-label="Modello Scontrino"></canvas></div></div><figcaption><b>Scontrino</b><span>384 × 702 punti · 48 × 88 mm · righe 6/4/2</span></figcaption></figure>
+      </div>
+
+      <h3 style="margin-top:40px">Regole per la carta termica</h3>
+      <ol class="rules" style="margin-top:12px">
+        <li><b>Il testo non si retina mai.</b> Nero pieno a soglia, composto dopo la foto.</li>
+        <li><b>Corpo minimo 20 punti</b> (2,5 mm). Didascalia 28, piede 22, titoli 40, intestazione 48.</li>
+        <li><b>Margini 16 punti</b> (2 mm), stacchi 12, linee mai sotto 2 punti.</li>
+        <li><b>Foto regolate, poi Atkinson.</b> Gamma 1,25, contrasto +0,15, nitidezza 0,5.</li>
+        <li><b>Niente grandi campiture nere:</b> scaldano la testina e arricciano la carta.</li>
+        <li><b>Righteous solo nei titoli</b>, tutto il resto in Space Mono.</li>
+      </ol>
+    </div>
+  </section>
+
+  <section id="voce">
+    <div class="wrap">
+      <p class="eyebrow">07 · Tono di voce</p>
+      <h2>Caldo, breve, onesto</h2>
+      <p class="lead">Come un amico che sa usare la stampante. Diamo del tu. Esclamazioni per la gioia, mai per gli errori. Gli errori dicono cosa è successo e cosa fare.</p>
+      <div class="grid voice" style="margin-top:20px">
+        <div class="bubble"><span class="tag">Fine stampa</span><p><b>Stampato!</b> Strappa il foglio e goditi il ricordo.</p><p class="en"><b>Printed!</b> Tear off the sheet and enjoy the memory.</p></div>
+        <div class="bubble"><span class="tag">Errore</span><p><b>La stampante non risponde.</b> Controlla che sia accesa, carica e vicina.</p><p class="en"><b>The printer isn't answering.</b> Check that it's switched on, charged and close by.</p></div>
+        <div class="bubble"><span class="tag">Sulla carta</span><p class="mono">Grazie per il sorriso! · RICORDO N. 0042</p><p class="en mono">Thanks for the smile! · MEMORY NO. 0042</p></div>
+        <div class="bubble"><span class="tag">Onboarding</span><p>Scatta. Stampa. Ricorda.</p><p class="en">Snap. Print. Remember.</p></div>
+      </div>
+    </div>
+  </section>
+
+  <section id="regole">
+    <div class="wrap">
+      <p class="eyebrow">08 · Da fare e da non fare</p>
+      <h2>In breve</h2>
+      <div class="grid do-dont" style="margin-top:20px">
+        <div class="card flat do"><h3>Da fare</h3><ul>
+          <li>Un solo pulsante giallo per schermata.</li>
+          <li>Testo Ink sul giallo e sui chip colorati.</li>
+          <li>Marchio inclinato di −8°, wordmark su una riga.</li>
+          <li>Ombre piene e contorni tondi, Ink.</li>
+          <li>Provare ogni modello sulla carta vera.</li>
+        </ul></div>
+        <div class="card flat dont"><h3>Da non fare</h3><ul>
+          <li>Testo Paper su Flash, Coral o Mint su Paper.</li>
+          <li>Raddrizzare, deformare o ricolorare il marchio.</li>
+          <li>Gradienti, ombre sfocate, trasparenze nelle icone.</li>
+          <li>Retinare i testi o stampare grigi finti.</li>
+          <li>«FOTOFLASH» in maiuscolo nell'interfaccia.</li>
+        </ul></div>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer class="torn-tb">
+  <div class="wrap">
+    <svg class="wm-dark" viewBox="0 0 249 48" role="img" aria-label="FotoFlash"><use href="#ff-wordmark" color="#FBF8F1"/></svg>
+    <p>Guida completa: docs/brand/BRAND.md · Caratteri Righteous e Space Mono con licenza SIL OFL 1.1.<br>Scatta. Stampa. Sorridi.</p>
+  </div>
+</footer>
+
+<script>
+(() => {
+  'use strict';
+  // Colori della stampa: Ink sui punti accesi, Paper altrove.
+  const INK = [22, 19, 15], PAPER = [251, 248, 241];
+
+  // Ritratto procedurale (luminanza 0 nero .. 1 bianco): lo stesso di banner e illustrazioni.
+  function face(kind) {
+    return (u, v) => {
+      const fx = 0.5, fy = 0.53, fr = 0.38, d = Math.hypot(u - fx, v - fy);
+      if (d < fr) {
+        const ell = (cx, cy, rx, ry) => Math.hypot((u - cx) / rx, (v - cy) / ry) < 1;
+        const arc = (cx, cy, r, w, up) => Math.abs(Math.hypot(u - cx, v - cy) - r) < w && (up ? v < cy : v > cy);
+        let dark;
+        if (kind === 'smile') dark = ell(0.37, 0.45, 0.055, 0.08) || ell(0.63, 0.45, 0.055, 0.08) || (arc(0.5, 0.47, 0.2, 0.045, false) && v > 0.58);
+        else if (kind === 'wink') dark = arc(0.37, 0.49, 0.07, 0.025, true) || ell(0.63, 0.45, 0.055, 0.08) || (arc(0.5, 0.47, 0.2, 0.045, false) && v > 0.58);
+        else {
+          const mouth = v > 0.58 && Math.hypot((u - 0.5) / 0.22, (v - 0.58) / 0.2) < 1;
+          if (mouth && Math.hypot((u - 0.5) / 0.1, (v - 0.73) / 0.06) < 1) return 0.75;
+          dark = arc(0.37, 0.49, 0.065, 0.025, true) || arc(0.63, 0.49, 0.065, 0.025, true) || mouth;
+        }
+        if (dark) return 0;
+        const lx = (u - fx) / fr, ly = (v - fy) / fr;
+        return Math.min(0.95, Math.max(0.5, 0.78 - 0.22 * (lx + ly) / 1.4));
+      }
+      if (d < fr + 0.055) return 0;
+      return Math.sin(Math.atan2(v - fy, u - fx) * 8) > 0.55 ? 0.82 : 1;
+    };
+  }
+
+  // Grigi della foto (0..255) con sovracampionamento 2x2 e regolazioni di default dell'app.
+  function photoGray(w, h, g) {
+    const out = new Float32Array(w * h), s = Math.min(w, h);
+    const sub = [[0.25, 0.25], [0.75, 0.25], [0.25, 0.75], [0.75, 0.75]];
+    for (let y = 0; y < h; y++) {
+      for (let x = 0; x < w; x++) {
+        let acc = 0;
+        for (const [ox, oy] of sub) acc += g(0.5 + (x + ox - w / 2) / s, 0.5 + (y + oy - h / 2) / s);
+        let v = acc / 4;
+        v = Math.pow(v, 1 / 1.25);              // gamma 1,25: schiarisce i medi toni
+        v = (v - 0.5) * 1.15 + 0.5;             // contrasto +0,15
+        out[y * w + x] = Math.min(255, Math.max(0, v * 255));
+      }
+    }
+    return out;
+  }
+
+  // Retinatura di Atkinson: 1 = punto nero.
+  function atkinson(gray, w, h) {
+    const bits = new Uint8Array(w * h);
+    const taps = [[1, 0], [2, 0], [-1, 1], [0, 1], [1, 1], [0, 2]];
+    for (let y = 0; y < h; y++) {
+      for (let x = 0; x < w; x++) {
+        const i = y * w + x, old = gray[i], black = old < 128, err = (old - (black ? 0 : 255)) / 8;
+        bits[i] = black ? 1 : 0;
+        for (const [dx, dy] of taps) {
+          const xx = x + dx, yy = y + dy;
+          if (xx >= 0 && xx < w && yy < h) gray[yy * w + xx] += err;
+        }
+      }
+    }
+    return bits;
+  }
+
+  // Impaginazione dei modelli: stesse misure di TemplateGeometry (core-thermal), carta da 58 mm.
+  const W = 384, MARGIN = 16, GAP = 12, CONTENT = W - 2 * MARGIN, TEXT_AVAIL = CONTENT - 8;
+  const lineHeight = size => size + Math.floor((size + 2) / 4);
+  const TEXTS = {
+    caption: 'Ciao Giulia!', event: 'Festa di Giulia', hashtag: '#giulia7', date: '17/10/26, 18:42',
+    number: 'RICORDO N. 0042', footer: 'Grazie per il sorriso!', brand: 'FOTOFLASH',
+  };
+  const FONT = { display: ['400', 'Righteous'], mono: ['400', '"Space Mono"'], bold: ['700', '"Space Mono"'] };
+
+  function layout(kind) {
+    const photos = [], texts = [], dashes = [];
+    let y = 0;
+    const text = (t, font, size, spacing = 0) => { const h = lineHeight(size); texts.push({ t, font, size, y, h, spacing }); y += h; };
+    const dashed = () => { dashes.push(y + 9); y += 20; };
+    if (kind === 'POLAROID') {
+      y = MARGIN; photos.push({ x: MARGIN, y, w: CONTENT, h: CONTENT, face: 'smile' }); y += CONTENT;
+      const content = lineHeight(28) + lineHeight(20), band = Math.max(96, content + 24), top = y;
+      y += Math.floor((band - content) / 2);
+      text(TEXTS.caption, 'bold', 28); text(TEXTS.date, 'mono', 20);
+      y = top + band;
+    } else if (kind === 'FULL') {
+      photos.push({ x: 0, y: 0, w: W, h: 512, face: 'laugh' }); y = 512 + GAP;
+      text(TEXTS.caption, 'bold', 28); text(TEXTS.date, 'mono', 20); y += 8;
+    } else if (kind === 'STRIP') {
+      y = MARGIN; text(TEXTS.event, 'display', 40); y += GAP;
+      const ph = CONTENT * 3 / 4;
+      ['smile', 'wink', 'laugh'].forEach((f, i) => { if (i) y += GAP; photos.push({ x: MARGIN, y, w: CONTENT, h: ph, face: f }); y += ph; });
+      y += GAP; text(TEXTS.caption, 'bold', 28); text(TEXTS.date, 'mono', 20); text(TEXTS.hashtag, 'mono', 22); y += 8;
+    } else {
+      y = MARGIN; text(TEXTS.brand, 'display', 48, 0.08); text(TEXTS.event, 'display', 40); dashed();
+      photos.push({ x: MARGIN, y, w: CONTENT, h: CONTENT, face: 'wink' }); y += CONTENT;
+      y += GAP; text(TEXTS.caption, 'bold', 28); text(TEXTS.hashtag, 'mono', 22);
+      dashed(); text(TEXTS.number, 'mono', 22); text(TEXTS.date, 'mono', 20);
+      dashed(); text(TEXTS.footer, 'mono', 22); y += 8;
+    }
+    return { h: y, photos, texts, dashes };
+  }
+
+  // Disegna un modello: testi e righe su un canvas, soglia a 150, poi foto retinate in OR.
+  function renderTemplate(kind, canvas) {
+    const L = layout(kind);
+    canvas.width = W; canvas.height = L.h;
+    const ctx = canvas.getContext('2d');
+    ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, W, L.h);
+    ctx.fillStyle = '#000'; ctx.textAlign = 'center';
+    for (const b of L.texts) {
+      const [weight, family] = FONT[b.font];
+      let size = b.size;
+      const setFont = () => { ctx.font = `${weight} ${size}px ${family}`; if ('letterSpacing' in ctx) ctx.letterSpacing = `${b.spacing * size}px`; };
+      setFont();
+      while (ctx.measureText(b.t).width > TEXT_AVAIL && size > Math.round(b.size * 0.85)) { size--; setFont(); }
+      const cap = ctx.measureText('H').actualBoundingBoxAscent || size * 0.7;
+      ctx.fillText(b.t, W / 2, b.y + (b.h - cap) / 2 + cap);
+    }
+    if ('letterSpacing' in ctx) ctx.letterSpacing = '0px';
+    for (const y of L.dashes) for (let x = MARGIN; x < W - MARGIN; x += 10) ctx.fillRect(x, y, Math.min(6, W - MARGIN - x), 2);
+    const img = ctx.getImageData(0, 0, W, L.h), px = img.data;
+    const bits = new Uint8Array(W * L.h);
+    for (let i = 0; i < bits.length; i++) {
+      const luma = 0.299 * px[i * 4] + 0.587 * px[i * 4 + 1] + 0.114 * px[i * 4 + 2];
+      bits[i] = luma < 150 ? 1 : 0;
+    }
+    for (const p of L.photos) {
+      const pb = atkinson(photoGray(p.w, p.h, face(p.face)), p.w, p.h);
+      for (let y = 0; y < p.h; y++) for (let x = 0; x < p.w; x++) if (pb[y * p.w + x]) bits[(p.y + y) * W + p.x + x] = 1;
+    }
+    paintBits(img, bits);
+    ctx.putImageData(img, 0, 0);
+    return canvas;
+  }
+
+  function paintBits(img, bits) {
+    const px = img.data;
+    for (let i = 0; i < bits.length; i++) {
+      const c = bits[i] ? INK : PAPER;
+      px[i * 4] = c[0]; px[i * 4 + 1] = c[1]; px[i * 4 + 2] = c[2]; px[i * 4 + 3] = 255;
+    }
+  }
+
+  // Anteprima termica del mirino: lo stesso volto, retinato a bassa risoluzione come nell'app.
+  function renderViewfinder(canvas) {
+    const w = canvas.width, h = canvas.height, ctx = canvas.getContext('2d');
+    const bits = atkinson(photoGray(w, h, face('laugh')), w, h);
+    const img = ctx.createImageData(w, h);
+    paintBits(img, bits);
+    ctx.putImageData(img, 0, 0);
+  }
+
+  // Retino a raggiera: puntini su griglia sfalsata che rimpiccioliscono verso il bordo.
+  function drawBurst(canvas) {
+    const ctx = canvas.getContext('2d'), w = canvas.width, h = canvas.height;
+    const step = w / 20, cx = w / 2, cy = h / 2, R = Math.min(cx, cy);
+    ctx.clearRect(0, 0, w, h);
+    ctx.fillStyle = '#16130F';
+    for (let row = 0; row * step * 0.866 <= h + step; row++) {
+      const y = row * step * 0.866, shift = (row % 2) ? step / 2 : 0;
+      for (let x = -step + shift; x <= w + step; x += step) {
+        const d = Math.hypot(x - cx, y - cy) / R;
+        if (d >= 1) continue;
+        const r = step * 0.42 * (1 - d);
+        if (r < 0.6) continue;
+        ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.fill();
+      }
+    }
+  }
+
+  async function fontsReady() {
+    if (!document.fonts || !document.fonts.load) return;
+    const loads = ['48px Righteous', '20px "Space Mono"', '700 28px "Space Mono"'].map(f => document.fonts.load(f).catch(() => null));
+    await Promise.race([Promise.all(loads), new Promise(r => setTimeout(r, 3000))]);
+  }
+
+  async function main() {
+    document.querySelectorAll('canvas[data-burst]').forEach(c => { try { drawBurst(c); } catch (e) { /* solo decorazione */ } });
+    try { renderViewfinder(document.getElementById('vf')); } catch (e) { console.warn('Anteprima del mirino non disponibile', e); }
+    await fontsReady();
+    const urls = {};
+    document.querySelectorAll('canvas[data-template]').forEach(c => {
+      try { renderTemplate(c.dataset.template, c); urls[c.dataset.template] = c.toDataURL('image/png'); }
+      catch (e) { console.warn('Modello non disegnato: ' + c.dataset.template, e); }
+    });
+    if (urls.POLAROID) {
+      document.getElementById('ed-preview').src = urls.POLAROID;
+      document.getElementById('vf-thumb').src = urls.POLAROID;
+    }
+    document.querySelectorAll('img[data-thumb]').forEach(img => { if (urls[img.dataset.thumb]) img.src = urls[img.dataset.thumb]; });
+  }
+  main();
+})();
+</script>
+</body>
+</html>

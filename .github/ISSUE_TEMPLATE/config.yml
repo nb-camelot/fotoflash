@@ -1,0 +1,8 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Stampanti compatibili e calibrazione
+    url: https://github.com/nb-camelot/fotoflash#stampanti-compatibili
+    about: Prima di aprire un bug di stampa, controlla la tabella delle stampanti e la guida alla calibrazione.
+  - name: Piani pronti per l'agente
+    url: https://github.com/nb-camelot/fotoflash/tree/dev/issue_plans
+    about: Funzionalita gia progettate, pronte da trasformare in issue con /oc.

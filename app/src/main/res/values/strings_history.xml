@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Storico stampe (prefisso hist_) -->
+    <string name="hist_title">History</string>
+    <string name="hist_detail_title">Souvenir</string>
+
+    <string name="hist_empty_title">No prints yet</string>
+    <string name="hist_empty_message">Every photo you print or save ends up here, ready to be printed again.</string>
+    <string name="hist_empty_action">Take a photo</string>
+
+    <string name="hist_not_printed">Not printed</string>
+    <string name="hist_print_number">No. %1$04d</string>
+    <string name="hist_thumb_cd">Print from %1$s</string>
+    <string name="hist_preview_cd">Print preview</string>
+
+    <string name="hist_label_date">Date</string>
+    <string name="hist_label_template">Template</string>
+    <string name="hist_label_caption">Caption</string>
+    <string name="hist_label_number">Number</string>
+    <string name="hist_label_status">Status</string>
+    <string name="hist_status_printed">Printed</string>
+    <string name="hist_status_saved">Saved, not printed yet</string>
+
+    <string name="hist_template_polaroid">Polaroid</string>
+    <string name="hist_template_full">Full</string>
+    <string name="hist_template_strip">Strip</string>
+    <string name="hist_template_receipt">Receipt</string>
+
+    <string name="hist_action_reprint">Print again</string>
+    <string name="hist_action_share">Share</string>
+    <string name="hist_action_save">Save</string>
+    <string name="hist_action_delete">Delete from history</string>
+    <string name="hist_share_chooser">Share print</string>
+    <string name="hist_printing">Printing… %1$d%%</string>
+
+    <string name="hist_delete_title">Delete this print?</string>
+    <string name="hist_delete_message">The print and its original photos will be removed from FotoFlash. Copies saved in your gallery stay where they are.</string>
+    <string name="hist_delete_confirm">Delete</string>
+    <string name="hist_cancel">Cancel</string>
+
+    <string name="hist_msg_printed">Printed!</string>
+    <string name="hist_msg_saved">Saved to Pictures/FotoFlash</string>
+    <string name="hist_msg_save_failed">Could not save the image</string>
+    <string name="hist_msg_share_failed">Could not share the image</string>
+    <string name="hist_msg_load_failed">The file of this print is damaged</string>
+    <string name="hist_msg_storage_permission">Saving to the gallery needs the storage permission on this Android version</string>
+
+    <string name="hist_fail_no_printer">Choose a printer first (Settings › Printer)</string>
+    <string name="hist_fail_no_permission">FotoFlash is not allowed to use Bluetooth</string>
+    <string name="hist_fail_bluetooth_off">Bluetooth is off: turn it on and try again</string>
+    <string name="hist_fail_not_bonded">The printer is no longer paired with this phone</string>
+    <string name="hist_fail_connect">The printer does not answer: is it on and nearby?</string>
+    <string name="hist_fail_write">Printing stopped halfway: check the paper and try again</string>
+    <string name="hist_fail_busy">The printer is busy with another print</string>
+
+    <string name="hist_not_found_title">Print not found</string>
+    <string name="hist_not_found_message">It may have been deleted.</string>
+    <string name="hist_back">Back to history</string>
+</resources>

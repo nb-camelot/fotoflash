@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Primo avvio (prefisso onb_) -->
+    <string name="onb_skip">Skip</string>
+    <string name="onb_next">Next</string>
+    <string name="onb_start">Let\'s start</string>
+    <string name="onb_done">Start shooting</string>
+
+    <string name="onb_snap_title">Snap.</string>
+    <string name="onb_snap_text">Your phone becomes an instant camera. Frame, smile, click.</string>
+    <string name="onb_print_title">Print.</string>
+    <string name="onb_print_text">A pocket thermal printer turns every shot into a paper souvenir in a few seconds, with no ink at all.</string>
+    <string name="onb_keep_title">Remember.</string>
+    <string name="onb_keep_text">Polaroid, photo strip or receipt: pick a template, add a caption and the date. Every print stays in your history.</string>
+
+    <string name="onb_perm_title">Before we start</string>
+    <string name="onb_perm_text">FotoFlash uses the camera to take photos and Bluetooth to talk to your printer. Your photos never leave the phone.</string>
+    <string name="onb_perm_camera">Camera</string>
+    <string name="onb_perm_camera_desc">To take your photos</string>
+    <string name="onb_perm_bluetooth">Nearby devices</string>
+    <string name="onb_perm_bluetooth_desc">To connect to the paired printer</string>
+    <string name="onb_perm_granted">Allowed</string>
+    <string name="onb_perm_denied">Denied</string>
+    <string name="onb_perm_pending">To allow</string>
+    <string name="onb_perm_allow">Allow</string>
+    <string name="onb_perm_denied_hint">A permission was denied. You can turn it on from the app settings whenever you like.</string>
+    <string name="onb_perm_settings">Open app settings</string>
+
+    <string name="onb_printer_title">Your printer</string>
+    <string name="onb_printer_text">Pair the printer in the Bluetooth settings (the PIN is often 0000 or 1234), then pick it here.</string>
+    <string name="onb_printer_none">No paired devices yet</string>
+    <string name="onb_printer_no_permission">Allow “Nearby devices” to see your printers</string>
+    <string name="onb_printer_bt_off">Bluetooth is off: turn it on to see your printers</string>
+    <string name="onb_printer_bt_unavailable">This device has no Bluetooth: you can still take photos, save and share them</string>
+    <string name="onb_open_bt_settings">Open Bluetooth settings</string>
+    <string name="onb_refresh">Refresh the list</string>
+    <string name="onb_selected">Selected</string>
+    <string name="onb_test_page">Print a test page</string>
+    <string name="onb_test_ok">Test page printed!</string>
+    <string name="onb_printer_later">You can choose or change the printer later, from the settings.</string>
+
+    <string name="onb_fail_no_printer">Choose a printer from the list first</string>
+    <string name="onb_fail_no_permission">FotoFlash is not allowed to use Bluetooth</string>
+    <string name="onb_fail_bluetooth_off">Bluetooth is off: turn it on and try again</string>
+    <string name="onb_fail_not_bonded">The printer is not paired with this phone</string>
+    <string name="onb_fail_connect">The printer does not answer: is it on and nearby?</string>
+    <string name="onb_fail_write">Printing stopped halfway: check the paper and try again</string>
+    <string name="onb_fail_busy">The printer is busy, try again in a moment</string>
+</resources>
