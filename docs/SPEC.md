@@ -35,6 +35,10 @@ ricordo al volo: feste, matrimoni, gite, giochi con i bambini, banchetti e fotoc
 - Barra in alto: stato stampante (chip colorato, tocca → schermata stampante), flash
   (auto/on/off), timer (0/3/10 s), anteprima termica on/off.
 - Barra in basso: galleria (import), **otturatore** grande, cambio fotocamera.
+- **Tocca per esporre**: un tocco sul soggetto misura esposizione e messa a fuoco lì (anello animato) e
+  apre lo slider **☀ ±EV** di compensazione dell'esposizione; si azzera cambiando fotocamera.
+- **Salva gli scatti in galleria** (impostazione, attiva di default): ogni scatto della fotocamera viene
+  copiato anche in Galleria › FotoFlash › Scatti, così le foto non si perdono.
 - Selettore modalità sopra l'otturatore: **Foto** · **Striscia** (fotocabina).
 - Striscia: un tocco avvia N scatti (3 o 4) con conto alla rovescia 3-2-1 e lampo bianco a
   ogni scatto; alla fine si apre l'editor con il modello *Striscia*.
@@ -46,8 +50,9 @@ ricordo al volo: feste, matrimoni, gite, giochi con i bambini, banchetti e fotoc
 - Anteprima WYSIWYG su un "foglio di carta" con bordi a dente di sega, scorrevole se lunga.
 - Modelli: **Polaroid** · **Pieno** · **Striscia** · **Scontrino** (chip con miniatura).
 - Didascalia (campo di testo, max 40 caratteri), evento/hashtag/data/numero dalle impostazioni.
-- Regolazioni: Luminosità, Contrasto, Nitidezza (slider), Retino (Atkinson · Floyd-Steinberg ·
-  Bayer · Soglia), Auto-livelli on/off. L'anteprima si aggiorna con debounce (~120 ms).
+- Regolazioni: Luminosità, Contrasto, Ombre, Contrasto locale, Nitidezza (slider), Retino (Atkinson ·
+  Floyd-Steinberg · Bayer · Soglia), Auto-livelli e **Controluce automatico** on/off (con avviso
+  "Controluce rilevato" quando la foto ha il soggetto scuro su sfondo chiaro). L'anteprima si aggiorna con debounce (~120 ms).
 - Copie: 1-5.
 - **Stampa** (pulsante grande giallo): foglio di avanzamento con stato reale della stampante
   e percentuale; a fine stampa "Stampato!" con animazione; errore → messaggio chiaro + azione
@@ -57,7 +62,9 @@ ricordo al volo: feste, matrimoni, gite, giochi con i bambini, banchetti e fotoc
 
 ### Storico
 - Griglia delle stampe (miniature in bianco e nero), più recenti in alto.
-- Dettaglio: anteprima, data, modello, didascalia; **Ristampa**, Condividi, Salva, Elimina.
+- Dettaglio: anteprima, data, modello, didascalia; **Ristampa**, Condividi, Salva stampa, **Salva foto**
+  (gli originali in Galleria › FotoFlash › Scatti), Elimina.
+- **Esporta tutte le foto**: salva in galleria gli originali di tutto lo storico, con avanzamento.
 
 ### Impostazioni
 - **Stampante**: scelta, stato, pagina di prova, dimentica.

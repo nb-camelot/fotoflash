@@ -42,5 +42,7 @@ data class AppSettings(
     val stripShots: Int = 3,
     val shutterSound: Boolean = true,
     val livePreview: Boolean = true,
+    /** Ogni scatto della fotocamera viene salvato anche in galleria (Pictures/FotoFlash/Scatti). */
+    val autoSaveCaptures: Boolean = true,
     val copies: Int = 1,
 )

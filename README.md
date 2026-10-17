@@ -35,6 +35,8 @@ fotocabine fai da te.
 **Scatto**
 - Mirino a tutto schermo con **anteprima termica dal vivo**: vedi già come verrà la foto retinata.
 - Flash (auto/on/off), timer (0/3/10 s), fotocamera frontale o posteriore, import dalla galleria.
+- **Tocca per esporre** sul soggetto e slider **±EV** per la compensazione dell'esposizione.
+- **Salva gli scatti in galleria** (attivo di default): ogni foto finisce anche in Galleria › FotoFlash › Scatti.
 - Modalità **Foto** e **Striscia** da fotocabina: 3 o 4 scatti con conto alla rovescia 3-2-1 e lampo
   bianco a ogni scatto.
 - **Stampa istantanea**: scatta e stampa subito, senza passare dall'editor (modalità "fotocamera per bambini").
@@ -46,6 +48,8 @@ fotocabine fai da te.
 - Quattro modelli: **Polaroid** · **Pieno** · **Striscia** · **Scontrino** (con intestazione,
   numero progressivo "RICORDO N. 0042" e "Grazie per il sorriso!").
 - Didascalia, titolo dell'evento, hashtag, data e numerazione automatica.
+- **Controluce**: contrasto locale adattivo (CLAHE), schiarisci ombre e controluce automatico, che
+  riconosce il soggetto scuro su sfondo luminoso.
 - Luminosità, contrasto, nitidezza, auto-livelli e quattro retini: **Atkinson**, Floyd-Steinberg,
   Bayer, Soglia. Testi sempre in nero pieno, mai retinati.
 - Da 1 a 5 copie, avanzamento con stato reale della stampante e percentuale; se qualcosa va storto
@@ -53,7 +57,8 @@ fotocabine fai da te.
 - **Salva** in galleria (PNG della stampa) e **Condividi**.
 
 **Storico e impostazioni**
-- Ogni stampa entra nello storico: dettaglio, **ristampa**, condividi, salva, elimina.
+- Ogni stampa entra nello storico: dettaglio, **ristampa**, condividi, salva la stampa, **salva le foto
+  originali**, elimina; **Esporta tutte le foto** salva in galleria gli originali di tutto lo storico.
 - Impostazioni per stampante, carta (58/80 mm), intensità, taglio, parametri avanzati di trasmissione,
   retino e regolazioni predefinite, evento, scatto.
 - Inglese e italiano, tema chiaro e scuro (il mirino è sempre scuro).

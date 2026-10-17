@@ -38,7 +38,8 @@ import org.json.JSONObject
 /**
  * Storico delle stampe su file: filesDir/history/<id>/ con
  * - print.png: l'immagine a 1 bit (1 pixel = 1 punto), da cui si ristampa identica;
- * - photo_N.jpg: gli originali ridotti (lato lungo 1600 px, JPEG 85);
+ * - photo_N.jpg: le foto originali alla risoluzione ricevuta (lato lungo al massimo 2048 px,
+ *   JPEG 92): sono il ricordo a colori, si esportano in galleria con [originalFiles];
  * - meta.json: i dati della voce. E scritto per ultimo: una cartella senza meta.json e
  *   un salvataggio interrotto e viene ripulita al caricamento.
  *
@@ -226,6 +227,19 @@ class HistoryRepository(context: Context, private val scope: CoroutineScope) {
         }
     }
 
+    /**
+     * JPEG originali della voce che esistono ancora su disco, nell'ordine degli scatti.
+     * Tocca il file system: va chiamata fuori dal main thread (Dispatchers.IO).
+     * Solo file dentro la cartella della voce: sono gli unici che l'archivio garantisce.
+     */
+    fun originalFiles(entry: HistoryEntry): List<File> {
+        if (!isValidId(entry.id)) return emptyList()
+        val dir = File(root, entry.id)
+        return entry.originalPaths
+            .map { File(it) }
+            .filter { it.parentFile == dir && it.isFile }
+    }
+
     // --- interni -------------------------------------------------------------------------
 
     private fun decodePrint(entry: HistoryEntry): Bitmap? {
@@ -354,7 +368,10 @@ class HistoryRepository(context: Context, private val scope: CoroutineScope) {
         }
     }
 
-    /** Salva un originale ridotto. Un originale perso non deve far perdere la voce intera. */
+    /**
+     * Salva un originale: si riduce solo se supera [ORIGINAL_MAX_SIDE] (foto importate molto grandi).
+     * Un originale perso non deve far perdere la voce intera.
+     */
     private fun writeOriginal(source: Bitmap, file: File): Boolean {
         var software: Bitmap? = null
         var scaled: Bitmap? = null
@@ -417,8 +434,10 @@ class HistoryRepository(context: Context, private val scope: CoroutineScope) {
         const val PRINT_FILE = "print.png"
         const val META_FILE = "meta.json"
         const val MAX_ENTRIES = 200
-        const val ORIGINAL_MAX_SIDE = 1600
-        const val ORIGINAL_JPEG_QUALITY = 85
+        /** Come MAX_PHOTO_SIDE della fotocamera: gli scatti arrivano gia cosi e non si riducono. */
+        const val ORIGINAL_MAX_SIDE = 2048
+        /** Le foto finiscono in galleria: a 92 nessuna perdita visibile, circa 1 MB a 2048 px. */
+        const val ORIGINAL_JPEG_QUALITY = 92
         const val META_VERSION = 1
 
         const val KEY_VERSION = "version"

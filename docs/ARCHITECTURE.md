@@ -70,8 +70,16 @@ class GrayImage(val width: Int, val height: Int, val pixels: ByteArray = /* tutt
     }
 }
 
-// Tone.kt — ordine: autoLevels → luminosità/contrasto → gamma → nitidezza. Restituisce una nuova immagine.
+// Tone.kt — ordine: controluce automatico (Backlight.score alza ombre e contrasto locale) → CLAHE → curva delle ombre
+//           → auto-livelli → luminosità/contrasto → gamma → nitidezza. Restituisce una nuova immagine.
+//           Con shadows=0, localContrast=0, autoBacklight=false il risultato è identico alla versione senza controluce.
 object Tone { fun apply(src: GrayImage, adj: ToneAdjustments): GrayImage }
+
+// Clahe.kt — contrasto locale adattivo (tessere quadrate, clip, interpolazione bilineare), miscelato con l'originale
+object Clahe { fun apply(src: GrayImage, strength: Float, tiles: Int = 8, clipLimit: Float = 2.5f): GrayImage }
+
+// Backlight.kt — 0 = nessun controluce, 1 = soggetto scuro su bordo molto chiaro (formula nel KDoc)
+object Backlight { fun score(src: GrayImage): Float }
 
 // Ditherer.kt
 object Ditherer { fun dither(src: GrayImage, algorithm: DitherAlgorithm, threshold: Int = 128): BitImage }
@@ -145,6 +153,7 @@ class HistoryRepository(context: Context, scope: CoroutineScope) {
     suspend fun delete(id: String)
     suspend fun loadPreview(entry: HistoryEntry): Bitmap?
     suspend fun loadBitImage(entry: HistoryEntry): BitImage?
+    fun originalFiles(entry: HistoryEntry): List<File>   // JPEG originali esistenti su disco (lato lungo fino a 2048 px)
 }
 
 // printer/PrinterManager.kt
@@ -182,6 +191,9 @@ class PrintRenderer(context: Context) { suspend fun render(request: PrintRequest
 class Exporter(context: Context) {
     suspend fun saveToGallery(bitmap: Bitmap, displayName: String): Uri?   // Pictures/FotoFlash, PNG
     suspend fun shareIntent(bitmap: Bitmap, displayName: String): Intent   // PNG in cacheDir/shared, authority "${applicationId}.files"
+    suspend fun savePhotoToGallery(bitmap: Bitmap, displayName: String): Uri?    // JPEG 92 in Pictures/FotoFlash/Scatti
+    suspend fun savePhotoFileToGallery(file: File, displayName: String): Uri?     // copia un JPEG già su disco (originali dello storico)
+    fun needsLegacyWritePermission(): Boolean   // true su API 26-28 se WRITE_EXTERNAL_STORAGE non è concesso: chiederlo prima di salvare
 }
 
 // print/PrintCoordinator.kt — unico punto che mette insieme impostazioni, rendering, stampa e storico
@@ -206,7 +218,7 @@ Sono le firme usate dalla navigazione in `nav/FotoFlashNavHost.kt`.
                              onOpenSettings: () -> Unit, onOpenPrinter: () -> Unit)         // camera/
 @Composable fun EditorScreen(onBack: () -> Unit, onDone: () -> Unit, onOpenPrinter: () -> Unit) // editor/
 @Composable fun HistoryScreen(onBack: () -> Unit, onOpenEntry: (String) -> Unit)            // history/
-@Composable fun HistoryDetailScreen(entryId: String, onBack: () -> Unit)                     // history/
+@Composable fun HistoryDetailScreen(entryId: String, onBack: () -> Unit, onOpenPrinter: (() -> Unit)? = null) // history/
 @Composable fun SettingsScreen(onBack: () -> Unit, onOpenPrinter: () -> Unit)                // settings/
 @Composable fun PrinterScreen(onBack: () -> Unit)                                            // printer/
 ```

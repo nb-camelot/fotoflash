@@ -38,6 +38,16 @@
     <string name="ed_adjust_value">%1$d</string>
     <string name="ed_adjust_autolevels">Auto-livelli</string>
     <string name="ed_adjust_autolevels_hint">Distende i toni perché la foto risalti sulla carta termica</string>
+    <string name="ed_adjust_shadows">Ombre</string>
+    <string name="ed_adjust_local_contrast">Contrasto locale</string>
+    <string name="ed_adjust_autobacklight">Controluce automatico</string>
+    <string name="ed_adjust_autobacklight_hint">Schiarisce i visi davanti a un cielo o a una finestra luminosa</string>
+    <string name="ed_adjust_autobacklight_detected">Controluce rilevato: ombre schiarite in automatico</string>
+    <string name="ed_adjust_autobacklight_suggest">Questa foto sembra in controluce: attivalo per schiarire i visi</string>
+
+    <!-- Controluce rilevato sull'anteprima -->
+    <string name="ed_backlight_detected">Controluce rilevato</string>
+    <string name="ed_backlight_detected_cd">Controluce rilevato: la foto è stata schiarita in automatico</string>
     <string name="ed_adjust_dither">Retino</string>
     <string name="ed_adjust_reset">Ripristina</string>
     <string name="ed_dither_atkinson">Atkinson</string>

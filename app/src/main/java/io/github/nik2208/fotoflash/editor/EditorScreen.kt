@@ -3,9 +3,7 @@ package io.github.nik2208.fotoflash.editor
 import android.Manifest
 import android.content.ActivityNotFoundException
 import android.content.Intent
-import android.content.pm.PackageManager
 import android.graphics.Bitmap
-import android.os.Build
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.annotation.StringRes
@@ -16,6 +14,8 @@ import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -61,6 +61,7 @@ import androidx.compose.material.icons.rounded.SaveAlt
 import androidx.compose.material.icons.rounded.Share
 import androidx.compose.material.icons.rounded.TextFields
 import androidx.compose.material.icons.rounded.Tune
+import androidx.compose.material.icons.rounded.WbSunny
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
@@ -74,6 +75,7 @@ import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
+import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -95,8 +97,11 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
@@ -105,7 +110,6 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import androidx.core.content.ContextCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import io.github.nik2208.fotoflash.R
@@ -127,6 +131,7 @@ import io.github.nik2208.fotoflash.ui.components.SectionHeader
 import io.github.nik2208.fotoflash.ui.components.ThermalImage
 import io.github.nik2208.fotoflash.ui.theme.FfColors
 import io.github.nik2208.fotoflash.ui.theme.FfFonts
+import io.github.nik2208.fotoflash.ui.theme.FfPillShape
 import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
 
@@ -179,10 +184,11 @@ fun EditorScreen(onBack: () -> Unit, onDone: () -> Unit, onOpenPrinter: () -> Un
         if (granted) vm.save() else vm.showMessage(R.string.ed_save_permission)
     }
     val onSave: () -> Unit = {
-        val needsPermission = Build.VERSION.SDK_INT < Build.VERSION_CODES.Q &&
-            ContextCompat.checkSelfPermission(context, Manifest.permission.WRITE_EXTERNAL_STORAGE) !=
-            PackageManager.PERMISSION_GRANTED
-        if (needsPermission) storagePermission.launch(Manifest.permission.WRITE_EXTERNAL_STORAGE) else vm.save()
+        if (graph.exporter.needsLegacyWritePermission()) {
+            storagePermission.launch(Manifest.permission.WRITE_EXTERNAL_STORAGE)
+        } else {
+            vm.save()
+        }
     }
 
     Box(
@@ -288,6 +294,13 @@ private fun EditorContent(
                     .align(Alignment.TopCenter)
                     .fillMaxWidth(),
             )
+            // Sopra l'anteprima, dove si vede l'effetto: dice perche la foto e piu chiara dello scatto.
+            BacklightBadge(
+                visible = state.backlightDetected && state.preview != null,
+                modifier = Modifier
+                    .align(Alignment.TopStart)
+                    .padding(start = 12.dp, top = 12.dp),
+            )
             SnackbarHost(
                 hostState = snackbarHostState,
                 modifier = Modifier
@@ -376,6 +389,57 @@ private fun RenderingIndicator(visible: Boolean, modifier: Modifier = Modifier) 
             color = MaterialTheme.colorScheme.onSurface,
             trackColor = Color.Transparent,
         )
+    }
+}
+
+/**
+ * Pillola "Controluce rilevato": compare quando la correzione automatica ha schiarito la foto.
+ * Funzione a parte per lo stesso motivo di RenderingIndicator (AnimatedVisibility senza scope).
+ * Gialla come le cose "accese" del brand, con un'ombra che la stacca dalla carta quando si scorre.
+ */
+@Composable
+private fun BacklightBadge(visible: Boolean, modifier: Modifier = Modifier) {
+    val spoken = stringResource(R.string.ed_backlight_detected_cd)
+    AnimatedVisibility(
+        visible = visible,
+        modifier = modifier,
+        enter = fadeIn(animationSpec = tween(durationMillis = 220)) +
+            scaleIn(initialScale = 0.85f, animationSpec = tween(durationMillis = 220)),
+        exit = fadeOut(animationSpec = tween(durationMillis = 150)) +
+            scaleOut(targetScale = 0.85f, animationSpec = tween(durationMillis = 150)),
+    ) {
+        Surface(
+            // Una sola frase per TalkBack (non etichetta + descrizione), annunciata quando compare
+            // senza interrompere quello che sta leggendo.
+            modifier = Modifier.clearAndSetSemantics {
+                contentDescription = spoken
+                liveRegion = LiveRegionMode.Polite
+            },
+            shape = FfPillShape,
+            color = FfColors.Flash,
+            contentColor = FfColors.Ink,
+            shadowElevation = 3.dp,
+        ) {
+            Row(
+                modifier = Modifier.padding(start = 8.dp, end = 12.dp, top = 5.dp, bottom = 5.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Icon(
+                    imageVector = Icons.Rounded.WbSunny,
+                    contentDescription = null,
+                    tint = FfColors.Ink,
+                    modifier = Modifier.size(16.dp),
+                )
+                Spacer(Modifier.width(6.dp))
+                Text(
+                    text = stringResource(R.string.ed_backlight_detected),
+                    style = MaterialTheme.typography.labelMedium,
+                    color = FfColors.Ink,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
+        }
     }
 }
 
@@ -706,6 +770,22 @@ private fun AdjustPanel(state: EditorUiState, vm: EditorViewModel) {
         signed = true,
         onChange = vm::setContrast,
     )
+    // Ombre e contrasto locale accanto ai toni: sono i controlli del controluce, il viso scuro
+    // davanti a un cielo chiaro che sulla carta diventerebbe una macchia.
+    AdjustSlider(
+        label = stringResource(R.string.ed_adjust_shadows),
+        value = state.tone.shadows,
+        valueRange = 0f..1f,
+        signed = false,
+        onChange = vm::setShadows,
+    )
+    AdjustSlider(
+        label = stringResource(R.string.ed_adjust_local_contrast),
+        value = state.tone.localContrast,
+        valueRange = 0f..1f,
+        signed = false,
+        onChange = vm::setLocalContrast,
+    )
     AdjustSlider(
         label = stringResource(R.string.ed_adjust_sharpen),
         value = state.tone.sharpen,
@@ -713,29 +793,25 @@ private fun AdjustPanel(state: EditorUiState, vm: EditorViewModel) {
         signed = false,
         onChange = vm::setSharpen,
     )
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .toggleable(value = state.tone.autoLevels, role = Role.Switch, onValueChange = vm::setAutoLevels)
-            .padding(vertical = 8.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Column(modifier = Modifier.weight(1f)) {
-            Text(
-                text = stringResource(R.string.ed_adjust_autolevels),
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurface,
-            )
-            Text(
-                text = stringResource(R.string.ed_adjust_autolevels_hint),
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-        }
-        Spacer(Modifier.width(12.dp))
-        // onCheckedChange null: tocca tutta la riga (toggleable), non solo l'interruttore.
-        Switch(checked = state.tone.autoLevels, onCheckedChange = null)
-    }
+    AdjustSwitchRow(
+        title = stringResource(R.string.ed_adjust_autobacklight),
+        // Il suggerimento cambia con la foto: spiega cosa e successo, o cosa si guadagna ad accenderlo.
+        hint = stringResource(
+            when {
+                state.backlightDetected -> R.string.ed_adjust_autobacklight_detected
+                state.backlightLikely -> R.string.ed_adjust_autobacklight_suggest
+                else -> R.string.ed_adjust_autobacklight_hint
+            },
+        ),
+        checked = state.tone.autoBacklight,
+        onChange = vm::setAutoBacklight,
+    )
+    AdjustSwitchRow(
+        title = stringResource(R.string.ed_adjust_autolevels),
+        hint = stringResource(R.string.ed_adjust_autolevels_hint),
+        checked = state.tone.autoLevels,
+        onChange = vm::setAutoLevels,
+    )
     SectionHeader(text = stringResource(R.string.ed_adjust_dither))
     ChoiceChipsRow(
         options = DitherAlgorithm.entries,
@@ -751,6 +827,45 @@ private fun AdjustPanel(state: EditorUiState, vm: EditorViewModel) {
         ) {
             Text(text = stringResource(R.string.ed_adjust_reset))
         }
+    }
+}
+
+/**
+ * Interruttore delle regolazioni: titolo, una riga di aiuto e lo Switch con i colori del brand
+ * (giallo acceso, pallino inchiostro), gli stessi delle Impostazioni.
+ */
+@Composable
+private fun AdjustSwitchRow(title: String, hint: String, checked: Boolean, onChange: (Boolean) -> Unit) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .toggleable(value = checked, role = Role.Switch, onValueChange = onChange)
+            .padding(vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = title,
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurface,
+            )
+            Text(
+                text = hint,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+        Spacer(Modifier.width(12.dp))
+        // onCheckedChange null: tocca tutta la riga (toggleable), non solo l'interruttore.
+        Switch(
+            checked = checked,
+            onCheckedChange = null,
+            colors = SwitchDefaults.colors(
+                checkedThumbColor = FfColors.Ink,
+                checkedTrackColor = FfColors.Flash,
+                checkedBorderColor = FfColors.Flash,
+            ),
+        )
     }
 }
 

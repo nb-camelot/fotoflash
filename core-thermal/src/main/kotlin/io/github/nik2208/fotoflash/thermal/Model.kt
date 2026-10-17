@@ -41,6 +41,12 @@ data class ToneAdjustments(
     val autoLevels: Boolean = true,
     /** 0 .. 1: maschera di contrasto (unsharp mask) per bordi leggibili sulla carta. */
     val sharpen: Float = 0.5f,
+    /** 0 .. 1: solleva le ombre con una curva che schiarisce solo i toni scuri (visi in controluce). */
+    val shadows: Float = 0.25f,
+    /** 0 .. 1: contrasto locale adattivo (CLAHE): dettaglio nelle zone in ombra senza bruciare il cielo. */
+    val localContrast: Float = 0.35f,
+    /** Riconosce il controluce (bordi molto piu chiari del centro) e aumenta ombre e contrasto locale. */
+    val autoBacklight: Boolean = true,
 )
 
 /** Modelli di stampa: definiscono impaginazione, testi e decorazioni. */

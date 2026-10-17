@@ -33,6 +33,19 @@
     <string name="cam_unavailable_title">Camera not available</string>
     <string name="cam_unavailable_message">Another app may be using it. Close it and come back here.</string>
 
+    <!-- Esposizione: tocca per esporre e slider di compensazione -->
+    <string name="cam_cd_exposure">Exposure: %1$s</string>
+    <string name="cam_exposure_slider">Exposure compensation</string>
+    <string name="cam_exposure_value">%1$+.1f EV</string>
+    <string name="cam_exposure_value_zero">±0 EV</string>
+    <string name="cam_exposure_auto">AUTO</string>
+    <string name="cam_cd_exposure_auto">Back to automatic exposure</string>
+
+    <!-- Salvataggio automatico degli scatti in galleria -->
+    <string name="cam_autosave_done">Your photos are also saved to the gallery, in Gallery › FotoFlash › Scatti. You can turn this off in Settings.</string>
+    <string name="cam_autosave_failed">Couldn\'t save the photo to your gallery. Is the phone storage full?</string>
+    <string name="cam_autosave_denied">Without storage access, your photos won\'t be copied to the gallery. You can allow it in the app settings.</string>
+
     <!-- Avvisi -->
     <string name="cam_action_printer">Printer</string>
     <string name="cam_queue_full">Hold on, the printer is still busy with your last photos.</string>

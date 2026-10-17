@@ -9,10 +9,12 @@ import androidx.camera.core.ImageProxy
 import io.github.nik2208.fotoflash.print.toGrayImage
 import io.github.nik2208.fotoflash.thermal.DitherAlgorithm
 import io.github.nik2208.fotoflash.thermal.Ditherer
+import io.github.nik2208.fotoflash.thermal.GrayImage
 import io.github.nik2208.fotoflash.thermal.Tone
 import io.github.nik2208.fotoflash.thermal.ToneAdjustments
 import io.github.nik2208.fotoflash.thermal.toArgb
 import kotlin.math.min
+import kotlin.math.roundToInt
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -27,6 +29,11 @@ import kotlinx.coroutines.flow.asStateFlow
  *
  * I punti neri e bianchi hanno i colori della carta ([inkArgb], [paperArgb]): sembra uno
  * scontrino appena stampato, non un filtro bianco e nero.
+ *
+ * Le regolazioni sono quelle delle impostazioni, comprese ombre, contrasto locale e controluce
+ * automatico: quello che si vede e quello che esce. Le regolazioni che guardano l'immagine
+ * (controluce, contrasto locale, auto-livelli) si calcolano sulla parte che finisce sulla carta
+ * ([setPrintAspect]), come fa la stampa sulla foto ritagliata dal modello.
  */
 class ThermalPreviewAnalyzer(
     private val inkArgb: Int,
@@ -47,8 +54,14 @@ class ThermalPreviewAnalyzer(
     /** Rotazione oraria dal buffer del sensore allo schermo; -1 = usa quella del fotogramma. */
     @Volatile private var displayRotationDegrees: Int = -1
 
+    /** Larghezza/altezza (sullo schermo) della parte stampata; 0 = tutta l'inquadratura. */
+    @Volatile private var printAspect: Float = 0f
+
     @Volatile private var lastFrameAt: Long = 0L
     @Volatile private var pausedUntil: Long = 0L
+
+    /** Il primo fotogramma lento finisce nel log, una volta: serve a capire i telefoni lenti. */
+    @Volatile private var slowFrameLogged = false
 
     /** Cambia a ogni reset: un fotogramma iniziato prima del reset non viene pubblicato. */
     @Volatile private var generation: Int = 0
@@ -60,6 +73,14 @@ class ThermalPreviewAnalyzer(
     fun configure(dither: DitherAlgorithm, tone: ToneAdjustments) {
         this.dither = dither
         this.tone = previewTone(tone)
+    }
+
+    /**
+     * Rapporto (larghezza/altezza sullo schermo) della parte di inquadratura che il modello
+     * mette sulla carta, centrata come la guida del mirino; null = tutta l'inquadratura.
+     */
+    fun setPrintAspect(aspect: Float?) {
+        printAspect = if (aspect != null && aspect.isFinite() && aspect > 0f) aspect else 0f
     }
 
     /**
@@ -88,12 +109,22 @@ class ThermalPreviewAnalyzer(
     override fun analyze(image: ImageProxy) {
         try {
             val now = SystemClock.elapsedRealtime()
-            // Scarto per tempo: 8-10 fotogrammi al secondo bastano e lasciano respirare la batteria.
+            // Scarto per tempo: circa 8 fotogrammi al secondo bastano e lasciano respirare la batteria.
             if (now < pausedUntil || now - lastFrameAt < minFrameIntervalMs) return
-            lastFrameAt = now
             val startedGeneration = generation
-            val frame = render(image)
-            if (startedGeneration == generation) _frames.value = frame
+            try {
+                val frame = render(image)
+                if (startedGeneration == generation) _frames.value = frame
+            } finally {
+                // L'intervallo parte dalla fine del fotogramma: su un telefono lento (contrasto
+                // locale e retino costano) l'anteprima rallenta invece di tenere la CPU sempre occupata.
+                val end = SystemClock.elapsedRealtime()
+                lastFrameAt = end
+                if (end - now > SLOW_FRAME_MS && !slowFrameLogged) {
+                    slowFrameLogged = true
+                    Log.i(TAG, "anteprima termica lenta: ${end - now} ms per fotogramma")
+                }
+            }
         } catch (e: Exception) {
             // Un fotogramma perso non si vede; il successivo ci riprova.
             Log.w(TAG, "fotogramma dell'anteprima termica scartato", e)
@@ -115,7 +146,7 @@ class ThermalPreviewAnalyzer(
         if (small !== rgbaBuffer) small.recycle()
         if (source !== rgbaBuffer && source !== small && !source.isRecycled) source.recycle()
 
-        val bits = Ditherer.dither(Tone.apply(gray, tone), dither)
+        val bits = Ditherer.dither(toneLikePrint(gray, tone, printAspect), dither)
         return Bitmap.createBitmap(bits.toArgb(inkArgb, paperArgb), bits.width, bits.height, Bitmap.Config.ARGB_8888)
     }
 
@@ -149,17 +180,69 @@ class ThermalPreviewAnalyzer(
         /** Larghezza dell'anteprima in punti: abbastanza per leggere il retino, poco per la CPU. */
         const val PREVIEW_WIDTH = 240
 
-        /** ~10 fotogrammi al secondo al massimo. */
+        /** Pausa minima tra la fine di un fotogramma e l'inizio del successivo: ~8 al secondo. */
         const val MIN_FRAME_INTERVAL_MS = 100L
 
         private const val SETTLE_MS = 300L
+
+        /** Oltre questo tempo per fotogramma l'anteprima si fa notare (e lo diciamo nel log). */
+        private const val SLOW_FRAME_MS = 80L
+
+        /** Sotto questi pixel di differenza la parte stampata e di fatto tutta l'inquadratura. */
+        private const val MIN_CROP_MARGIN = 4
         private const val TAG = "FotoFlashThermal"
 
         /**
          * Regolazioni "leggere": quelle dell'utente con meta nitidezza, perche l'anteprima e
          * ingrandita 4-5 volte sullo schermo e gli aloni della maschera di contrasto si
-         * vedrebbero piu che sulla carta.
+         * vedrebbero piu che sulla carta. Ombre, contrasto locale e controluce restano quelli
+         * delle impostazioni: sono proprio cio che deve vedersi uguale alla stampa.
          */
         fun previewTone(tone: ToneAdjustments): ToneAdjustments = tone.copy(sharpen = tone.sharpen * 0.5f)
+
+        /**
+         * Tono come in stampa. La stampa regola la sola foto ritagliata dal modello, e il
+         * controluce, il contrasto locale e gli auto-livelli dipendono da cosa c'e nell'immagine
+         * (un cielo tagliato via cambia il risultato): la parte centrale con rapporto
+         * [printAspect] si regola quindi per conto suo e si incolla sopra il resto, regolato
+         * sull'inquadratura intera. Il bordo tra le due cade sulla guida del mirino, che scurisce
+         * cio che resta fuori. [printAspect] <= 0 = tutta l'inquadratura, una sola passata.
+         *
+         * Costo: a 240 px di larghezza le due passate restano nell'ordine dei millisecondi.
+         */
+        internal fun toneLikePrint(gray: GrayImage, tone: ToneAdjustments, printAspect: Float): GrayImage {
+            val whole = Tone.apply(gray, tone)
+            if (!(printAspect > 0f)) return whole
+            var cropWidth = gray.width
+            var cropHeight = (gray.width / printAspect).roundToInt()
+            if (cropHeight > gray.height) {
+                cropHeight = gray.height
+                cropWidth = (gray.height * printAspect).roundToInt()
+            }
+            cropWidth = cropWidth.coerceIn(1, gray.width)
+            cropHeight = cropHeight.coerceIn(1, gray.height)
+            if (gray.width - cropWidth <= MIN_CROP_MARGIN && gray.height - cropHeight <= MIN_CROP_MARGIN) return whole
+            val left = (gray.width - cropWidth) / 2
+            val top = (gray.height - cropHeight) / 2
+            val printed = Tone.apply(gray.copyArea(left, top, cropWidth, cropHeight), tone)
+            whole.pasteArea(printed, left, top)
+            return whole
+        }
+
+        /** Copia del rettangolo indicato (che deve stare dentro l'immagine). */
+        private fun GrayImage.copyArea(left: Int, top: Int, areaWidth: Int, areaHeight: Int): GrayImage {
+            val out = ByteArray(areaWidth * areaHeight)
+            for (y in 0 until areaHeight) {
+                System.arraycopy(pixels, (top + y) * width + left, out, y * areaWidth, areaWidth)
+            }
+            return GrayImage(areaWidth, areaHeight, out)
+        }
+
+        /** Scrive [src] in questa immagine a partire da ([left], [top]); deve starci per intero. */
+        private fun GrayImage.pasteArea(src: GrayImage, left: Int, top: Int) {
+            for (y in 0 until src.height) {
+                System.arraycopy(src.pixels, y * src.width, pixels, (top + y) * width + left, src.width)
+            }
+        }
     }
 }

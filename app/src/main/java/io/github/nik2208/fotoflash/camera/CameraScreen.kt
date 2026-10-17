@@ -36,6 +36,7 @@ import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.foundation.Canvas
@@ -71,7 +72,9 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Bolt
 import androidx.compose.material.icons.rounded.Cameraswitch
+import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material.icons.rounded.CheckCircle
+import androidx.compose.material.icons.rounded.Exposure
 import androidx.compose.material.icons.rounded.FlashAuto
 import androidx.compose.material.icons.rounded.FlashOff
 import androidx.compose.material.icons.rounded.FlashOn
@@ -137,6 +140,7 @@ import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.PointerInputScope
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalAccessibilityManager
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.stringResource
@@ -169,6 +173,7 @@ import io.github.nik2208.fotoflash.ui.components.ShutterButton
 import io.github.nik2208.fotoflash.ui.theme.CameraTheme
 import io.github.nik2208.fotoflash.ui.theme.FfColors
 import io.github.nik2208.fotoflash.ui.theme.FfFonts
+import kotlin.math.max
 import kotlin.math.roundToInt
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.delay
@@ -182,6 +187,16 @@ private const val FLASH_PEAK_ALPHA = 0.88f
 
 /** Un rifiuto del permesso piu rapido di cosi arriva senza dialogo: il permesso e bloccato. */
 private const val INSTANT_DENIAL_MS = 500L
+
+/**
+ * Quanto resta misurato il punto toccato: dal tocco, e dalla fine dell'ultimo scatto o sequenza
+ * (con la stampa istantanea si scatta di continuo nella stessa luce). Poi si torna in automatico.
+ */
+private const val METERING_HOLD_MS = 20_000L
+private const val METERING_HOLD_AFTER_SHOT_MS = 15_000L
+
+/** Il pannello dell'esposizione si chiude da solo dopo questo tempo senza tocchi. */
+private const val EXPOSURE_PANEL_IDLE_MS = 4_000L
 
 private val ViewfinderShape = RoundedCornerShape(28.dp)
 private val PillShape = RoundedCornerShape(percent = 50)
@@ -288,6 +303,12 @@ fun CameraScreen(
         }
     }
 
+    // --- Scrittura in galleria (solo Android 8-9, salvataggio automatico degli scatti) -------
+    val storageContract = remember { ActivityResultContracts.RequestPermission() }
+    val storageLauncher = rememberLauncherForActivityResult(storageContract) { granted ->
+        viewModel.onStoragePermissionResult(granted)
+    }
+
     // --- Ciclo di vita: permesso rivisto al ritorno, sequenze fermate in background ---------
     DisposableEffect(lifecycleOwner) {
         val observer = LifecycleEventObserver { _, event ->
@@ -334,6 +355,18 @@ fun CameraScreen(
                 is CameraEvent.Problem -> launch {
                     snackbarHostState.currentSnackbarData?.dismiss()
                     snackbarHostState.showSnackbar(message = context.getString(event.message))
+                }
+                CameraEvent.RequestStoragePermission -> {
+                    if (viewModel.isWaitingForStoragePermission()) {
+                        try {
+                            viewModel.onStoragePermissionRequested()
+                            storageLauncher.launch(Manifest.permission.WRITE_EXTERNAL_STORAGE)
+                        } catch (e: ActivityNotFoundException) {
+                            // Nessun dialogo dei permessi (ROM modificate): vale come un rifiuto, lo scatto riparte.
+                            Log.w(TAG, "richiesta del permesso di scrittura non disponibile", e)
+                            viewModel.onStoragePermissionResult(false)
+                        }
+                    }
                 }
             }
         }
@@ -404,6 +437,11 @@ private fun CameraContent(
     val lifecycleOwner = LocalLifecycleOwner.current
     val view = LocalView.current
     val cameraController = remember { createCameraController(context) }
+    val mainExecutor = remember(context) { ContextCompat.getMainExecutor(context) }
+    val tapMetering = remember(cameraController) { TapMetering(cameraController, mainExecutor) }
+
+    // Pannello "☀": aperto da un tocco sul mirino (accanto all'anello) o dal pulsante della barra.
+    var exposurePanel by remember { mutableStateOf<ExposurePanelRequest?>(null) }
 
     // Collegamento al ciclo di vita e scoperta delle fotocamere disponibili.
     DisposableEffect(cameraController, lifecycleOwner) {
@@ -473,13 +511,25 @@ private fun CameraContent(
                 front = info?.let { it.lensFacing == CameraSelector.LENS_FACING_FRONT } ?: ui.useFrontCamera,
                 hasFlashUnit = info?.hasFlashUnit() ?: true,
                 displayRotationDegrees = info?.getSensorRotationDegrees(displayRotation),
+                exposure = info?.exposureState?.toExposureRange(),
             )
         }
     }
 
+    // Un'altra fotocamera vede un'altra scena: pannello chiuso (la compensazione la azzera il ViewModel).
+    LaunchedEffect(ui.useFrontCamera) { exposurePanel = null }
+
     LaunchedEffect(cameraController, ui.flash) {
         cameraController.imageCaptureFlashMode = ui.flash.cameraXMode
     }
+
+    // Compensazione dell'esposizione: a ogni cambio dello slider. Se la fotocamera non e ancora
+    // aperta la richiesta fallisce senza danni e ci pensa l'osservatore piu sotto all'apertura.
+    LaunchedEffect(cameraController, ui.exposure, ui.exposureIndex) {
+        val range = ui.exposure ?: return@LaunchedEffect
+        cameraController.applyExposureIndex(range.clamp(ui.exposureIndex), mainExecutor)
+    }
+    val latestUi by rememberUpdatedState(ui)
 
     // Errori della fotocamera dopo l'avvio: occupata da un'altra app, disabilitata, guasto dell'HAL.
     // Gli errori recuperabili minori li riprova CameraX da sola; quando torna aperta si riparte.
@@ -497,6 +547,13 @@ private fun CameraContent(
                 viewModel.onCameraError()
             } else if (state.type == CameraState.Type.OPEN) {
                 viewModel.onCameraRecovered()
+                // CameraX azzera la compensazione quando la fotocamera resta senza casi d'uso
+                // (background, ritorno dall'editor, errore): il valore scelto si rimette qui.
+                val current = latestUi
+                val range = current.exposure
+                if (range != null && current.exposureIndex != 0) {
+                    cameraController.applyExposureIndex(range.clamp(current.exposureIndex), mainExecutor)
+                }
             }
         }
         live?.observe(lifecycleOwner, observer)
@@ -530,6 +587,11 @@ private fun CameraContent(
             viewModel.thermalAnalyzer.reset()
         }
     }
+
+    // Parte dell'inquadratura che finisce sulla carta: la guida la mostra, l'anteprima termica ci
+    // calcola le regolazioni (controluce, contrasto locale, livelli) come fara la stampa.
+    val printAspect = guideAspect(ui.mode, settings.template, sideways)
+    LaunchedEffect(printAspect) { viewModel.thermalAnalyzer.setPrintAspect(printAspect) }
 
     // Scatti richiesti dal ViewModel (singolo, timer, striscia).
     val captureRequest by viewModel.captureRequest.collectAsStateWithLifecycle()
@@ -578,9 +640,13 @@ private fun CameraContent(
             printerState = printerState,
             ui = ui,
             settings = settings,
+            exposurePanelOpen = exposurePanel != null,
             onOpenPrinter = onOpenPrinter,
             onCycleFlash = viewModel::onCycleFlash,
             onCycleTimer = viewModel::onCycleTimer,
+            onToggleExposure = {
+                exposurePanel = if (exposurePanel != null) null else ExposurePanelRequest(anchor = null)
+            },
             onToggleThermal = viewModel::onToggleLivePreview,
         )
         Box(
@@ -592,12 +658,16 @@ private fun CameraContent(
         ) {
             Viewfinder(
                 cameraController = cameraController,
+                tapMetering = tapMetering,
                 viewModel = viewModel,
                 ui = ui,
                 settings = settings,
                 printerState = printerState,
                 snackbarHostState = snackbarHostState,
-                sideways = sideways,
+                printAspect = printAspect,
+                exposurePanel = exposurePanel,
+                onExposurePanelAt = { anchor -> exposurePanel = ExposurePanelRequest(anchor = anchor) },
+                onCloseExposurePanel = { exposurePanel = null },
             )
         }
         ModeRow(
@@ -655,6 +725,10 @@ private fun createCameraController(context: Context): LifecycleCameraController 
         setImageAnalysisOutputImageFormat(ImageAnalysis.OUTPUT_IMAGE_FORMAT_RGBA_8888)
         // Per una fotocamera istantanea conta lo scatto immediato: la stampa e comunque a 203 dpi.
         setImageCaptureMode(ImageCapture.CAPTURE_MODE_MINIMIZE_LATENCY)
+        // Il tocco sul mirino lo gestisce TapMetering: quello del PreviewView si annulla dopo 5 s
+        // (non configurabile in CameraX 1.4) e farebbe una seconda misura in conflitto. Lo zoom
+        // con due dita resta al PreviewView.
+        isTapToFocusEnabled = false
     }
 
 // -----------------------------------------------------------------------------------------
@@ -666,9 +740,11 @@ private fun CameraTopBar(
     printerState: PrinterState,
     ui: CameraUiState,
     settings: AppSettings,
+    exposurePanelOpen: Boolean,
     onOpenPrinter: () -> Unit,
     onCycleFlash: () -> Unit,
     onCycleTimer: () -> Unit,
+    onToggleExposure: () -> Unit,
     onToggleThermal: () -> Unit,
 ) {
     Row(
@@ -721,6 +797,15 @@ private fun CameraTopBar(
                 active = timer > 0,
                 enabled = !ui.sequenceRunning,
             )
+            // Solo se la fotocamera collegata permette di compensare l'esposizione.
+            if (ui.exposure != null) {
+                CamIconButton(
+                    icon = Icons.Rounded.Exposure,
+                    label = stringResource(R.string.cam_cd_exposure, exposureValueText(ui.exposure, ui.exposureIndex)),
+                    onClick = onToggleExposure,
+                    active = exposurePanelOpen || ui.exposureIndex != 0,
+                )
+            }
             CamIconButton(
                 icon = Icons.Rounded.Grain,
                 label = stringResource(
@@ -741,23 +826,127 @@ private fun CameraTopBar(
 /** Tocco sul mirino da evidenziare con l'anello di messa a fuoco; [id] lo rende unico. */
 private data class FocusTap(val position: Offset, val id: Int)
 
+/**
+ * Pannello "☀" richiesto: [anchor] = punto toccato (null = aperto dalla barra). Ogni richiesta
+ * e un oggetto nuovo (uguaglianza per identita): riavvia la chiusura automatica.
+ */
+private class ExposurePanelRequest(val anchor: Offset?)
+
+/** Punto in cui esposizione e fuoco restano misurati; [startedAt] in uptimeMillis. */
+private class MeteringHold(val position: Offset, val tap: Int, val startedAt: Long)
+
+/** Riferimento al PreviewView per costruire i punti di misura: non osservabile, non serve ricomporre. */
+private class PreviewViewHolder {
+    var view: PreviewView? = null
+}
+
 /** Contenitore non osservabile: scriverci durante la composizione non provoca ricomposizioni. */
 private class RetainedStrip {
     var value: StripProgress? = null
 }
 
+/** Ultimo pannello mostrato, per l'animazione di uscita (come [RetainedStrip]). */
+private class RetainedExposurePanel {
+    var anchor: Offset? = null
+    var range: ExposureRange? = null
+}
+
 @Composable
 private fun Viewfinder(
     cameraController: LifecycleCameraController,
+    tapMetering: TapMetering,
     viewModel: CameraViewModel,
     ui: CameraUiState,
     settings: AppSettings,
     printerState: PrinterState,
     snackbarHostState: SnackbarHostState,
-    sideways: Boolean,
+    printAspect: Float?,
+    exposurePanel: ExposurePanelRequest?,
+    onExposurePanelAt: (Offset) -> Unit,
+    onCloseExposurePanel: () -> Unit,
 ) {
+    val lifecycleOwner = LocalLifecycleOwner.current
     var focusTap by remember { mutableStateOf<FocusTap?>(null) }
     var tapCount by remember { mutableIntStateOf(0) }
+    var hold by remember { mutableStateOf<MeteringHold?>(null) }
+    val previewHolder = remember { PreviewViewHolder() }
+    val tapGuard = remember { TapGuard() }
+    val closePanel by rememberUpdatedState(onCloseExposurePanel)
+
+    // --- Tocca per esporre ------------------------------------------------------------------
+    // Fuoco ed esposizione nel punto toccato, poi il pannello "☀" accanto all'anello per
+    // correggere a mano (un viso in controluce: tocco sul viso, eventualmente un po' di +EV).
+    fun meterAt(position: Offset) {
+        if (!ui.cameraReady || ui.cameraUnavailable || ui.capturing) return
+        tapCount += 1
+        val tap = tapCount
+        focusTap = FocusTap(position, tap)
+        val preview = previewHolder.view
+        val started = preview != null &&
+            tapMetering.start(preview.meteringPointFactory, position.x, position.y) { measured ->
+                // Punto non misurabile (mirino non pronto, nessuna regione supportata): niente
+                // segno fermo, la luce resta automatica.
+                if (!measured && hold?.tap == tap) hold = null
+            }
+        if (started) hold = MeteringHold(position, tap, SystemClock.uptimeMillis())
+        if (ui.exposure != null) onExposurePanelAt(position)
+    }
+    // Lambda esplicita (non ::meterAt): e la forma che il compilatore Compose memorizza con le
+    // catture giuste; rememberUpdatedState la tiene comunque aggiornata per il pointerInput.
+    val currentMeterAt by rememberUpdatedState<(Offset) -> Unit> { position -> meterAt(position) }
+
+    // La misura resta finche serve: un po' dopo il tocco o dopo l'ultimo scatto, mai durante
+    // timer, striscia o scatto (con il timer da 10 s il viso deve restare chiaro fino alla foto).
+    val shooting = ui.sequenceRunning || ui.busy
+    var lastShotEnd by remember { mutableLongStateOf(0L) }
+    LaunchedEffect(shooting) {
+        if (!shooting) lastShotEnd = SystemClock.uptimeMillis()
+    }
+    LaunchedEffect(hold, shooting, lastShotEnd) {
+        val current = hold ?: return@LaunchedEffect
+        if (shooting) return@LaunchedEffect
+        val deadline = max(current.startedAt + METERING_HOLD_MS, lastShotEnd + METERING_HOLD_AFTER_SHOT_MS)
+        val wait = deadline - SystemClock.uptimeMillis()
+        if (wait > 0L) delay(wait)
+        tapMetering.release()
+        hold = null
+    }
+
+    // Un'altra fotocamera non conosce il punto toccato sulla prima.
+    LaunchedEffect(ui.useFrontCamera) {
+        if (hold != null) {
+            tapMetering.forget()
+            hold = null
+        }
+    }
+
+    // In background la fotocamera resta senza casi d'uso e CameraX dimentica le regioni di misura.
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_STOP) {
+                tapMetering.forget()
+                hold = null
+                closePanel()
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+    }
+
+    // Il pannello si chiude da solo dopo qualche secondo senza tocchi (piu a lungo con TalkBack).
+    var panelDragging by remember { mutableStateOf(false) }
+    val accessibilityManager = LocalAccessibilityManager.current
+    LaunchedEffect(exposurePanel, panelDragging, ui.exposureIndex) {
+        if (exposurePanel == null || panelDragging) return@LaunchedEffect
+        val timeout = accessibilityManager?.calculateRecommendedTimeoutMillis(
+            EXPOSURE_PANEL_IDLE_MS,
+            containsIcons = true,
+            containsText = true,
+            containsControls = true,
+        ) ?: EXPOSURE_PANEL_IDLE_MS
+        delay(timeout)
+        closePanel()
+    }
 
     Box(
         modifier = Modifier
@@ -765,12 +954,9 @@ private fun Viewfinder(
             .aspectRatio(3f / 4f)
             .clip(ViewfinderShape)
             .background(Color.Black)
-            .pointerInput(Unit) {
-                // Il PreviewView mette a fuoco da solo al tocco; qui si disegna solo l'anello.
-                observeTaps { position ->
-                    tapCount += 1
-                    focusTap = FocusTap(position, tapCount)
-                }
+            .pointerInput(tapGuard) {
+                // I tocchi si osservano senza consumarli: lo zoom con due dita resta al PreviewView.
+                observeTaps(tapGuard) { position -> currentMeterAt(position) }
             },
     ) {
         AndroidView(
@@ -784,10 +970,14 @@ private fun Viewfinder(
                     implementationMode = PreviewView.ImplementationMode.COMPATIBLE
                     scaleType = PreviewView.ScaleType.FILL_CENTER
                     this.controller = cameraController
+                    previewHolder.view = this
                 }
             },
             modifier = Modifier.fillMaxSize(),
-            onRelease = { previewView -> previewView.controller = null },
+            onRelease = { previewView ->
+                previewView.controller = null
+                if (previewHolder.view === previewView) previewHolder.view = null
+            },
         )
 
         AnimatedVisibility(
@@ -800,7 +990,9 @@ private fun Viewfinder(
             ThermalOverlay(frames = viewModel.thermalFrames)
         }
 
-        FramingGuide(aspect = guideAspect(ui.mode, settings.template, sideways))
+        FramingGuide(aspect = printAspect)
+
+        hold?.let { MeteringMarker(position = it.position) }
 
         focusTap?.let { tap -> key(tap.id) { FocusRing(position = tap.position) } }
 
@@ -839,6 +1031,39 @@ private fun Viewfinder(
             )
         }
 
+        // Pannello "☀" della compensazione: sopra il conto alla rovescia, si regola anche li.
+        val panelRange = ui.exposure
+        val showPanel = exposurePanel != null && panelRange != null && !ui.cameraUnavailable
+        val retainedPanel = remember { RetainedExposurePanel() }
+        if (showPanel) {
+            retainedPanel.anchor = exposurePanel?.anchor
+            retainedPanel.range = panelRange
+        }
+        AnimatedVisibility(
+            visible = showPanel,
+            modifier = Modifier.placeExposurePanel(retainedPanel.anchor),
+            enter = fadeIn(tween(durationMillis = 160)) + scaleIn(initialScale = 0.92f),
+            exit = fadeOut(tween(durationMillis = 160)),
+            label = "exposurePanel",
+        ) {
+            val range = retainedPanel.range ?: return@AnimatedVisibility
+            ExposurePanel(
+                range = range,
+                index = ui.exposureIndex,
+                canReset = ui.exposureIndex != 0 || hold != null,
+                onIndexChange = viewModel::onExposureIndexChanged,
+                onReset = {
+                    viewModel.onExposureIndexChanged(0)
+                    if (hold != null) {
+                        tapMetering.release()
+                        hold = null
+                    }
+                },
+                onDraggingChange = { dragging -> panelDragging = dragging },
+                modifier = Modifier.claimTaps(tapGuard),
+            )
+        }
+
         Column(
             modifier = Modifier
                 .align(Alignment.BottomCenter)
@@ -864,17 +1089,23 @@ private fun Viewfinder(
                     )
                 }
             }
-            CamSnackbarHost(state = snackbarHostState)
+            // Toccare l'avviso (o la sua azione) non deve spostare il punto di misura.
+            CamSnackbarHost(state = snackbarHostState, modifier = Modifier.claimTaps(tapGuard))
         }
 
         if (ui.cameraUnavailable) CameraUnavailableOverlay()
     }
 }
 
-/** Osserva i tocchi senza consumarli: il PreviewView sotto continua a ricevere fuoco e zoom. */
-private suspend fun PointerInputScope.observeTaps(onTap: (Offset) -> Unit) {
+/**
+ * Osserva i tocchi senza consumarli: il PreviewView sotto continua a ricevere lo zoom. Un tocco
+ * cominciato su un controllo sopra il mirino (lo segna [guard]) non conta.
+ */
+private suspend fun PointerInputScope.observeTaps(guard: TapGuard, onTap: (Offset) -> Unit) {
     awaitEachGesture {
         val down = awaitFirstDown(requireUnconsumed = false, pass = PointerEventPass.Initial)
+        // Qui il passaggio Initial arriva prima che ai controlli figli: sono loro a rialzarlo.
+        guard.claimed = false
         var isTap = true
         while (true) {
             val event = awaitPointerEvent(PointerEventPass.Initial)
@@ -882,7 +1113,7 @@ private suspend fun PointerInputScope.observeTaps(onTap: (Offset) -> Unit) {
             val change = event.changes.firstOrNull { it.id == down.id } ?: break
             if ((change.position - down.position).getDistance() > viewConfiguration.touchSlop) isTap = false
             if (!change.pressed) {
-                if (isTap) onTap(change.position)
+                if (isTap && !guard.claimed) onTap(change.position)
                 break
             }
         }
@@ -977,7 +1208,7 @@ private fun FocusRing(position: Offset) {
     Canvas(modifier = Modifier.fillMaxSize()) {
         val alpha = fade.value
         if (alpha <= 0f) return@Canvas
-        val radius = 34.dp.toPx() * (1.5f - 0.5f * settle.value)
+        val radius = FocusRingRadius.toPx() * (1.5f - 0.5f * settle.value)
         drawCircle(
             color = FfColors.Flash,
             radius = radius,
@@ -1053,6 +1284,24 @@ private fun StripProgressOverlay(strip: StripProgress) {
                             contentScale = ContentScale.Crop,
                             colorFilter = grayscale,
                         )
+                        // Spunta discreta: l'originale a colori e gia in galleria.
+                        if (index in strip.saved) {
+                            Box(
+                                modifier = Modifier
+                                    .align(Alignment.BottomEnd)
+                                    .padding(2.dp)
+                                    .size(12.dp)
+                                    .background(FfColors.Mint, CircleShape),
+                                contentAlignment = Alignment.Center,
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Rounded.Check,
+                                    contentDescription = null,
+                                    tint = FfColors.Ink,
+                                    modifier = Modifier.size(9.dp),
+                                )
+                            }
+                        }
                     } else {
                         Text(
                             text = (index + 1).toString(),

@@ -17,6 +17,7 @@
     <string name="hist_label_template">Modello</string>
     <string name="hist_label_caption">Didascalia</string>
     <string name="hist_label_number">Numero</string>
+    <string name="hist_label_photos">Foto</string>
     <string name="hist_label_status">Stato</string>
     <string name="hist_status_printed">Stampata</string>
     <string name="hist_status_saved">Salvata, non ancora stampata</string>
@@ -28,7 +29,8 @@
 
     <string name="hist_action_reprint">Ristampa</string>
     <string name="hist_action_share">Condividi</string>
-    <string name="hist_action_save">Salva</string>
+    <string name="hist_action_save">Salva stampa</string>
+    <string name="hist_action_save_photos">Salva foto</string>
     <string name="hist_action_delete">Elimina dallo storico</string>
     <string name="hist_share_chooser">Condividi la stampa</string>
     <string name="hist_printing">In stampa… %1$d%%</string>
@@ -39,7 +41,7 @@
     <string name="hist_cancel">Annulla</string>
 
     <string name="hist_msg_printed">Stampata!</string>
-    <string name="hist_msg_saved">Salvata in Immagini/FotoFlash</string>
+    <string name="hist_msg_saved">Stampa salvata in Galleria › FotoFlash</string>
     <string name="hist_msg_save_failed">Non è stato possibile salvare l\'immagine</string>
     <string name="hist_msg_share_failed">Non è stato possibile condividere l\'immagine</string>
     <string name="hist_msg_load_failed">Il file di questa stampa è danneggiato</string>
@@ -65,4 +67,50 @@
     <string name="hist_not_found_title">Stampa non trovata</string>
     <string name="hist_not_found_message">Forse è stata eliminata.</string>
     <string name="hist_back">Torna allo storico</string>
+
+    <!-- Foto originali a colori: dettaglio ("Salva foto") ed esportazione di tutto lo storico -->
+    <plurals name="hist_photos_value">
+        <item quantity="one">%d originale a colori</item>
+        <item quantity="many">%d di originali a colori</item>
+        <item quantity="other">%d originali a colori</item>
+    </plurals>
+    <plurals name="hist_msg_photos_saved">
+        <item quantity="one">%d foto salvata in Galleria › FotoFlash › Scatti</item>
+        <item quantity="many">%d di foto salvate in Galleria › FotoFlash › Scatti</item>
+        <item quantity="other">%d foto salvate in Galleria › FotoFlash › Scatti</item>
+    </plurals>
+    <plurals name="hist_msg_photos_partial">
+        <item quantity="one">Salvata %1$d foto su %2$d: riprova per le altre</item>
+        <item quantity="many">Salvate %1$d di foto su %2$d: riprova per le altre</item>
+        <item quantity="other">Salvate %1$d foto su %2$d: riprova per le altre</item>
+    </plurals>
+    <string name="hist_msg_photos_failed">Non è stato possibile salvare le foto</string>
+    <string name="hist_msg_no_photos">Le foto originali di questa stampa non sono più disponibili</string>
+    <string name="hist_fix_settings">Impostazioni</string>
+    <string name="hist_ok">OK</string>
+
+    <string name="hist_export_all">Esporta tutte le foto</string>
+    <string name="hist_export_title">Esportare tutte le foto?</string>
+    <plurals name="hist_export_message">
+        <item quantity="one">%d foto originale a colori dello storico verrà salvata in Galleria › FotoFlash › Scatti, dove resta anche se disinstalli FotoFlash.</item>
+        <item quantity="many">%d di foto originali a colori dello storico verranno salvate in Galleria › FotoFlash › Scatti, dove restano anche se disinstalli FotoFlash.</item>
+        <item quantity="other">%d foto originali a colori dello storico verranno salvate in Galleria › FotoFlash › Scatti, dove restano anche se disinstalli FotoFlash.</item>
+    </plurals>
+    <string name="hist_export_duplicates">Le foto già esportate verranno salvate di nuovo, come copie in più.</string>
+    <string name="hist_export_none">Non ci sono foto originali da esportare.</string>
+    <string name="hist_export_confirm">Esporta</string>
+    <string name="hist_export_running">Salvo le foto in galleria…</string>
+    <string name="hist_export_preparing">Preparo le foto…</string>
+    <string name="hist_export_progress">%1$d/%2$d</string>
+    <string name="hist_export_done_title">Esportazione completata</string>
+    <string name="hist_export_cancelled_title">Esportazione annullata</string>
+    <string name="hist_export_aborted_title">Esportazione interrotta</string>
+    <string name="hist_export_saved_none">Nessuna foto salvata</string>
+    <plurals name="hist_export_failed">
+        <item quantity="one">%d foto non è stata salvata</item>
+        <item quantity="many">%d di foto non sono state salvate</item>
+        <item quantity="other">%d foto non sono state salvate</item>
+    </plurals>
+    <string name="hist_export_aborted_hint">Troppi errori di fila: c\'è spazio libero sul telefono?</string>
+    <string name="hist_export_dismiss">Chiudi</string>
 </resources>

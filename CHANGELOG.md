@@ -26,6 +26,8 @@ sezione della sua versione, oppure `[Unreleased]` se non la trova.
 
 ### Added
 
+- **Controluce**: il soggetto scuro davanti a uno sfondo luminoso non diventa più una macchia sulla carta. Nuove regolazioni *Ombre* (curva che solleva solo i toni scuri), *Contrasto locale* (CLAHE con interpolazione bilineare tra le tessere) e *Controluce automatico* (riconosce il centro scuro contro il bordo chiaro e rinforza le altre due solo quando serve), attive di default in stampa e nell'anteprima dal vivo; con ombre e contrasto locale a 0 e controluce spento la stampa resta identica a prima.
+- **Esportazione delle foto** in Galleria › FotoFlash › Scatti: gli scatti si salvano anche in galleria (impostazione *Salva gli scatti in galleria*, attiva di default), il dettaglio dello storico ha *Salva foto* (gli originali a colori, distinto da *Salva stampa*) e lo storico ha *Esporta tutte le foto*, in background con avanzamento e annullabile; gli originali nello storico ora restano a 2048 px, JPEG 92.
 - App Android **FotoFlash** (`io.github.nik2208.fotoflash`, Android 8.0+): il telefono diventa una
   fotocamera istantanea che stampa su stampanti termiche ESC/POS Bluetooth da 58 e 80 mm.
 - Modulo **`core-thermal`** in Kotlin puro, coperto da test JUnit: immagini in grigio e a 1 bit,

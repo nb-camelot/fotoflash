@@ -64,7 +64,7 @@ data class HistoryEntry(
     val printNumber: Int?,
     /** PNG in bianco e nero, 1 pixel = 1 punto: si ristampa da qui. */
     val renderedPath: String,
-    /** JPEG delle foto originali ridotte (lato lungo 1600 px). */
+    /** JPEG delle foto originali ridotte (lato lungo fino a 2048 px, JPEG 92). */
     val originalPaths: List<String>,
     val printed: Boolean,
 )

@@ -4,9 +4,7 @@ import android.Manifest
 import android.content.ActivityNotFoundException
 import android.content.Context
 import android.content.Intent
-import android.content.pm.PackageManager
 import android.net.Uri
-import android.os.Build
 import androidx.annotation.StringRes
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -14,6 +12,7 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -30,6 +29,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.BrokenImage
 import androidx.compose.material.icons.rounded.DeleteOutline
+import androidx.compose.material.icons.rounded.PhotoLibrary
 import androidx.compose.material.icons.rounded.Print
 import androidx.compose.material.icons.rounded.SaveAlt
 import androidx.compose.material.icons.rounded.Share
@@ -66,7 +66,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.core.content.ContextCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import io.github.nik2208.fotoflash.R
@@ -88,6 +87,9 @@ import java.time.format.FormatStyle
 import kotlin.math.roundToInt
 import kotlinx.coroutines.launch
 
+/** Sotto questa larghezza "Salva stampa" e "Condividi" vanno uno sotto l'altro, interi. */
+private val SIDE_BY_SIDE_MIN_WIDTH = 440.dp
+
 /**
  * [onOpenPrinter] e facoltativo: se c'e, gli errori "nessuna stampante" e "carta diversa" propongono
  * di aprire la schermata Stampante; senza, resta solo il testo.
@@ -104,15 +106,19 @@ fun HistoryDetailScreen(entryId: String, onBack: () -> Unit, onOpenPrinter: (() 
     val currentOnBack by rememberUpdatedState(onBack)
     val currentOnOpenPrinter by rememberUpdatedState(onOpenPrinter)
 
-    // Android 8-9: scrivere in Immagini richiede il permesso di archiviazione.
-    val storagePermission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+    // Android 8-9: scrivere in Immagini richiede il permesso di archiviazione. Un launcher per azione:
+    // dopo il consenso parte quella che l'utente aveva toccato, anche se l'Activity e stata ricreata.
+    val printPermission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
         if (granted) vm.save() else vm.onStoragePermissionDenied()
     }
+    val photosPermission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+        if (granted) vm.savePhotos() else vm.onStoragePermissionDenied()
+    }
     val requestSave: () -> Unit = {
-        val needsPermission = Build.VERSION.SDK_INT < Build.VERSION_CODES.Q &&
-            ContextCompat.checkSelfPermission(context, Manifest.permission.WRITE_EXTERNAL_STORAGE) !=
-            PackageManager.PERMISSION_GRANTED
-        if (needsPermission) storagePermission.launch(Manifest.permission.WRITE_EXTERNAL_STORAGE) else vm.save()
+        if (vm.needsStoragePermission()) printPermission.launch(Manifest.permission.WRITE_EXTERNAL_STORAGE) else vm.save()
+    }
+    val requestSavePhotos: () -> Unit = {
+        if (vm.needsStoragePermission()) photosPermission.launch(Manifest.permission.WRITE_EXTERNAL_STORAGE) else vm.savePhotos()
     }
 
     LaunchedEffect(vm) {
@@ -145,8 +151,17 @@ fun HistoryDetailScreen(entryId: String, onBack: () -> Unit, onOpenPrinter: (() 
                                     if (openPrinter != null) openPrinter() else openAppSettings(context)
                                 }
                                 ReprintFix.PRINTER -> currentOnOpenPrinter?.invoke()
+                                ReprintFix.STORAGE -> openAppSettings(context)
                             }
                         }
+                    }
+                }
+
+                is HistoryDetailEvent.PluralMessage -> {
+                    val text = context.resources.getQuantityString(event.resId, event.quantity, *event.args.toTypedArray())
+                    launch {
+                        snackbar.currentSnackbarData?.dismiss()
+                        snackbar.showSnackbar(message = text, duration = SnackbarDuration.Short)
                     }
                 }
 
@@ -197,6 +212,7 @@ fun HistoryDetailScreen(entryId: String, onBack: () -> Unit, onOpenPrinter: (() 
                 onReprint = vm::reprint,
                 onShare = vm::share,
                 onSave = requestSave,
+                onSavePhotos = requestSavePhotos,
                 onDelete = { confirmDelete = true },
                 modifier = Modifier.fillMaxSize().padding(padding),
             )
@@ -236,14 +252,18 @@ private fun DetailContent(
     onReprint: () -> Unit,
     onShare: () -> Unit,
     onSave: () -> Unit,
+    onSavePhotos: () -> Unit,
     onDelete: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val formatter = remember {
         DateTimeFormatter.ofLocalizedDateTime(FormatStyle.MEDIUM, FormatStyle.SHORT).withZone(ZoneId.systemDefault())
     }
+    val resources = LocalContext.current.resources
     val printing = DetailAction.PRINT in state.busy
     val deleting = DetailAction.DELETE in state.busy
+    // Percorsi gia verificati alla lettura dell'indice: nessun accesso al disco durante la composizione.
+    val photoCount = entry.originalPaths.size
 
     Column(
         modifier = modifier
@@ -298,6 +318,14 @@ private fun DetailContent(
             )
             DashedDivider()
             InfoRow(label = stringResource(R.string.hist_label_template), value = templateLabel(entry.template))
+            if (photoCount > 0) {
+                // Dice cosa salva "Salva foto": gli originali a colori, non l'immagine della stampa.
+                DashedDivider()
+                InfoRow(
+                    label = stringResource(R.string.hist_label_photos),
+                    value = resources.getQuantityString(R.plurals.hist_photos_value, photoCount, photoCount),
+                )
+            }
             if (entry.caption.isNotBlank()) {
                 DashedDivider()
                 InfoRow(label = stringResource(R.string.hist_label_caption), value = entry.caption)
@@ -354,29 +382,55 @@ private fun DetailContent(
                 busy = printing,
             )
             Spacer(modifier = Modifier.height(12.dp))
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
-            ) {
+            // "Salva foto" (gli originali a colori) sta da solo e prima di "Salva stampa" (il bianco e
+            // nero da scontrino): sono due cose diverse e non si devono confondere.
+            if (photoCount > 0) {
                 GhostButton(
-                    text = stringResource(R.string.hist_action_share),
-                    onClick = onShare,
-                    modifier = Modifier.weight(1f),
-                    icon = Icons.Rounded.Share,
-                    enabled = !deleting && DetailAction.SHARE !in state.busy,
+                    text = stringResource(R.string.hist_action_save_photos),
+                    onClick = onSavePhotos,
+                    modifier = Modifier.fillMaxWidth(),
+                    icon = Icons.Rounded.PhotoLibrary,
+                    enabled = !deleting && DetailAction.SAVE_PHOTOS !in state.busy,
                 )
-                GhostButton(
-                    text = stringResource(R.string.hist_action_save),
-                    onClick = onSave,
-                    modifier = Modifier.weight(1f),
-                    icon = Icons.Rounded.SaveAlt,
-                    enabled = !deleting && DetailAction.SAVE !in state.busy,
-                )
+                Spacer(modifier = Modifier.height(12.dp))
+            }
+            // Affiancati solo se c'e posto: su un telefono stretto "Salva stampa" verrebbe troncato.
+            BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
+                val share: @Composable (Modifier) -> Unit = { buttonModifier ->
+                    GhostButton(
+                        text = stringResource(R.string.hist_action_share),
+                        onClick = onShare,
+                        modifier = buttonModifier,
+                        icon = Icons.Rounded.Share,
+                        enabled = !deleting && DetailAction.SHARE !in state.busy,
+                    )
+                }
+                val savePrint: @Composable (Modifier) -> Unit = { buttonModifier ->
+                    GhostButton(
+                        text = stringResource(R.string.hist_action_save),
+                        onClick = onSave,
+                        modifier = buttonModifier,
+                        icon = Icons.Rounded.SaveAlt,
+                        enabled = !deleting && DetailAction.SAVE !in state.busy,
+                    )
+                }
+                if (maxWidth >= SIDE_BY_SIDE_MIN_WIDTH) {
+                    Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                        savePrint(Modifier.weight(1f))
+                        share(Modifier.weight(1f))
+                    }
+                } else {
+                    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                        savePrint(Modifier.fillMaxWidth())
+                        share(Modifier.fillMaxWidth())
+                    }
+                }
             }
             Spacer(modifier = Modifier.height(8.dp))
             TextButton(
                 onClick = onDelete,
-                enabled = !deleting && !printing,
+                // Mentre si copiano le foto in galleria eliminarle le farebbe sparire a meta.
+                enabled = !deleting && !printing && DetailAction.SAVE_PHOTOS !in state.busy,
                 modifier = Modifier.align(Alignment.CenterHorizontally),
                 colors = ButtonDefaults.textButtonColors(contentColor = FfColors.Coral),
             ) {
@@ -439,6 +493,7 @@ private fun fixLabel(fix: ReprintFix): Int = when (fix) {
     ReprintFix.BLUETOOTH -> R.string.hist_fix_bluetooth
     ReprintFix.PERMISSION -> R.string.hist_fix_allow
     ReprintFix.PRINTER -> R.string.hist_fix_printer
+    ReprintFix.STORAGE -> R.string.hist_fix_settings
 }
 
 // android.provider.Settings resta qualificato, come nel resto dell'app.
@@ -447,15 +502,12 @@ private fun openBluetoothSettings(context: Context) {
         context.startActivity(Intent(android.provider.Settings.ACTION_BLUETOOTH_SETTINGS))
     } catch (e: ActivityNotFoundException) {
         // Alcune ROM non espongono la pagina Bluetooth: ripieghiamo sulle impostazioni generali.
-        try {
-            context.startActivity(Intent(android.provider.Settings.ACTION_SETTINGS))
-        } catch (ignored: ActivityNotFoundException) {
-            // Nessuna app impostazioni: resta il testo della snackbar.
-        }
+        openSystemSettings(context)
     }
 }
 
-private fun openAppSettings(context: Context) {
+/** Pagina dell'app nelle impostazioni di sistema, dove si concedono i permessi negati per sempre. */
+internal fun openAppSettings(context: Context) {
     try {
         context.startActivity(
             Intent(
@@ -464,7 +516,15 @@ private fun openAppSettings(context: Context) {
             ),
         )
     } catch (e: ActivityNotFoundException) {
-        openBluetoothSettings(context)
+        openSystemSettings(context)
+    }
+}
+
+private fun openSystemSettings(context: Context) {
+    try {
+        context.startActivity(Intent(android.provider.Settings.ACTION_SETTINGS))
+    } catch (ignored: ActivityNotFoundException) {
+        // Nessuna app impostazioni: resta il testo della snackbar.
     }
 }
 

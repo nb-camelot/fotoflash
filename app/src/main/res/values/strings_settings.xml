@@ -31,6 +31,12 @@
     <string name="set_gamma">Mid-tones (gamma)</string>
     <string name="set_auto_levels">Auto levels</string>
     <string name="set_auto_levels_desc">Stretch the tones of every photo before printing</string>
+    <string name="set_shadows">Shadows</string>
+    <string name="set_shadows_desc">Lightens only the dark tones, so faces in the shade stay readable on paper</string>
+    <string name="set_local_contrast">Local contrast</string>
+    <string name="set_local_contrast_desc">Brings out detail in dark areas without burning out the sky</string>
+    <string name="set_auto_backlight">Automatic backlight</string>
+    <string name="set_auto_backlight_desc">Spots subjects against a bright background and lifts them out of the shadow</string>
     <string name="set_image_help">Starting values for the editor: every photo can still be tweaked.</string>
     <string name="set_image_reset">Reset</string>
 
@@ -60,6 +66,11 @@
     <string name="set_section_capture">Shooting</string>
     <string name="set_instant_print">Instant print</string>
     <string name="set_instant_print_desc">Print right after every shot, like a kids\' instant camera</string>
+    <string name="set_auto_save">Save shots to the gallery</string>
+    <string name="set_auto_save_desc">Every camera shot also goes to Gallery › FotoFlash › Scatti: the photos stay even if you uninstall the app</string>
+    <string name="set_auto_save_permission">On this Android version saving shots needs the storage permission</string>
+    <string name="set_auto_save_allow">Allow</string>
+    <string name="set_auto_save_denied">Without the storage permission shots stay only in FotoFlash</string>
     <string name="set_timer">Default timer</string>
     <string name="set_timer_off">Off</string>
     <string name="set_timer_seconds">%1$d s</string>

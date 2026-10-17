@@ -105,6 +105,9 @@ class SettingsRepository(context: Context) {
                 gamma = finiteOr(this[K_TONE_GAMMA], dt.gamma).coerceIn(0.4f, 2.5f),
                 autoLevels = this[K_TONE_AUTO_LEVELS] ?: dt.autoLevels,
                 sharpen = finiteOr(this[K_TONE_SHARPEN], dt.sharpen).coerceIn(0f, 1f),
+                shadows = finiteOr(this[K_TONE_SHADOWS], dt.shadows).coerceIn(0f, 1f),
+                localContrast = finiteOr(this[K_TONE_LOCAL_CONTRAST], dt.localContrast).coerceIn(0f, 1f),
+                autoBacklight = this[K_TONE_AUTO_BACKLIGHT] ?: dt.autoBacklight,
             ),
             template = enumOrDefault(this[K_TEMPLATE], d.template),
             eventTitle = this[K_EVENT_TITLE] ?: d.eventTitle,
@@ -117,6 +120,7 @@ class SettingsRepository(context: Context) {
             stripShots = (this[K_STRIP_SHOTS] ?: d.stripShots).coerceIn(2, 4),
             shutterSound = this[K_SHUTTER_SOUND] ?: d.shutterSound,
             livePreview = this[K_LIVE_PREVIEW] ?: d.livePreview,
+            autoSaveCaptures = this[K_AUTO_SAVE_CAPTURES] ?: d.autoSaveCaptures,
             copies = (this[K_COPIES] ?: d.copies).coerceIn(1, 5),
         )
     }
@@ -139,6 +143,9 @@ class SettingsRepository(context: Context) {
         this[K_TONE_GAMMA] = s.tone.gamma
         this[K_TONE_AUTO_LEVELS] = s.tone.autoLevels
         this[K_TONE_SHARPEN] = s.tone.sharpen
+        this[K_TONE_SHADOWS] = s.tone.shadows
+        this[K_TONE_LOCAL_CONTRAST] = s.tone.localContrast
+        this[K_TONE_AUTO_BACKLIGHT] = s.tone.autoBacklight
         this[K_TEMPLATE] = s.template.name
         this[K_EVENT_TITLE] = s.eventTitle
         this[K_HASHTAG] = s.hashtag
@@ -150,6 +157,7 @@ class SettingsRepository(context: Context) {
         this[K_STRIP_SHOTS] = s.stripShots
         this[K_SHUTTER_SOUND] = s.shutterSound
         this[K_LIVE_PREVIEW] = s.livePreview
+        this[K_AUTO_SAVE_CAPTURES] = s.autoSaveCaptures
         this[K_COPIES] = s.copies
     }
 
@@ -177,6 +185,9 @@ class SettingsRepository(context: Context) {
         val K_TONE_GAMMA = floatPreferencesKey("tone_gamma")
         val K_TONE_AUTO_LEVELS = booleanPreferencesKey("tone_auto_levels")
         val K_TONE_SHARPEN = floatPreferencesKey("tone_sharpen")
+        val K_TONE_SHADOWS = floatPreferencesKey("tone_shadows")
+        val K_TONE_LOCAL_CONTRAST = floatPreferencesKey("tone_local_contrast")
+        val K_TONE_AUTO_BACKLIGHT = booleanPreferencesKey("tone_auto_backlight")
         val K_TEMPLATE = stringPreferencesKey("template")
         val K_EVENT_TITLE = stringPreferencesKey("event_title")
         val K_HASHTAG = stringPreferencesKey("hashtag")
@@ -188,6 +199,7 @@ class SettingsRepository(context: Context) {
         val K_STRIP_SHOTS = intPreferencesKey("strip_shots")
         val K_SHUTTER_SOUND = booleanPreferencesKey("shutter_sound")
         val K_LIVE_PREVIEW = booleanPreferencesKey("live_preview")
+        val K_AUTO_SAVE_CAPTURES = booleanPreferencesKey("auto_save_captures")
         val K_COPIES = intPreferencesKey("copies")
 
         /** Un valore sconosciuto (enum rinominato in una versione futura) torna al default. */

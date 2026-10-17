@@ -31,6 +31,12 @@
     <string name="set_gamma">Mezzitoni (gamma)</string>
     <string name="set_auto_levels">Auto-livelli</string>
     <string name="set_auto_levels_desc">Allarga i toni di ogni foto prima della stampa</string>
+    <string name="set_shadows">Ombre</string>
+    <string name="set_shadows_desc">Schiarisce solo i toni scuri: i visi in ombra restano leggibili sulla carta</string>
+    <string name="set_local_contrast">Contrasto locale</string>
+    <string name="set_local_contrast_desc">Fa emergere i dettagli nelle zone scure senza bruciare il cielo</string>
+    <string name="set_auto_backlight">Controluce automatico</string>
+    <string name="set_auto_backlight_desc">Riconosce i soggetti davanti a uno sfondo luminoso e li tira fuori dall\'ombra</string>
     <string name="set_image_help">Valori di partenza dell\'editor: ogni foto si può comunque ritoccare.</string>
     <string name="set_image_reset">Ripristina</string>
 
@@ -60,6 +66,11 @@
     <string name="set_section_capture">Scatto</string>
     <string name="set_instant_print">Stampa istantanea</string>
     <string name="set_instant_print_desc">Stampa subito dopo ogni scatto, come una fotocamera per bambini</string>
+    <string name="set_auto_save">Salva gli scatti in galleria</string>
+    <string name="set_auto_save_desc">Ogni scatto della fotocamera finisce anche in Galleria › FotoFlash › Scatti: anche se disinstalli l\'app le foto restano</string>
+    <string name="set_auto_save_permission">Su questa versione di Android serve il permesso di archiviazione per salvare gli scatti</string>
+    <string name="set_auto_save_allow">Consenti</string>
+    <string name="set_auto_save_denied">Senza il permesso di archiviazione gli scatti restano solo in FotoFlash</string>
     <string name="set_timer">Timer predefinito</string>
     <string name="set_timer_off">No</string>
     <string name="set_timer_seconds">%1$d s</string>

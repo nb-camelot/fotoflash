@@ -65,8 +65,17 @@ enum class FlashMode(val cameraXMode: Int) {
     }
 }
 
-/** Avanzamento di una striscia da fotocabina: le miniature si riempiono una alla volta. */
-data class StripProgress(val total: Int, val thumbnails: List<Bitmap>) {
+/**
+ * Avanzamento di una striscia da fotocabina: le miniature si riempiono una alla volta.
+ * [startedAt] distingue una striscia dall'altra; [saved] sono gli indici (da 0) degli scatti gia
+ * copiati in galleria dal salvataggio automatico.
+ */
+data class StripProgress(
+    val total: Int,
+    val thumbnails: List<Bitmap>,
+    val startedAt: Long = 0L,
+    val saved: Set<Int> = emptySet(),
+) {
     /** Numero (da 1) dello scatto in preparazione o appena fatto. */
     val currentShot: Int get() = (thumbnails.size + 1).coerceAtMost(total)
 }
@@ -92,6 +101,14 @@ data class CameraUiState(
     val pendingPrints: Int = 0,
     /** Pillola "Stampato!" visibile per qualche secondo dopo una stampa riuscita. */
     val showPrinted: Boolean = false,
+    /** Compensazione dell'esposizione della fotocamera collegata; null = non supportata o non ancora nota. */
+    val exposure: ExposureRange? = null,
+    /**
+     * Compensazione scelta con lo slider "☀". Vive con il mirino (anche andata e ritorno
+     * dall'editor, cosi un controluce si sistema una volta per tutta la festa), non finisce nelle
+     * impostazioni e torna a 0 al cambio di fotocamera.
+     */
+    val exposureIndex: Int = 0,
 ) {
     /** Timer o striscia in corso: modalita, galleria e cambio fotocamera restano fermi. */
     val sequenceRunning: Boolean get() = countdown != null || strip != null
@@ -112,6 +129,12 @@ sealed interface CameraEvent {
 
     /** Problema da mostrare con un messaggio breve. */
     data class Problem(@StringRes val message: Int) : CameraEvent
+
+    /**
+     * Android 8-9: chiedere WRITE_EXTERNAL_STORAGE prima del primo salvataggio automatico. Lo
+     * scatto aspetta la risposta in [CameraViewModel.onStoragePermissionResult].
+     */
+    data object RequestStoragePermission : CameraEvent
 }
 
 /**
@@ -164,6 +187,12 @@ class CameraViewModel(private val graph: AppGraph) : ViewModel() {
 
     private val feedback = CaptureFeedback(graph.appContext)
 
+    /** Copia in galleria degli scatti della fotocamera (impostazione autoSaveCaptures). */
+    private val autoSave = CaptureAutoSave(graph.appContext, graph.exporter, graph.scope)
+
+    /** Risposta attesa dal dialogo del permesso di scrittura (Android 8-9); null = nessuna attesa. */
+    private var storagePermissionAnswer: CompletableDeferred<Boolean>? = null
+
     private var sequenceJob: Job? = null
     private var importJob: Job? = null
     private var printedJob: Job? = null
@@ -206,6 +235,8 @@ class CameraViewModel(private val graph: AppGraph) : ViewModel() {
         val mode = state.mode
         sequenceJob = viewModelScope.launch {
             val current = graph.settings.current()
+            // Prima del conto alla rovescia, cosi il dialogo non interrompe una posa a meta.
+            if (current.autoSaveCaptures) askStoragePermissionIfNeeded()
             when (mode) {
                 CaptureMode.PHOTO -> takeSinglePhoto(current)
                 CaptureMode.STRIP -> takeStrip(current)
@@ -238,8 +269,31 @@ class CameraViewModel(private val graph: AppGraph) : ViewModel() {
     fun onSwitchCamera() {
         val state = _ui.value
         if (!state.canSwitchCamera || state.sequenceRunning || state.busy) return
-        _ui.update { it.copy(useFrontCamera = !it.useFrontCamera) }
+        // La compensazione riparte da zero: l'altra fotocamera vede un'altra scena.
+        _ui.update { it.copy(useFrontCamera = !it.useFrontCamera, exposureIndex = 0) }
         thermalAnalyzer.reset()
+    }
+
+    /** Slider "☀" o pulsante AUTO: l'indice resta dentro il range della fotocamera collegata. */
+    fun onExposureIndexChanged(index: Int) {
+        _ui.update { state ->
+            val range = state.exposure ?: return@update state
+            state.copy(exposureIndex = range.clamp(index))
+        }
+    }
+
+    /** Il dialogo va aperto solo se uno scatto lo sta ancora aspettando (non per un evento rimasto in coda). */
+    fun isWaitingForStoragePermission(): Boolean = storagePermissionAnswer?.isActive == true
+
+    /** La schermata apre il dialogo del permesso di scrittura: da qui in poi conta come chiesto. */
+    fun onStoragePermissionRequested() {
+        autoSave.markLegacyPermissionAsked()
+    }
+
+    /** Risposta al dialogo del permesso di scrittura (Android 8-9). */
+    fun onStoragePermissionResult(granted: Boolean) {
+        autoSave.onLegacyPermissionResult(granted)
+        storagePermissionAnswer?.complete(granted)
     }
 
     /** Foto scelte nel Photo Picker: una per l'editor, due o piu diventano una striscia. */
@@ -324,13 +378,22 @@ class CameraViewModel(private val graph: AppGraph) : ViewModel() {
 
     /** Il controller ha rifiutato il cambio di fotocamera: si torna a quella di prima. */
     fun onCameraSwitchFailed() {
-        _ui.update { it.copy(useFrontCamera = !it.useFrontCamera, canSwitchCamera = false) }
+        _ui.update { it.copy(useFrontCamera = !it.useFrontCamera, canSwitchCamera = false, exposureIndex = 0) }
         thermalAnalyzer.reset()
     }
 
-    /** Fotocamera collegata: [displayRotationDegrees] null = sconosciuta (si usa quella dei fotogrammi). */
-    fun onCameraBound(front: Boolean, hasFlashUnit: Boolean, displayRotationDegrees: Int?) {
-        _ui.update { it.copy(hasFlashUnit = hasFlashUnit) }
+    /**
+     * Fotocamera collegata: [displayRotationDegrees] null = sconosciuta (si usa quella dei
+     * fotogrammi); [exposure] null = compensazione dell'esposizione non supportata.
+     */
+    fun onCameraBound(front: Boolean, hasFlashUnit: Boolean, displayRotationDegrees: Int?, exposure: ExposureRange?) {
+        _ui.update {
+            it.copy(
+                hasFlashUnit = hasFlashUnit,
+                exposure = exposure,
+                exposureIndex = exposure?.clamp(it.exposureIndex) ?: 0,
+            )
+        }
         thermalAnalyzer.setOrientation(front, displayRotationDegrees)
     }
 
@@ -371,6 +434,9 @@ class CameraViewModel(private val graph: AppGraph) : ViewModel() {
     private suspend fun takeSinglePhoto(settings: AppSettings) {
         if (settings.timerSeconds > 0) countdown(settings.timerSeconds, settings.shutterSound)
         val photo = shoot(settings.shutterSound) ?: return
+        if (settings.autoSaveCaptures) {
+            autoSave.save(photo, CaptureAutoSave.photoName(System.currentTimeMillis()))
+        }
         if (settings.instantPrint) {
             enqueueInstantPrint(listOf(photo))
         } else {
@@ -381,7 +447,8 @@ class CameraViewModel(private val graph: AppGraph) : ViewModel() {
     private suspend fun takeStrip(settings: AppSettings) {
         val total = settings.stripShots.coerceIn(MIN_STRIP_SHOTS, MAX_STRIP_SHOTS)
         val photos = ArrayList<Bitmap>(total)
-        _ui.update { it.copy(strip = StripProgress(total, emptyList())) }
+        val startedAt = System.currentTimeMillis()
+        _ui.update { it.copy(strip = StripProgress(total, emptyList(), startedAt = startedAt)) }
         try {
             for (index in 0 until total) {
                 // Il primo conto usa il timer se e piu lungo: il tempo di mettersi in posa.
@@ -402,6 +469,7 @@ class CameraViewModel(private val graph: AppGraph) : ViewModel() {
                     return
                 }
                 photos += photo
+                if (settings.autoSaveCaptures) saveStripShot(photo, startedAt, index = photos.size - 1)
                 val thumb = withContext(Dispatchers.Default) { photo.thumbnail() }
                 _ui.update { state ->
                     val strip = state.strip ?: return@update state
@@ -413,6 +481,43 @@ class CameraViewModel(private val graph: AppGraph) : ViewModel() {
             openEditor(photos.toList(), CaptureSource.CAMERA, TemplateKind.STRIP)
         } finally {
             _ui.update { it.copy(strip = null) }
+        }
+    }
+
+    /**
+     * Copia in galleria uno scatto della striscia; a salvataggio riuscito la sua miniatura nel
+     * mirino prende la spunta (solo se e ancora la stessa striscia).
+     */
+    private fun saveStripShot(photo: Bitmap, startedAt: Long, index: Int) {
+        autoSave.save(photo, CaptureAutoSave.photoName(startedAt, shot = index + 1)) { saved ->
+            if (!saved) return@save
+            _ui.update { state ->
+                val strip = state.strip
+                if (strip == null || strip.startedAt != startedAt) {
+                    state
+                } else {
+                    state.copy(strip = strip.copy(saved = strip.saved + index))
+                }
+            }
+        }
+    }
+
+    /**
+     * Android 8-9, salvataggio automatico acceso e permesso mai chiesto: lo chiede la schermata
+     * (evento [CameraEvent.RequestStoragePermission]) e lo scatto aspetta la risposta. Succede una
+     * volta per installazione; qualunque risposta, poi si scatta.
+     */
+    private suspend fun askStoragePermissionIfNeeded() {
+        if (!autoSave.needsLegacyPermissionRequest()) return
+        val answer = CompletableDeferred<Boolean>()
+        storagePermissionAnswer = answer
+        try {
+            _events.send(CameraEvent.RequestStoragePermission)
+            // Un dialogo lasciato aperto non blocca la fotocamera per sempre: la risposta tardiva
+            // arriva comunque a onStoragePermissionResult.
+            withTimeoutOrNull(STORAGE_PERMISSION_WAIT_MS) { answer.await() }
+        } finally {
+            if (storagePermissionAnswer === answer) storagePermissionAnswer = null
         }
     }
 
@@ -577,6 +682,9 @@ class CameraViewModel(private val graph: AppGraph) : ViewModel() {
         private const val BUSY_ATTEMPTS = 3
         private const val BUSY_RETRY_DELAY_MS = 1_500L
         private const val PRINTER_IDLE_WAIT_MS = 60_000L
+
+        /** Attesa massima della risposta al permesso di scrittura prima di scattare comunque. */
+        private const val STORAGE_PERMISSION_WAIT_MS = 120_000L
         private const val TAG = "FotoFlashCamera"
 
         fun nextTimer(current: Int): Int {

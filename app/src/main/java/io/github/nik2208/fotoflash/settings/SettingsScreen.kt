@@ -1,8 +1,11 @@
 package io.github.nik2208.fotoflash.settings
 
+import android.Manifest
 import android.content.ActivityNotFoundException
 import android.content.Context
 import android.content.Intent
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -35,8 +38,10 @@ import androidx.compose.material.icons.rounded.FlashOn
 import androidx.compose.material.icons.rounded.Grain
 import androidx.compose.material.icons.rounded.Info
 import androidx.compose.material.icons.rounded.MusicNote
+import androidx.compose.material.icons.rounded.PhotoLibrary
 import androidx.compose.material.icons.rounded.Print
 import androidx.compose.material.icons.rounded.Tonality
+import androidx.compose.material.icons.rounded.WbSunny
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -81,6 +86,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.net.toUri
+import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import io.github.nik2208.fotoflash.BuildConfig
@@ -119,9 +125,34 @@ fun SettingsScreen(onBack: () -> Unit, onOpenPrinter: () -> Unit) {
     var showLicenses by rememberSaveable { mutableStateOf(false) }
     var confirmCounterReset by rememberSaveable { mutableStateOf(false) }
     val noAppMessage = stringResource(R.string.set_open_failed)
+    val storageDeniedMessage = stringResource(R.string.set_auto_save_denied)
 
     val openUrl: (String) -> Unit = { url ->
         if (!startViewIntent(context, url)) scope.launch { snackbar.showSnackbar(noAppMessage) }
+    }
+
+    // Android 8-9: salvare gli scatti in galleria richiede WRITE_EXTERNAL_STORAGE. Si ricontrolla a
+    // ogni ritorno sulla schermata: il permesso si puo concedere anche dalle impostazioni di sistema.
+    val exporter = graph.exporter
+    var storagePermissionMissing by remember { mutableStateOf(exporter.needsLegacyWritePermission()) }
+    LifecycleResumeEffect(exporter) {
+        storagePermissionMissing = exporter.needsLegacyWritePermission()
+        onPauseOrDispose { }
+    }
+    val storagePermission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+        storagePermissionMissing = exporter.needsLegacyWritePermission()
+        if (!granted) {
+            // Senza permesso l'interruttore acceso mentirebbe: lo spegniamo e diciamo perche.
+            vm.update { it.copy(autoSaveCaptures = false) }
+            scope.launch { snackbar.showSnackbar(storageDeniedMessage) }
+        }
+    }
+    val requestStoragePermission: () -> Unit = {
+        storagePermission.launch(Manifest.permission.WRITE_EXTERNAL_STORAGE)
+    }
+    val onAutoSaveChange: (Boolean) -> Unit = { on ->
+        vm.update { it.copy(autoSaveCaptures = on) }
+        if (on && exporter.needsLegacyWritePermission()) requestStoragePermission()
     }
 
     Scaffold(
@@ -142,6 +173,9 @@ fun SettingsScreen(onBack: () -> Unit, onOpenPrinter: () -> Unit) {
                 onResetCounter = { confirmCounterReset = true },
                 onOpenGithub = { openUrl(GITHUB_URL) },
                 onShowLicenses = { showLicenses = true },
+                storagePermissionMissing = storagePermissionMissing,
+                onAutoSaveChange = onAutoSaveChange,
+                onAllowStorage = requestStoragePermission,
                 modifier = Modifier.fillMaxSize().padding(padding),
             )
         }
@@ -188,6 +222,9 @@ private fun SettingsContent(
     onResetCounter: () -> Unit,
     onOpenGithub: () -> Unit,
     onShowLicenses: () -> Unit,
+    storagePermissionMissing: Boolean,
+    onAutoSaveChange: (Boolean) -> Unit,
+    onAllowStorage: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val focusManager = LocalFocusManager.current
@@ -252,6 +289,25 @@ private fun SettingsContent(
                 format = ::formatDecimal,
                 onCommit = { v -> vm.update { it.copy(tone = it.tone.copy(gamma = v)) } },
             )
+            // Controluce: sulla carta un viso in ombra diventa una macchia nera, qui si recupera.
+            ToneSlider(
+                label = stringResource(R.string.set_shadows),
+                description = stringResource(R.string.set_shadows_desc),
+                value = tone.shadows,
+                range = 0f..1f,
+                steps = 19,
+                format = ::formatPercent,
+                onCommit = { v -> vm.update { it.copy(tone = it.tone.copy(shadows = v)) } },
+            )
+            ToneSlider(
+                label = stringResource(R.string.set_local_contrast),
+                description = stringResource(R.string.set_local_contrast_desc),
+                value = tone.localContrast,
+                range = 0f..1f,
+                steps = 19,
+                format = ::formatPercent,
+                onCommit = { v -> vm.update { it.copy(tone = it.tone.copy(localContrast = v)) } },
+            )
             CardDivider()
             SwitchRow(
                 title = stringResource(R.string.set_auto_levels),
@@ -259,6 +315,13 @@ private fun SettingsContent(
                 icon = Icons.Rounded.Tonality,
                 checked = tone.autoLevels,
                 onCheckedChange = { on -> vm.update { it.copy(tone = it.tone.copy(autoLevels = on)) } },
+            )
+            SwitchRow(
+                title = stringResource(R.string.set_auto_backlight),
+                description = stringResource(R.string.set_auto_backlight_desc),
+                icon = Icons.Rounded.WbSunny,
+                checked = tone.autoBacklight,
+                onCheckedChange = { on -> vm.update { it.copy(tone = it.tone.copy(autoBacklight = on)) } },
             )
             CardDivider()
             Row(
@@ -363,6 +426,20 @@ private fun SettingsContent(
                 checked = settings.instantPrint,
                 onCheckedChange = { on -> vm.update { it.copy(instantPrint = on) } },
             )
+            SwitchRow(
+                title = stringResource(R.string.set_auto_save),
+                description = stringResource(R.string.set_auto_save_desc),
+                icon = Icons.Rounded.PhotoLibrary,
+                checked = settings.autoSaveCaptures,
+                onCheckedChange = onAutoSaveChange,
+            )
+            if (settings.autoSaveCaptures && storagePermissionMissing) {
+                PermissionHintRow(
+                    text = stringResource(R.string.set_auto_save_permission),
+                    actionText = stringResource(R.string.set_auto_save_allow),
+                    onAction = onAllowStorage,
+                )
+            }
             CardDivider()
             LabeledBlock(label = stringResource(R.string.set_timer)) {
                 ChoiceChipsRow(
@@ -568,6 +645,7 @@ private fun ToneSlider(
     steps: Int,
     format: (Float) -> String,
     onCommit: (Float) -> Unit,
+    description: String? = null,
 ) {
     // Stato locale durante il trascinamento: si salva solo al rilascio, non a ogni pixel.
     var local by remember(value) { mutableFloatStateOf(value) }
@@ -579,6 +657,13 @@ private fun ToneSlider(
                 fontFamily = FfFonts.Mono,
                 fontWeight = FontWeight.Bold,
                 fontSize = 13.sp,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+        if (description != null) {
+            Text(
+                text = description,
+                style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
@@ -596,6 +681,26 @@ private fun ToneSlider(
                 inactiveTickColor = Color.Transparent,
             ),
         )
+    }
+}
+
+/** Avviso sotto un interruttore che da solo non basta (manca un permesso), con l'azione per rimediare. */
+@Composable
+private fun PermissionHintRow(text: String, actionText: String, onAction: () -> Unit) {
+    Row(
+        modifier = Modifier.fillMaxWidth().padding(start = 54.dp, end = 8.dp, bottom = 8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(
+            text = text,
+            modifier = Modifier.weight(1f),
+            style = MaterialTheme.typography.bodySmall,
+            // Il rosso del tema e leggibile sia su Paper sia su Night (il Coral puro no).
+            color = MaterialTheme.colorScheme.error,
+        )
+        TextButton(onClick = onAction) {
+            Text(text = actionText)
+        }
     }
 }
 

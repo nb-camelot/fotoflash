@@ -3,6 +3,7 @@ package io.github.nik2208.fotoflash.history
 import android.content.Intent
 import android.graphics.Bitmap
 import android.util.Log
+import androidx.annotation.PluralsRes
 import androidx.annotation.StringRes
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -22,21 +23,52 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
-/** Griglia dello storico: espone l'indice del repository e il caricamento delle miniature. */
+/**
+ * Griglia dello storico: espone l'indice del repository, il caricamento delle miniature e
+ * l'esportazione di tutte le foto in galleria.
+ */
 class HistoryViewModel(private val graph: AppGraph) : ViewModel() {
     val entries: StateFlow<List<HistoryEntry>> = graph.history.entries
     val loaded: StateFlow<Boolean> = graph.history.loaded
 
+    /**
+     * Foto originali in tutto lo storico. Si contano i percorsi gia verificati alla lettura
+     * dell'indice: niente accessi al disco a ogni cambio della lista.
+     */
+    val photoCount: StateFlow<Int> = entries
+        .map { list -> countPhotos(list) }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), countPhotos(entries.value))
+
+    /** Lo stato vive fuori dal ViewModel: sopravvive a rotazione e uscita dalla schermata. */
+    val exportState: StateFlow<PhotoExportState> = PhotoExport.state
+
+    /** Android 8-9 senza WRITE_EXTERNAL_STORAGE: la schermata deve chiederlo prima di esportare. */
+    fun needsStoragePermission(): Boolean = graph.exporter.needsLegacyWritePermission()
+
+    /** Ignorata se un'esportazione e gia in corso: un secondo tocco non raddoppia le copie. */
+    fun startExport() {
+        PhotoExport.start(graph)
+    }
+
+    fun cancelExport() = PhotoExport.cancel()
+
+    fun dismissExportResult() = PhotoExport.dismiss()
+
     suspend fun loadPreview(entry: HistoryEntry): Bitmap? = graph.history.loadPreview(entry)
+
+    private companion object {
+        fun countPhotos(list: List<HistoryEntry>): Int = list.sumOf { it.originalPaths.size }
+    }
 }
 
 /** Azioni del dettaglio che possono essere in corso, una per tipo. */
-enum class DetailAction { PRINT, SAVE, SHARE, DELETE }
+enum class DetailAction { PRINT, SAVE, SAVE_PHOTOS, SHARE, DELETE }
 
 /** Stato dell'anteprima grande nel dettaglio. */
 sealed interface PreviewState {
@@ -54,8 +86,11 @@ data class HistoryDetailUiState(
     val printProgress: Float? = null,
 )
 
-/** Azione proposta nella snackbar quando una ristampa non riesce: l'errore va detto insieme al rimedio. */
-enum class ReprintFix { RETRY, BLUETOOTH, PERMISSION, PRINTER }
+/**
+ * Azione proposta nella snackbar quando qualcosa non riesce: l'errore va detto insieme al rimedio.
+ * STORAGE apre le impostazioni dell'app (permesso di archiviazione negato su Android 8-9).
+ */
+enum class ReprintFix { RETRY, BLUETOOTH, PERMISSION, PRINTER, STORAGE }
 
 /** Eventi una tantum verso la UI (snackbar, chooser di condivisione, uscita dopo l'eliminazione). */
 sealed interface HistoryDetailEvent {
@@ -64,6 +99,13 @@ sealed interface HistoryDetailEvent {
         @StringRes val resId: Int,
         val args: List<Any> = emptyList(),
         val fix: ReprintFix? = null,
+    ) : HistoryDetailEvent
+
+    /** Testo al plurale ("1 foto salvata", "2 foto salvate"): [quantity] sceglie la forma, [args] i numeri. */
+    data class PluralMessage(
+        @PluralsRes val resId: Int,
+        val quantity: Int,
+        val args: List<Any> = emptyList(),
     ) : HistoryDetailEvent
 
     data class Share(val intent: Intent) : HistoryDetailEvent
@@ -185,6 +227,43 @@ class HistoryDetailViewModel(private val graph: AppGraph, private val entryId: S
         }
     }
 
+    /**
+     * Salva in galleria tutte le foto originali della voce (non la stampa: per quella c'e [save]).
+     * Gira nello scope dell'app: uscire dalla schermata non lascia l'esportazione a meta.
+     */
+    fun savePhotos() {
+        val entry = currentEntry() ?: return
+        if (!begin(DetailAction.SAVE_PHOTOS)) return
+        val job = graph.scope.async { saveEntryPhotos(graph, entry) }
+        viewModelScope.launch {
+            try {
+                val result = job.await()
+                val event = when {
+                    result.total == 0 -> HistoryDetailEvent.Message(R.string.hist_msg_no_photos)
+                    result.saved == result.total -> HistoryDetailEvent.PluralMessage(
+                        resId = R.plurals.hist_msg_photos_saved,
+                        quantity = result.saved,
+                        args = listOf(result.saved),
+                    )
+                    result.saved == 0 -> HistoryDetailEvent.Message(R.string.hist_msg_photos_failed)
+                    else -> HistoryDetailEvent.PluralMessage(
+                        resId = R.plurals.hist_msg_photos_partial,
+                        quantity = result.saved,
+                        args = listOf(result.saved, result.total),
+                    )
+                }
+                _events.send(event)
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                Log.e(TAG, "Salvataggio delle foto fallito", e)
+                _events.send(HistoryDetailEvent.Message(R.string.hist_msg_photos_failed))
+            } finally {
+                end(DetailAction.SAVE_PHOTOS)
+            }
+        }
+    }
+
     fun share() {
         val entry = currentEntry() ?: return
         if (!begin(DetailAction.SHARE)) return
@@ -218,9 +297,14 @@ class HistoryDetailViewModel(private val graph: AppGraph, private val entryId: S
         }
     }
 
-    /** Android 8-9 senza permesso di scrittura: niente salvataggio, ma diciamo perche. */
+    /** Android 8-9: true se va chiesto WRITE_EXTERNAL_STORAGE prima di salvare stampa o foto. */
+    fun needsStoragePermission(): Boolean = graph.exporter.needsLegacyWritePermission()
+
+    /** Android 8-9 senza permesso di scrittura: niente salvataggio, ma diciamo perche e dove rimediare. */
     fun onStoragePermissionDenied() {
-        viewModelScope.launch { _events.send(HistoryDetailEvent.Message(R.string.hist_msg_storage_permission)) }
+        viewModelScope.launch {
+            _events.send(HistoryDetailEvent.Message(R.string.hist_msg_storage_permission, fix = ReprintFix.STORAGE))
+        }
     }
 
     private fun currentEntry(): HistoryEntry? = history.find(entryId) ?: lastEntry

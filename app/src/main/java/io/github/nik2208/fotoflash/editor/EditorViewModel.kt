@@ -12,8 +12,13 @@ import io.github.nik2208.fotoflash.model.PrintFailure
 import io.github.nik2208.fotoflash.model.PrintOutcome
 import io.github.nik2208.fotoflash.model.PrintRequest
 import io.github.nik2208.fotoflash.model.RenderedPrint
+import io.github.nik2208.fotoflash.print.centerCrop
+import io.github.nik2208.fotoflash.print.toGrayImage
+import io.github.nik2208.fotoflash.thermal.Backlight
 import io.github.nik2208.fotoflash.thermal.BitImage
 import io.github.nik2208.fotoflash.thermal.DitherAlgorithm
+import io.github.nik2208.fotoflash.thermal.PaperWidth
+import io.github.nik2208.fotoflash.thermal.TemplateGeometry
 import io.github.nik2208.fotoflash.thermal.TemplateKind
 import io.github.nik2208.fotoflash.thermal.ToneAdjustments
 import io.github.nik2208.fotoflash.thermal.toArgb
@@ -21,6 +26,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -36,6 +42,9 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 import kotlin.coroutines.cancellation.CancellationException
+import kotlin.math.max
+import kotlin.math.min
+import kotlin.math.roundToInt
 
 /** Fase della stampa, mostrata dal foglio di avanzamento. */
 sealed interface PrintPhase {
@@ -69,11 +78,22 @@ data class EditorUiState(
     /** Regolazioni di partenza (dalle impostazioni), per il pulsante "Ripristina". */
     val defaultTone: ToneAdjustments = ToneAdjustments(),
     val defaultDither: DitherAlgorithm = DitherAlgorithm.ATKINSON,
+    /**
+     * Quanto le foto, ritagliate come nel modello scelto, sono in controluce (0..1, il massimo tra
+     * le foto): lo stesso Backlight.score con cui Tone decide di schiarire. 0 finche non e calcolato.
+     */
+    val backlightScore: Float = 0f,
 ) {
     val isEmpty: Boolean get() = !loading && photos.isEmpty()
     val canPrint: Boolean get() = !loading && photos.isNotEmpty() && printPhase !is PrintPhase.Running
     val canExport: Boolean get() = preview != null && !exporting
     val adjustmentsChanged: Boolean get() = tone != defaultTone || dither != defaultDither
+
+    /** La foto sembra in controluce, che la correzione automatica sia accesa o no. */
+    val backlightLikely: Boolean get() = backlightScore > EditorViewModel.BACKLIGHT_THRESHOLD
+
+    /** Controluce riconosciuto e corretto: spiega all'utente perche l'immagine e stata schiarita. */
+    val backlightDetected: Boolean get() = tone.autoBacklight && backlightLikely
 }
 
 /** Eventi una tantum verso la schermata. */
@@ -93,6 +113,12 @@ class EditorViewModel(private val graph: AppGraph) : ViewModel() {
     val events: Flow<EditorEvent> = _events.receiveAsFlow()
 
     private var renderJob: Job? = null
+
+    /** Ritagli per cui il punteggio di controluce e gia calcolato (o in calcolo), e il job che lo calcola. */
+    private data class BacklightKey(val template: TemplateKind, val paper: PaperWidth, val photoCount: Int)
+
+    private var backlightKey: BacklightKey? = null
+    private var backlightJob: Job? = null
 
     /** Richiesta e risultato dell'ultimo rendering riuscito: salva e condividi partono da qui. */
     private var current: Pair<PrintRequest, RenderedPrint>? = null
@@ -159,6 +185,12 @@ class EditorViewModel(private val graph: AppGraph) : ViewModel() {
 
     fun setAutoLevels(enabled: Boolean) = updateTone(immediate = true) { it.copy(autoLevels = enabled) }
 
+    fun setShadows(value: Float) = updateTone { it.copy(shadows = value.coerceIn(0f, 1f)) }
+
+    fun setLocalContrast(value: Float) = updateTone { it.copy(localContrast = value.coerceIn(0f, 1f)) }
+
+    fun setAutoBacklight(enabled: Boolean) = updateTone(immediate = true) { it.copy(autoBacklight = enabled) }
+
     fun selectDither(algorithm: DitherAlgorithm) {
         if (algorithm == _state.value.dither) return
         _state.update { it.copy(dither = algorithm) }
@@ -198,6 +230,7 @@ class EditorViewModel(private val graph: AppGraph) : ViewModel() {
             val s = _state.value
             try {
                 val request = coordinator.buildRequest(s.photos, s.template, s.caption, s.tone, s.dither)
+                updateBacklight(request)
                 val rendered = coordinator.render(request)
                 val preview = paperPreview(rendered.bitImage)
                 current = request to rendered
@@ -228,6 +261,62 @@ class EditorViewModel(private val graph: AppGraph) : ViewModel() {
     private fun clearPreview() {
         current = null
         _state.update { it.copy(rendering = false, renderFailed = true, preview = null, paperLengthMm = 0) }
+    }
+
+    /**
+     * Ricalcola il punteggio di controluce solo quando cambiano i ritagli delle foto (modello, carta,
+     * numero di foto): le regolazioni non lo toccano, perche Tone lo misura sulla foto prima di
+     * correggerla. Gira in un job a parte, cosi gli slider che annullano il rendering non lo fermano.
+     */
+    private fun updateBacklight(request: PrintRequest) {
+        val key = BacklightKey(request.template, request.paper, request.photos.size)
+        if (key == backlightKey) return
+        backlightKey = key
+        backlightJob?.cancel()
+        backlightJob = viewModelScope.launch {
+            // Fino al nuovo valore resta quello del ritaglio precedente: niente lampeggio del badge.
+            val score = backlightScore(request) ?: 0f
+            _state.update { it.copy(backlightScore = score) }
+        }
+    }
+
+    /**
+     * Backlight.score di ogni foto, ritagliata con il rapporto del suo riquadro come fa il renderer ma
+     * ridotta a pochi pixel: per confrontare centro e bordi basta, e costa pochi millisecondi.
+     * Restituisce il massimo (nella Striscia basta una foto in controluce) o null se fallisce.
+     */
+    private suspend fun backlightScore(request: PrintRequest): Float? = withContext(Dispatchers.Default) {
+        try {
+            val layout = TemplateGeometry.layout(request.template, request.paper, request.photos.size, request.texts)
+            var best = 0f
+            layout.photos.forEachIndexed { index, rect ->
+                ensureActive()
+                if (rect.width <= 0 || rect.height <= 0) return@forEachIndexed
+                val photo = request.photos[index % request.photos.size]
+                val k = min(1f, BACKLIGHT_SAMPLE_SIDE.toFloat() / max(rect.width, rect.height).toFloat())
+                val small = photo.centerCrop(
+                    (rect.width * k).roundToInt().coerceAtLeast(1),
+                    (rect.height * k).roundToInt().coerceAtLeast(1),
+                )
+                val gray = try {
+                    small.toGrayImage()
+                } finally {
+                    // centerCrop non ricicla mai l'originale e puo restituirlo: si libera solo la copia.
+                    if (small !== photo) small.recycle()
+                }
+                val score = Backlight.score(gray)
+                if (!score.isNaN()) best = max(best, score.coerceIn(0f, 1f))
+            }
+            best
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            Log.w(TAG, "misura del controluce fallita", e)
+            null
+        } catch (e: OutOfMemoryError) {
+            Log.w(TAG, "misura del controluce fallita (memoria)", e)
+            null
+        }
     }
 
     /**
@@ -397,7 +486,13 @@ class EditorViewModel(private val graph: AppGraph) : ViewModel() {
         const val MIN_COPIES = 1
         const val MAX_COPIES = 5
 
+        /** Sopra questo punteggio la foto si considera in controluce (badge e suggerimento). */
+        const val BACKLIGHT_THRESHOLD = 0.4f
+
         private const val TAG = "EditorViewModel"
+
+        /** Lato lungo, in pixel, del campione su cui si misura il controluce. */
+        private const val BACKLIGHT_SAMPLE_SIDE = 160
         private const val RENDER_DEBOUNCE_MS = 120L
         /** Testina a 203 dpi: 8 punti per millimetro, su entrambe le larghezze di carta. */
         private const val DOTS_PER_MM = 8

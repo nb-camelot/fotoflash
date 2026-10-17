@@ -38,6 +38,16 @@
     <string name="ed_adjust_value">%1$d</string>
     <string name="ed_adjust_autolevels">Auto levels</string>
     <string name="ed_adjust_autolevels_hint">Spreads the tones so the photo pops on thermal paper</string>
+    <string name="ed_adjust_shadows">Shadows</string>
+    <string name="ed_adjust_local_contrast">Local contrast</string>
+    <string name="ed_adjust_autobacklight">Automatic backlight</string>
+    <string name="ed_adjust_autobacklight_hint">Brightens faces in front of a bright sky or window</string>
+    <string name="ed_adjust_autobacklight_detected">Backlight detected: shadows brightened automatically</string>
+    <string name="ed_adjust_autobacklight_suggest">This photo looks backlit: turn it on to brighten faces</string>
+
+    <!-- Controluce rilevato sull'anteprima -->
+    <string name="ed_backlight_detected">Backlight detected</string>
+    <string name="ed_backlight_detected_cd">Backlight detected: the photo has been brightened automatically</string>
     <string name="ed_adjust_dither">Dithering</string>
     <string name="ed_adjust_reset">Reset</string>
     <string name="ed_dither_atkinson">Atkinson</string>
