@@ -47,6 +47,11 @@ internal object FfTones {
     val Black = Color(0xFF000000)
 
     // Chiaro
+    /**
+     * Giallo bruciato per i ruoli "primary" in primo piano sul chiaro (testo dei TextButton, campi
+     * a fuoco, cursore, spinner): Flash su Paper ha contrasto 1,4:1, questo ~6,9:1 (su Fog ~6:1).
+     */
+    val FlashInk = Color(0xFF6B5300)
     val FlashContainer = Color(0xFFFFEB99)
     val CoralContainer = Color(0xFFFFDAD3)
     val OnCoralContainer = Color(0xFF3E0B04)

@@ -17,6 +17,8 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 import java.util.UUID
+import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.atomic.AtomicLong
 import kotlin.math.max
 import kotlin.math.roundToInt
 import kotlinx.coroutines.CancellationException
@@ -62,10 +64,23 @@ class HistoryRepository(context: Context, private val scope: CoroutineScope) {
         override fun sizeOf(key: String, value: Bitmap): Int = value.byteCount
     }
 
+    /**
+     * Chiave d'ordine per voce, salvata in meta.json. Coincide con createdAt finche l'orologio va
+     * avanti, ma cresce sempre: con la data azzerata (batteria scarica, tablet senza rete) le stampe
+     * nuove restano in cima e non vengono potate come "le piu vecchie". Le voci senza seq usano createdAt.
+     */
+    private val seqs = ConcurrentHashMap<String, Long>()
+    private val lastSeq = AtomicLong(0L)
+
     // Va dichiarato per ultimo: la coroutine parte subito e usa i campi sopra.
     private val loadJob: Job = scope.launch(Dispatchers.IO) {
         try {
-            mutex.withLock { _entries.value = readIndex() }
+            mutex.withLock {
+                val list = readIndex()
+                val maxSeq = list.maxOfOrNull { seqOf(it) } ?: 0L
+                lastSeq.updateAndGet { maxOf(it, maxSeq) }
+                _entries.value = list
+            }
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
@@ -91,6 +106,8 @@ class HistoryRepository(context: Context, private val scope: CoroutineScope) {
     ): HistoryEntry = withContext(Dispatchers.IO) {
         loadJob.join()
         val createdAt = System.currentTimeMillis()
+        // Dopo loadJob: lastSeq contiene gia il massimo letto da disco.
+        val seq = lastSeq.updateAndGet { maxOf(it + 1, createdAt) }
         val dir = newEntryDir(createdAt)
         val id = dir.name
         val printFile = File(dir, PRINT_FILE)
@@ -114,16 +131,27 @@ class HistoryRepository(context: Context, private val scope: CoroutineScope) {
                 if (writeOriginal(bitmap, file)) saved += file.absolutePath
             }
             entry = entry.copy(originalPaths = saved)
-            writeMeta(dir, entry)
+            seqs[id] = seq
+            writeMeta(dir, entry, seq)
 
             mutex.withLock {
-                publish(listOf(entry) + _entries.value.filterNot { it.id == id })
+                // La voce nuova non si pota mai: si scartano solo le altre, le piu vecchie per seq.
+                val others = _entries.value.filterNot { it.id == id }.sortedByDescending { seqOf(it) }
+                others.drop(MAX_ENTRIES - 1).forEach { old -> evict(old.id) }
+                _entries.value = (listOf(entry) + others.take(MAX_ENTRIES - 1)).sortedByDescending { seqOf(it) }
             }
         } catch (e: CancellationException) {
+            seqs.remove(id)
             dir.deleteRecursively()
             throw e
         } catch (e: Exception) {
             Log.e(TAG, "Voce dello storico non salvata", e)
+            seqs.remove(id)
+            dir.deleteRecursively()
+        } catch (e: OutOfMemoryError) {
+            // PNG di una striscia lunga su un telefono con poco heap: si perde la voce, non l'app.
+            Log.e(TAG, "Memoria insufficiente per la voce", e)
+            seqs.remove(id)
             dir.deleteRecursively()
         }
         entry
@@ -137,7 +165,8 @@ class HistoryRepository(context: Context, private val scope: CoroutineScope) {
                     val current = _entries.value.firstOrNull { it.id == id }
                     if (current != null && !current.printed) {
                         val updated = current.copy(printed = true)
-                        writeMeta(File(root, id), updated)
+                        // Riscrivendo meta.json va conservata la chiave d'ordine.
+                        writeMeta(File(root, id), updated, seqOf(current))
                         _entries.value = _entries.value.map { if (it.id == id) updated else it }
                     }
                 }
@@ -158,6 +187,7 @@ class HistoryRepository(context: Context, private val scope: CoroutineScope) {
                     previewCache.remove(id)
                     val dir = File(root, id)
                     if (dir.exists() && !dir.deleteRecursively()) Log.w(TAG, "Cartella $id non eliminata del tutto")
+                    seqs.remove(id)
                     _entries.value = _entries.value.filterNot { it.id == id }
                 }
             } catch (e: CancellationException) {
@@ -220,16 +250,13 @@ class HistoryRepository(context: Context, private val scope: CoroutineScope) {
         }
     }
 
-    /** Ordina, applica il limite di voci e pubblica. Va chiamata con il mutex preso. */
-    private fun publish(list: List<HistoryEntry>) {
-        val sorted = list.sortedByDescending { it.createdAt }
-        if (sorted.size > MAX_ENTRIES) {
-            sorted.drop(MAX_ENTRIES).forEach { old ->
-                previewCache.remove(old.id)
-                File(root, old.id).deleteRecursively()
-            }
-        }
-        _entries.value = sorted.take(MAX_ENTRIES)
+    private fun seqOf(entry: HistoryEntry): Long = seqs[entry.id] ?: entry.createdAt
+
+    /** Toglie una voce potata da disco e dalle cache. Va chiamata con il mutex preso. */
+    private fun evict(id: String) {
+        previewCache.remove(id)
+        seqs.remove(id)
+        File(root, id).deleteRecursively()
     }
 
     private fun readIndex(): List<HistoryEntry> {
@@ -242,11 +269,12 @@ class HistoryRepository(context: Context, private val scope: CoroutineScope) {
             } else {
                 // Salvataggio interrotto o file corrotti: meglio liberare spazio che mostrare voci vuote.
                 Log.w(TAG, "Voce non valida rimossa: ${dir.name}")
+                seqs.remove(dir.name)
                 dir.deleteRecursively()
             }
         }
-        val sorted = result.sortedByDescending { it.createdAt }
-        sorted.drop(MAX_ENTRIES).forEach { File(root, it.id).deleteRecursively() }
+        val sorted = result.sortedByDescending { seqOf(it) }
+        sorted.drop(MAX_ENTRIES).forEach { evict(it.id) }
         return sorted.take(MAX_ENTRIES)
     }
 
@@ -271,9 +299,11 @@ class HistoryRepository(context: Context, private val scope: CoroutineScope) {
                     }
                 }
             }
+            val createdAt = json.optLong(KEY_CREATED_AT, dir.lastModified())
+            seqs[dir.name] = json.optLong(KEY_SEQ, createdAt)
             HistoryEntry(
                 id = dir.name,
-                createdAt = json.optLong(KEY_CREATED_AT, dir.lastModified()),
+                createdAt = createdAt,
                 template = template,
                 caption = json.optString(KEY_CAPTION, ""),
                 printNumber = if (json.has(KEY_PRINT_NUMBER) && !json.isNull(KEY_PRINT_NUMBER)) json.optInt(KEY_PRINT_NUMBER) else null,
@@ -287,11 +317,12 @@ class HistoryRepository(context: Context, private val scope: CoroutineScope) {
         }
     }
 
-    private fun writeMeta(dir: File, entry: HistoryEntry) {
+    private fun writeMeta(dir: File, entry: HistoryEntry, seq: Long) {
         val json = JSONObject()
         json.put(KEY_VERSION, META_VERSION)
         json.put(KEY_ID, entry.id)
         json.put(KEY_CREATED_AT, entry.createdAt)
+        json.put(KEY_SEQ, seq)
         json.put(KEY_TEMPLATE, entry.template.name)
         json.put(KEY_CAPTION, entry.caption)
         entry.printNumber?.let { json.put(KEY_PRINT_NUMBER, it) }
@@ -393,6 +424,7 @@ class HistoryRepository(context: Context, private val scope: CoroutineScope) {
         const val KEY_VERSION = "version"
         const val KEY_ID = "id"
         const val KEY_CREATED_AT = "createdAt"
+        const val KEY_SEQ = "seq"
         const val KEY_TEMPLATE = "template"
         const val KEY_CAPTION = "caption"
         const val KEY_PRINT_NUMBER = "printNumber"

@@ -47,6 +47,7 @@
     <string name="cam_print_failed_connect">Can\'t reach the printer. Is it on and nearby?</string>
     <string name="cam_print_failed_write">Printing stopped. Check the paper and the battery.</string>
     <string name="cam_print_failed_busy">The printer is busy. Try again in a moment.</string>
+    <string name="cam_print_failed_render">Couldn\'t prepare the print. Try again or pick another photo.</string>
 
     <!-- Permesso fotocamera -->
     <string name="cam_perm_title">Let\'s turn on the camera</string>

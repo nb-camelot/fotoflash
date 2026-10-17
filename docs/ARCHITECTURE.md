@@ -107,6 +107,9 @@ object ThermalJob { fun build(image: BitImage, options: PrintJobOptions): List<B
 // TemplateGeometry.kt — tutto in punti; si adatta alla larghezza della carta (384 o 576)
 object TemplateGeometry {
     fun layout(kind: TemplateKind, paper: PaperWidth, photoCount: Int, texts: TemplateTexts): TemplateLayout
+    fun photoCount(kind: TemplateKind, requested: Int): Int   // foto usate davvero: STRIP 1..4, gli altri 1
+    fun printNumberText(number: Int): String                  // "N. 0042" (l app lo sostituisce con il testo localizzato)
+    const val BRAND_TEXT = "FOTOFLASH"
 }
 ```
 
@@ -134,6 +137,7 @@ class SettingsRepository(context: Context) {
 // history/HistoryRepository.kt (file in filesDir/history/<id>/: print.png, photo_N.jpg, meta.json)
 class HistoryRepository(context: Context, scope: CoroutineScope) {
     val entries: StateFlow<List<HistoryEntry>>  // più recenti per primi
+    val loaded: StateFlow<Boolean>              // true quando l indice iniziale è stato letto dal disco
     fun find(id: String): HistoryEntry?
     suspend fun add(rendered: RenderedPrint, originals: List<Bitmap>, template: TemplateKind,
                     caption: String, printNumber: Int?, printed: Boolean): HistoryEntry
@@ -268,3 +272,12 @@ Risorse del brand:
 - Nessun testo visibile all'utente scritto nel codice: sempre `stringResource(R.string.…)`.
 - Gli errori non si inghiottono: si gestiscono, oppure risalgono come `PrintOutcome.Failure` con un messaggio utile.
 - Commenti in italiano, brevi, sul *perché*.
+
+## Note sui contratti (aggiornate dopo la prima implementazione)
+
+- **Testi dei modelli.** `TemplateGeometry.layout` può emettere più `TextBlock` consecutivi con lo stesso ruolo, uno per riga, quando titolo o didascalia vanno a capo. Lascia vuoto `FOOTER`, che l'app riempie con la frase localizzata. Precompila `BRAND` ("FOTOFLASH") e `PRINT_NUMBER` ("N. 0042"), che l'app può sostituire. Le larghezze sono stimate con le metriche reali dei TTF: il renderer deve usare `Paint.textSize = sizeDots`.
+- **`PrintFailure.RENDER_FAILED`.** Indica che la stampa non si è potuta comporre (memoria, immagine non valida). Non va mai mostrato come errore della stampante. Ogni `when` esaustivo su `PrintFailure` deve gestirlo.
+- **Reflection, unica eccezione ammessa.** `BtSppTransport` usa come ultimo ripiego `BluetoothDevice.createRfcommSocket(1)`, che serve per molte stampanti economiche. Se la piattaforma lo blocca, il tentativo viene saltato.
+- **Ristampa dallo storico.** Passa da `PrinterManager.print` + `HistoryRepository.markPrinted` senza `PrintCoordinator`, perché il `BitImage` è già pronto: non si ricompone né si consuma un nuovo numero.
+- **Componenti in più, non elencati sopra.** `HalftoneBurst(color, modifier, spacing)` in `ui/components/Motifs.kt`, motivo decorativo a puntini. `ThermalImage` applica `fillMaxWidth().aspectRatio(...)` dopo il modifier del chiamante: per ritagliare una miniatura, avvolgerla in un contenitore.
+- **Aggiunte compatibili nel core.** `GrayImage.histogram()/mean()`, `BitImage.copy()/countBlack()`, `EscPosBuilder.append(ByteArray)`, `ThermalJob.totalBytes(packets)`.

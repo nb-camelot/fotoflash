@@ -12,6 +12,7 @@ import io.github.nik2208.fotoflash.model.HistoryEntry
 import io.github.nik2208.fotoflash.model.PrintFailure
 import io.github.nik2208.fotoflash.model.PrintOutcome
 import io.github.nik2208.fotoflash.model.PrinterState
+import io.github.nik2208.fotoflash.thermal.PaperWidth
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.async
 import kotlinx.coroutines.channels.Channel
@@ -53,11 +54,27 @@ data class HistoryDetailUiState(
     val printProgress: Float? = null,
 )
 
+/** Azione proposta nella snackbar quando una ristampa non riesce: l'errore va detto insieme al rimedio. */
+enum class ReprintFix { RETRY, BLUETOOTH, PERMISSION, PRINTER }
+
 /** Eventi una tantum verso la UI (snackbar, chooser di condivisione, uscita dopo l'eliminazione). */
 sealed interface HistoryDetailEvent {
-    data class Message(@StringRes val resId: Int) : HistoryDetailEvent
+    /** [args] riempie i segnaposto del testo; [fix] e l'azione della snackbar, se c'e. */
+    data class Message(
+        @StringRes val resId: Int,
+        val args: List<Any> = emptyList(),
+        val fix: ReprintFix? = null,
+    ) : HistoryDetailEvent
+
     data class Share(val intent: Intent) : HistoryDetailEvent
     data object Deleted : HistoryDetailEvent
+}
+
+/** Esito interno della ristampa: non tutto e un PrintFailure (file rovinato, carta piu stretta della stampa). */
+private sealed interface ReprintResult {
+    data object LoadFailed : ReprintResult
+    data class PaperTooNarrow(val mm: Int?) : ReprintResult
+    data class Done(val outcome: PrintOutcome) : ReprintResult
 }
 
 class HistoryDetailViewModel(private val graph: AppGraph, private val entryId: String) : ViewModel() {
@@ -108,20 +125,34 @@ class HistoryDetailViewModel(private val graph: AppGraph, private val entryId: S
         val entry = currentEntry() ?: return
         if (!begin(DetailAction.PRINT)) return
         // La stampa gira nello scope dell'app: uscire dalla schermata non deve troncarla a meta foglio.
-        val job = graph.scope.async {
-            val image = history.loadBitImage(entry) ?: return@async null
+        val job = graph.scope.async<ReprintResult> {
+            val image = history.loadBitImage(entry) ?: return@async ReprintResult.LoadFailed
+            // GS v 0 usa la larghezza dell'immagine: una stampa da 80 mm su una testina da 58 esce a
+            // righe spezzate ma risulterebbe "stampata". Una stampa piu stretta della carta invece va bene.
+            val paper = graph.settings.current().paper
+            if (image.width > paper.dots) {
+                return@async ReprintResult.PaperTooNarrow(PaperWidth.entries.firstOrNull { it.dots == image.width }?.mm)
+            }
             val outcome = graph.printer.print(image, 1)
             if (outcome is PrintOutcome.Success) history.markPrinted(entry.id)
-            outcome
+            ReprintResult.Done(outcome)
         }
         viewModelScope.launch {
             try {
-                val message = when (val outcome = job.await()) {
-                    null -> R.string.hist_msg_load_failed
-                    is PrintOutcome.Success -> R.string.hist_msg_printed
-                    is PrintOutcome.Failure -> failureMessage(outcome.failure)
+                val message = when (val result = job.await()) {
+                    ReprintResult.LoadFailed -> HistoryDetailEvent.Message(R.string.hist_msg_load_failed)
+                    is ReprintResult.PaperTooNarrow -> result.mm?.let { mm ->
+                        HistoryDetailEvent.Message(R.string.hist_msg_paper_mismatch, listOf(mm), ReprintFix.PRINTER)
+                    } ?: HistoryDetailEvent.Message(R.string.hist_msg_paper_mismatch_generic, fix = ReprintFix.PRINTER)
+                    is ReprintResult.Done -> when (val outcome = result.outcome) {
+                        is PrintOutcome.Success -> HistoryDetailEvent.Message(R.string.hist_msg_printed)
+                        is PrintOutcome.Failure -> HistoryDetailEvent.Message(
+                            resId = failureMessage(outcome.failure),
+                            fix = failureFix(outcome.failure),
+                        )
+                    }
                 }
-                _events.send(HistoryDetailEvent.Message(message))
+                _events.send(message)
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
@@ -220,6 +251,16 @@ class HistoryDetailViewModel(private val graph: AppGraph, private val entryId: S
             PrintFailure.CONNECT_FAILED -> R.string.hist_fail_connect
             PrintFailure.WRITE_FAILED -> R.string.hist_fail_write
             PrintFailure.BUSY -> R.string.hist_fail_busy
+            PrintFailure.RENDER_FAILED -> R.string.hist_fail_render
+        }
+
+        /** Rimedio da proporre: per un errore di composizione non c'e nulla da sistemare sulla stampante. */
+        fun failureFix(failure: PrintFailure): ReprintFix? = when (failure) {
+            PrintFailure.NO_PRINTER -> ReprintFix.PRINTER
+            PrintFailure.NO_PERMISSION -> ReprintFix.PERMISSION
+            PrintFailure.BLUETOOTH_OFF, PrintFailure.NOT_BONDED -> ReprintFix.BLUETOOTH
+            PrintFailure.CONNECT_FAILED, PrintFailure.WRITE_FAILED, PrintFailure.BUSY -> ReprintFix.RETRY
+            PrintFailure.RENDER_FAILED -> null
         }
     }
 }

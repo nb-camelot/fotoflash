@@ -2,9 +2,12 @@ package io.github.nik2208.fotoflash.history
 
 import android.Manifest
 import android.content.ActivityNotFoundException
+import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.net.Uri
 import android.os.Build
+import androidx.annotation.StringRes
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Canvas
@@ -37,8 +40,10 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.SnackbarResult
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -83,8 +88,12 @@ import java.time.format.FormatStyle
 import kotlin.math.roundToInt
 import kotlinx.coroutines.launch
 
+/**
+ * [onOpenPrinter] e facoltativo: se c'e, gli errori "nessuna stampante" e "carta diversa" propongono
+ * di aprire la schermata Stampante; senza, resta solo il testo.
+ */
 @Composable
-fun HistoryDetailScreen(entryId: String, onBack: () -> Unit) {
+fun HistoryDetailScreen(entryId: String, onBack: () -> Unit, onOpenPrinter: (() -> Unit)? = null) {
     val context = LocalContext.current
     val graph = context.appGraph
     val vm = viewModel(key = "history-detail-$entryId") { HistoryDetailViewModel(graph, entryId) }
@@ -93,6 +102,7 @@ fun HistoryDetailScreen(entryId: String, onBack: () -> Unit) {
     var confirmDelete by rememberSaveable { mutableStateOf(false) }
     val shareTitle = stringResource(R.string.hist_share_chooser)
     val currentOnBack by rememberUpdatedState(onBack)
+    val currentOnOpenPrinter by rememberUpdatedState(onOpenPrinter)
 
     // Android 8-9: scrivere in Immagini richiede il permesso di archiviazione.
     val storagePermission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
@@ -109,11 +119,34 @@ fun HistoryDetailScreen(entryId: String, onBack: () -> Unit) {
         vm.events.collect { event ->
             when (event) {
                 is HistoryDetailEvent.Message -> {
-                    val text = context.getString(event.resId)
+                    val text = if (event.args.isEmpty()) {
+                        context.getString(event.resId)
+                    } else {
+                        context.getString(event.resId, *event.args.toTypedArray())
+                    }
+                    // L'azione "Stampante" si offre solo se la schermata e raggiungibile da qui.
+                    val fix = event.fix?.takeIf { it != ReprintFix.PRINTER || currentOnOpenPrinter != null }
+                    val actionLabel = fix?.let { context.getString(fixLabel(it)) }
                     // In un'altra coroutine: la snackbar resta a schermo senza bloccare gli eventi successivi.
                     launch {
                         snackbar.currentSnackbarData?.dismiss()
-                        snackbar.showSnackbar(text)
+                        // Con un'azione la durata predefinita sarebbe infinita: Long basta per leggerla e toccarla.
+                        val result = snackbar.showSnackbar(
+                            message = text,
+                            actionLabel = actionLabel,
+                            duration = if (actionLabel != null) SnackbarDuration.Long else SnackbarDuration.Short,
+                        )
+                        if (result == SnackbarResult.ActionPerformed && fix != null) {
+                            when (fix) {
+                                ReprintFix.RETRY -> vm.reprint()
+                                ReprintFix.BLUETOOTH -> openBluetoothSettings(context)
+                                ReprintFix.PERMISSION -> {
+                                    val openPrinter = currentOnOpenPrinter
+                                    if (openPrinter != null) openPrinter() else openAppSettings(context)
+                                }
+                                ReprintFix.PRINTER -> currentOnOpenPrinter?.invoke()
+                            }
+                        }
                     }
                 }
 
@@ -397,6 +430,41 @@ private fun DashedDivider() {
             strokeWidth = 1.dp.toPx(),
             pathEffect = PathEffect.dashPathEffect(floatArrayOf(6.dp.toPx(), 4.dp.toPx()), 0f),
         )
+    }
+}
+
+@StringRes
+private fun fixLabel(fix: ReprintFix): Int = when (fix) {
+    ReprintFix.RETRY -> R.string.hist_fix_retry
+    ReprintFix.BLUETOOTH -> R.string.hist_fix_bluetooth
+    ReprintFix.PERMISSION -> R.string.hist_fix_allow
+    ReprintFix.PRINTER -> R.string.hist_fix_printer
+}
+
+// android.provider.Settings resta qualificato, come nel resto dell'app.
+private fun openBluetoothSettings(context: Context) {
+    try {
+        context.startActivity(Intent(android.provider.Settings.ACTION_BLUETOOTH_SETTINGS))
+    } catch (e: ActivityNotFoundException) {
+        // Alcune ROM non espongono la pagina Bluetooth: ripieghiamo sulle impostazioni generali.
+        try {
+            context.startActivity(Intent(android.provider.Settings.ACTION_SETTINGS))
+        } catch (ignored: ActivityNotFoundException) {
+            // Nessuna app impostazioni: resta il testo della snackbar.
+        }
+    }
+}
+
+private fun openAppSettings(context: Context) {
+    try {
+        context.startActivity(
+            Intent(
+                android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
+                Uri.fromParts("package", context.packageName, null),
+            ),
+        )
+    } catch (e: ActivityNotFoundException) {
+        openBluetoothSettings(context)
     }
 }
 

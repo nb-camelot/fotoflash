@@ -1,38 +1,66 @@
 package io.github.nik2208.fotoflash.ui.components
 
 import android.graphics.Bitmap
-import androidx.compose.foundation.Image
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.graphics.FilterQuality
 import androidx.compose.ui.graphics.asImageBitmap
-import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import io.github.nik2208.fotoflash.ui.theme.FotoFlashTheme
+import kotlin.math.roundToInt
 
 /**
- * Anteprima WYSIWYG di una stampa: l'immagine a 1 bit (1 pixel = 1 punto) ingrandita a tutta
- * larghezza SENZA filtro, cosi si vedono i punti veri del retino e non una versione sfocata.
+ * Anteprima WYSIWYG di una stampa: l'immagine a 1 bit (1 pixel = 1 punto) a tutta larghezza.
+ * Quando ingrandisce va SENZA filtro (nearest neighbour), cosi si vedono i punti veri del retino
+ * e non una versione sfocata. Quando riduce (schermi mdpi/hdpi, carta da 80 mm, miniature dello
+ * storico) il nearest neighbour scarterebbe righe e colonne intere di punti: li si media.
  */
 @Composable
 fun ThermalImage(bitmap: Bitmap, contentDescription: String?, modifier: Modifier = Modifier) {
-    val image = remember(bitmap) { bitmap.asImageBitmap() }
+    val image = remember(bitmap) {
+        // Sotto meta scala il bilineare da solo salta ancora punti: le mipmap fanno la media vera.
+        // E solo un suggerimento al renderer, valido anche sulle bitmap immutabili.
+        if (!bitmap.isRecycled) bitmap.setHasMipMap(true)
+        bitmap.asImageBitmap()
+    }
     val ratio = remember(bitmap) {
         if (bitmap.width > 0 && bitmap.height > 0) bitmap.width.toFloat() / bitmap.height.toFloat() else 1f
     }
-    Image(
-        bitmap = image,
-        contentDescription = contentDescription,
+    val description = contentDescription
+    val semanticsModifier = if (description != null) {
+        Modifier.semantics {
+            this.contentDescription = description
+            role = Role.Image
+        }
+    } else {
+        Modifier
+    }
+    Spacer(
         modifier = modifier
             .fillMaxWidth()
-            .aspectRatio(ratio),
-        contentScale = ContentScale.FillWidth,
-        filterQuality = FilterQuality.None,
+            .aspectRatio(ratio)
+            .then(semanticsModifier)
+            .drawBehind {
+                if (size.width <= 0f || size.height <= 0f || image.width <= 0) return@drawBehind
+                val reducing = size.width < image.width.toFloat()
+                drawImage(
+                    image = image,
+                    dstSize = IntSize(size.width.roundToInt(), size.height.roundToInt()),
+                    filterQuality = if (reducing) FilterQuality.Low else FilterQuality.None,
+                )
+            },
     )
 }
 

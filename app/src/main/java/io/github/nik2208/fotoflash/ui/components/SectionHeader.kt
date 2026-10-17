@@ -32,7 +32,9 @@ fun SectionHeader(text: String, modifier: Modifier = Modifier) {
         modifier = modifier
             .fillMaxWidth()
             .padding(top = 20.dp, bottom = 8.dp)
-            .semantics { heading() },
+            // mergeDescendants: il testo entra nel nodo intestazione, cosi TalkBack lo trova
+            // navigando per intestazioni (la riga tratteggiata non ha semantica).
+            .semantics(mergeDescendants = true) { heading() },
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Text(

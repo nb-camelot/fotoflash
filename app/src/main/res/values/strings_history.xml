@@ -52,6 +52,15 @@
     <string name="hist_fail_connect">The printer does not answer: is it on and nearby?</string>
     <string name="hist_fail_write">Printing stopped halfway: check the paper and try again</string>
     <string name="hist_fail_busy">The printer is busy with another print</string>
+    <string name="hist_fail_render">Could not prepare this print: try again</string>
+    <string name="hist_msg_paper_mismatch">This print is for %1$d mm paper: change the paper in the printer settings</string>
+    <string name="hist_msg_paper_mismatch_generic">This print is wider than the paper set for the printer: change the paper in the printer settings</string>
+
+    <!-- Azioni della snackbar dopo una ristampa non riuscita -->
+    <string name="hist_fix_retry">Try again</string>
+    <string name="hist_fix_bluetooth">Bluetooth</string>
+    <string name="hist_fix_allow">Allow</string>
+    <string name="hist_fix_printer">Printer</string>
 
     <string name="hist_not_found_title">Print not found</string>
     <string name="hist_not_found_message">It may have been deleted.</string>

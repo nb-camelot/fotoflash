@@ -4,9 +4,13 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Modifier
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.lifecycle.lifecycleScope
 import io.github.nik2208.fotoflash.di.appGraph
@@ -35,7 +39,11 @@ class MainActivity : ComponentActivity() {
             FotoFlashTheme {
                 val start = startRoute
                 if (start != null) {
-                    FotoFlashNavHost(startDestination = start)
+                    // Sfondo del tema sotto la navigazione: niente lampo di carta chiara nelle dissolvenze in tema scuro.
+                    FotoFlashNavHost(
+                        startDestination = start,
+                        modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background),
+                    )
                 }
             }
         }

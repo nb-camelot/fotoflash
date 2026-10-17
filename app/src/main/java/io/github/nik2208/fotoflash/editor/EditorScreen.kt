@@ -4,6 +4,7 @@ import android.Manifest
 import android.content.ActivityNotFoundException
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.graphics.Bitmap
 import android.os.Build
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -15,8 +16,10 @@ import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -51,17 +54,13 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material.icons.rounded.AddAPhoto
 import androidx.compose.material.icons.rounded.Close
-import androidx.compose.material.icons.rounded.CropPortrait
 import androidx.compose.material.icons.rounded.Dashboard
-import androidx.compose.material.icons.rounded.Portrait
 import androidx.compose.material.icons.rounded.Print
-import androidx.compose.material.icons.rounded.Receipt
 import androidx.compose.material.icons.rounded.Remove
 import androidx.compose.material.icons.rounded.SaveAlt
 import androidx.compose.material.icons.rounded.Share
 import androidx.compose.material.icons.rounded.TextFields
 import androidx.compose.material.icons.rounded.Tune
-import androidx.compose.material.icons.rounded.ViewAgenda
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
@@ -87,9 +86,13 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
@@ -100,6 +103,7 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -108,7 +112,10 @@ import io.github.nik2208.fotoflash.R
 import io.github.nik2208.fotoflash.di.appGraph
 import io.github.nik2208.fotoflash.model.PrinterState
 import io.github.nik2208.fotoflash.thermal.DitherAlgorithm
+import io.github.nik2208.fotoflash.thermal.PaperWidth
+import io.github.nik2208.fotoflash.thermal.TemplateGeometry
 import io.github.nik2208.fotoflash.thermal.TemplateKind
+import io.github.nik2208.fotoflash.thermal.TemplateTexts
 import io.github.nik2208.fotoflash.ui.components.ChoiceChipsRow
 import io.github.nik2208.fotoflash.ui.components.EmptyState
 import io.github.nik2208.fotoflash.ui.components.FfTopBar
@@ -120,6 +127,7 @@ import io.github.nik2208.fotoflash.ui.components.SectionHeader
 import io.github.nik2208.fotoflash.ui.components.ThermalImage
 import io.github.nik2208.fotoflash.ui.theme.FfColors
 import io.github.nik2208.fotoflash.ui.theme.FfFonts
+import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
 
 /** Schede del pannello dei controlli. */
@@ -140,6 +148,8 @@ fun EditorScreen(onBack: () -> Unit, onDone: () -> Unit, onOpenPrinter: () -> Un
 
     LaunchedEffect(vm) {
         vm.events.collect { event ->
+            // Le snackbar partono a parte: showSnackbar sospende finche non spariscono, e un evento
+            // Share in coda dietro "Salvata in galleria" aprirebbe il chooser con secondi di ritardo.
             when (event) {
                 is EditorEvent.Share -> {
                     val chooser = Intent.createChooser(event.intent, context.getString(R.string.ed_share_title))
@@ -149,9 +159,17 @@ fun EditorScreen(onBack: () -> Unit, onDone: () -> Unit, onOpenPrinter: () -> Un
                     } catch (e: ActivityNotFoundException) {
                         false
                     }
-                    if (!started) snackbarHostState.showSnackbar(context.getString(R.string.ed_share_failed))
+                    if (!started) {
+                        launch { snackbarHostState.showSnackbar(context.getString(R.string.ed_share_failed)) }
+                    }
                 }
-                is EditorEvent.Message -> snackbarHostState.showSnackbar(context.getString(event.text))
+                is EditorEvent.Message -> {
+                    launch {
+                        // Il messaggio nuovo sostituisce quello vecchio invece di aspettarlo.
+                        snackbarHostState.currentSnackbarData?.dismiss()
+                        snackbarHostState.showSnackbar(context.getString(event.text))
+                    }
+                }
             }
         }
     }
@@ -191,7 +209,7 @@ fun EditorScreen(onBack: () -> Unit, onDone: () -> Unit, onOpenPrinter: () -> Un
         phase = state.printPhase,
         onDismiss = vm::dismissPrint,
         onRetry = vm::print,
-        onReprint = vm::print,
+        onReprint = vm::reprint,
         onNewPhoto = {
             vm.finishSession()
             onDone()
@@ -361,6 +379,15 @@ private fun RenderingIndicator(visible: Boolean, modifier: Modifier = Modifier) 
     }
 }
 
+/** Margine minimo del "tavolo" ai lati del foglio, usato solo se la carta altrimenti non ci sta. */
+private val PreviewEdge = 8.dp
+
+/** Margine in piu per lato quando la scala lo consente: il foglio resta a 24 dp dal bordo. */
+private val PreviewBreath = 16.dp
+
+/** Padding orizzontale interno di PaperSheet (16 dp per lato). */
+private val PreviewSheetPadding = 16.dp
+
 @Composable
 private fun PreviewArea(state: EditorUiState, modifier: Modifier = Modifier) {
     Column(
@@ -368,18 +395,39 @@ private fun PreviewArea(state: EditorUiState, modifier: Modifier = Modifier) {
             // Il "tavolo" su cui posa il foglio: la carta si stacca dallo sfondo anche nel tema scuro.
             .background(MaterialTheme.colorScheme.surfaceContainerHigh)
             .verticalScroll(rememberScrollState())
-            .padding(horizontal = 24.dp, vertical = 24.dp),
+            .padding(horizontal = PreviewEdge, vertical = 24.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         val preview = state.preview
-        PaperSheet(
-            modifier = Modifier
-                .fillMaxWidth(0.86f)
-                .widthIn(max = 360.dp),
-        ) {
-            if (preview != null) {
-                ThermalImage(bitmap = preview, contentDescription = stringResource(R.string.ed_preview_cd))
-            } else {
+        if (preview != null) {
+            BoxWithConstraints(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.TopCenter) {
+                val density = LocalDensity.current
+                val dots = preview.width.coerceAtLeast(1)
+                // Scala INTERA (ogni punto della testina = N x N pixel): con una scala frazionaria, e
+                // peggio sotto 1:1, il retino si deformerebbe o perderebbe colonne che la carta ha.
+                val roomyPx = with(density) { (maxWidth - (PreviewBreath + PreviewSheetPadding) * 2).roundToPx() }
+                val tightPx = with(density) { (maxWidth - PreviewSheetPadding * 2).roundToPx() }
+                val scale = if (roomyPx >= dots) roomyPx / dots else tightPx / dots
+                val imageWidth = with(density) { (dots * scale.coerceAtLeast(1)).toDp() }
+                if (scale >= 1) {
+                    PreviewSheet(preview = preview, imageWidth = imageWidth)
+                } else {
+                    // Carta da 80 mm su un telefono stretto: 1:1 con scorrimento laterale, mai punti persi.
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .horizontalScroll(rememberScrollState()),
+                    ) {
+                        PreviewSheet(preview = preview, imageWidth = imageWidth)
+                    }
+                }
+            }
+        } else {
+            PaperSheet(
+                modifier = Modifier
+                    .widthIn(max = 360.dp)
+                    .fillMaxWidth(0.86f),
+            ) {
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -418,6 +466,21 @@ private fun PreviewArea(state: EditorUiState, modifier: Modifier = Modifier) {
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
+    }
+}
+
+/**
+ * Il foglio con la stampa a larghezza esatta [imageWidth]: il foglio si adatta all'immagine e non
+ * il contrario, cosi la scala intera calcolata da PreviewArea arriva intatta a ThermalImage.
+ */
+@Composable
+private fun PreviewSheet(preview: Bitmap, imageWidth: Dp) {
+    PaperSheet {
+        ThermalImage(
+            bitmap = preview,
+            contentDescription = stringResource(R.string.ed_preview_cd),
+            modifier = Modifier.width(imageWidth),
+        )
     }
 }
 
@@ -496,7 +559,7 @@ private fun TemplatePicker(selected: TemplateKind, onSelect: (TemplateKind) -> U
     )
 }
 
-/** Tessera di un modello: icona + nome; la scelta e gialla come ogni cosa "accesa" nel brand. */
+/** Tessera di un modello: miniatura + nome; la scelta e gialla come ogni cosa "accesa" nel brand. */
 @Composable
 private fun TemplateTile(kind: TemplateKind, selected: Boolean, onClick: () -> Unit, modifier: Modifier = Modifier) {
     val shape = RoundedCornerShape(16.dp)
@@ -519,12 +582,7 @@ private fun TemplateTile(kind: TemplateKind, selected: Boolean, onClick: () -> U
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(6.dp),
     ) {
-        Icon(
-            imageVector = templateIcon(kind),
-            contentDescription = null,
-            tint = content,
-            modifier = Modifier.size(26.dp),
-        )
+        TemplateThumbnail(kind = kind, color = content)
         Text(
             text = stringResource(templateLabel(kind)),
             style = MaterialTheme.typography.labelSmall,
@@ -532,6 +590,53 @@ private fun TemplateTile(kind: TemplateKind, selected: Boolean, onClick: () -> U
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
         )
+    }
+}
+
+/** Testi di prova per le miniature: bastano a far comparire tutte le fasce di ogni modello. */
+private val ThumbnailTexts = TemplateTexts(
+    caption = "Aa",
+    eventTitle = "Aa",
+    hashtag = "a",
+    dateText = "00",
+    printNumber = 1,
+)
+
+/**
+ * Miniatura di un modello: la stessa impaginazione del core in piccolo (foto piene, testi a
+ * barrette), cosi si vede la forma della carta prima di sceglierla. Colore unico, come un'icona.
+ */
+@Composable
+private fun TemplateThumbnail(kind: TemplateKind, color: Color, modifier: Modifier = Modifier) {
+    val layout = remember(kind) {
+        TemplateGeometry.layout(kind, PaperWidth.MM58, if (kind == TemplateKind.STRIP) 3 else 1, ThumbnailTexts)
+    }
+    val ratio = if (layout.width > 0 && layout.height > 0) layout.width.toFloat() / layout.height.toFloat() else 1f
+    Canvas(
+        modifier = modifier
+            .height(36.dp)
+            .aspectRatio(ratio),
+    ) {
+        val k = size.width / layout.width.coerceAtLeast(1).toFloat()
+        val line = 1.dp.toPx()
+        drawRect(color = color, style = Stroke(width = line))
+        for (photo in layout.photos) {
+            drawRect(
+                color = color.copy(alpha = 0.55f),
+                topLeft = Offset(photo.left * k, photo.top * k),
+                size = Size(photo.width * k, photo.height * k),
+            )
+        }
+        for (block in layout.texts) {
+            val r = block.rect
+            val barWidth = r.width * k * 0.6f
+            val barHeight = (r.height * k * 0.45f).coerceAtLeast(line)
+            drawRect(
+                color = color,
+                topLeft = Offset(r.left * k + (r.width * k - barWidth) / 2f, r.top * k + (r.height * k - barHeight) / 2f),
+                size = Size(barWidth, barHeight),
+            )
+        }
     }
 }
 
@@ -816,13 +921,6 @@ private fun templateDescription(kind: TemplateKind): Int = when (kind) {
     TemplateKind.FULL -> R.string.ed_template_full_desc
     TemplateKind.STRIP -> R.string.ed_template_strip_desc
     TemplateKind.RECEIPT -> R.string.ed_template_receipt_desc
-}
-
-private fun templateIcon(kind: TemplateKind): ImageVector = when (kind) {
-    TemplateKind.POLAROID -> Icons.Rounded.Portrait
-    TemplateKind.FULL -> Icons.Rounded.CropPortrait
-    TemplateKind.STRIP -> Icons.Rounded.ViewAgenda
-    TemplateKind.RECEIPT -> Icons.Rounded.Receipt
 }
 
 @Composable

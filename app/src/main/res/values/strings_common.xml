@@ -34,4 +34,6 @@
     <string name="common_printer_err_connect">Unreachable</string>
     <string name="common_printer_err_write">Print failed</string>
     <string name="common_printer_err_busy">Printer busy</string>
+    <!-- RENDER_FAILED: la stampa non si e composta, la stampante non c'entra -->
+    <string name="common_printer_err_render">Couldn\'t compose</string>
 </resources>

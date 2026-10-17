@@ -76,6 +76,7 @@
     <string name="ed_sheet_preparing">Preparo la stampa</string>
     <string name="ed_sheet_connecting">Connessione a %1$s</string>
     <string name="ed_sheet_printing">Stampa in corso</string>
+    <string name="ed_sheet_finishing">Quasi fatto…</string>
     <string name="ed_sheet_percent">%1$d%%</string>
     <string name="ed_sheet_keep_close">Tieni il telefono vicino alla stampante</string>
     <string name="ed_sheet_done">Stampato!</string>
@@ -103,4 +104,6 @@
     <string name="ed_fail_write_hint">La connessione si è interrotta durante l\'invio. Controlla la carta e riprova.</string>
     <string name="ed_fail_busy_title">Stampante occupata</string>
     <string name="ed_fail_busy_hint">C\'è già una stampa in corso: aspetta che finisca, poi riprova.</string>
+    <string name="ed_fail_render_title">Impossibile comporre la stampa</string>
+    <string name="ed_fail_render_hint">La stampante non c\'entra: non sono riuscito a preparare l\'immagine. Riprova, oppure scegli un altro modello o un\'altra foto.</string>
 </resources>

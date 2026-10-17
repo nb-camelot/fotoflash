@@ -11,6 +11,19 @@ sezione della sua versione, oppure `[Unreleased]` se non la trova.
 
 ## [Unreleased]
 
+### Fixed
+
+- Revisione dei bug di runtime (106 finding verificati, 95 correzioni):
+  - errori di composizione distinti da quelli della stampante (`RENDER_FAILED`);
+  - nessun crash per memoria esaurita in scatto, rendering, salvataggio e condivisione;
+  - numerazione delle stampe senza salti né doppioni, e nessuna voce doppia nello storico;
+  - stampa istantanea che aspetta la stampante occupata invece di fallire;
+  - fotocamera ricollegata se il cambio frontale/posteriore fallisce;
+  - stato della stampante coerente con Bluetooth spento o acceso, permessi su Android 8-15, risincronizzazione dopo un raster interrotto;
+  - contrasti del tema chiaro e accessibilità di chip e intestazioni;
+  - workflow agentici corretti prima della prima esecuzione.
+- CI: ogni APK di debug viene verificato con il certificato di `signing/debug.p12`, così gli aggiornamenti si installano senza disinstallare; la release (non firmata) si compila già su `dev`.
+
 ### Added
 
 - App Android **FotoFlash** (`io.github.nik2208.fotoflash`, Android 8.0+): il telefono diventa una

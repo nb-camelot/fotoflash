@@ -2,7 +2,9 @@ name: OpenCode
 
 # Sviluppo agentico: "/oc ..." (o "/opencode ...") in un'issue o in un commento avvia
 #   piano -> build -> verifica Gradle -> review -> PR verso dev -> merge della sola PR dell'agente
-#   quando la review e PASS e il check "Build e test" e verde sul commit revisionato.
+#   quando la review e PASS, il check "Build e test" e verde sul commit revisionato e l'issue l'ha aperta
+#   un owner, un collaboratore o un utente autorizzato (il suo testo entra nel contesto dell'agente).
+# Gli eventi issues e issue_comment usano il workflow del branch di DEFAULT: deve essere dev (vedi README).
 #
 # Privilegi separati per job (il codice scritto dall'agente non gira mai dove c'e un token in scrittura):
 #   gate     legge l'evento, autorizza, risolve branch e PR. Non esegue codice del repository.
@@ -97,6 +99,8 @@ jobs:
       author: ${{ steps.gate.outputs.author }}
       react_path: ${{ steps.gate.outputs.react_path }}
       request: ${{ steps.gate.outputs.request }}
+      plan_ref: ${{ steps.gate.outputs.plan_ref }}
+      trusted: ${{ steps.gate.outputs.trusted }}
     steps:
       - name: Verifica autorizzazione, comando e branch
         id: gate
@@ -190,7 +194,7 @@ jobs:
           [[ "$MODEL" =~ ^[A-Za-z0-9._-]+(/[A-Za-z0-9._:-]+)+$ ]] || stop "Nome di modello non valido: $MODEL"
 
           # ── Contesto: issue, PR (solo dello stesso repository) o richiesta manuale.
-          BASE="$BASE_BRANCH"; LINKED=""; KIND=""; BRANCH=""
+          BASE="$BASE_BRANCH"; LINKED=""; KIND=""; BRANCH=""; PR_JSON=""
           if [ "$EVENT" = workflow_dispatch ]; then
             KIND=manual; BRANCH="opencode/manual-$RUN_NUMBER"
           elif [ "$EVENT" = pull_request_review_comment ] || [ "$ISSUE_IS_PR" = true ]; then
@@ -210,6 +214,41 @@ jobs:
           if [ -z "$(printf '%s' "$REQUEST" | tr -d '[:space:]')" ]; then
             REQUEST="Porta a termine quanto chiesto nell'issue o nella PR (vedi il contesto)."
           fi
+
+          # ── Piano pronto: citato nel comando, poi nel corpo dell'issue, poi in quello della PR (le PR
+          # dell'agente hanno la riga "| Piano | `issue_plans/...` |"). Un "/oc" nudo in un commento basta.
+          PLAN_SRC="$REQUEST"$'\n'"$ISSUE_BODY"
+          if [ -n "$PR_JSON" ]; then PLAN_SRC="$PLAN_SRC"$'\n'"$(jq -r '.body // ""' <<<"$PR_JSON")"; fi
+          # issue_plans/README.md descrive il formato, non e un piano: un'issue che lo cita non lo deve seguire.
+          PLAN_REF=$(printf '%s\n' "$PLAN_SRC" | grep -oE 'issue_plans/[A-Za-z0-9._-]+\.md' | grep -vxF 'issue_plans/README.md' | head -n 1 || true)
+
+          # ── Fiducia nel CONTENUTO: chi ha scritto l'issue (il suo testo entra nel contesto dell'agente,
+          # commenti HTML invisibili compresi). Senza fiducia il lavoro si pubblica ma non si mergia da solo.
+          # Le PR dell'agente sono di github-actions[bot]: per loro conta l'autore dell'issue collegata.
+          trusted_user() {
+            case "$2" in OWNER|COLLABORATOR) return 0 ;; esac
+            case "$1" in ""|*"[bot]") return 1 ;; esac
+            [[ "$LIST" == *" $(lower "$1") "* ]]
+          }
+          TRUSTED=false
+          case "$KIND" in
+            manual)
+              TRUSTED=true ;;
+            issue)
+              if trusted_user "$ISSUE_AUTHOR" "$ISSUE_ASSOC"; then TRUSTED=true; fi ;;
+            pr)
+              PR_AUTHOR=$(jq -r '.user.login // ""' <<<"$PR_JSON")
+              if [ "$PR_AUTHOR" = "github-actions[bot]" ]; then
+                if [ -n "$LINKED" ]; then
+                  LINKED_JSON=$(gh api "repos/$REPO/issues/$LINKED" 2> /dev/null || echo '{}')
+                  if trusted_user "$(jq -r '.user.login // ""' <<<"$LINKED_JSON")" "$(jq -r '.author_association // ""' <<<"$LINKED_JSON")"; then
+                    TRUSTED=true
+                  fi
+                fi
+              elif trusted_user "$PR_AUTHOR" "$(jq -r '.author_association // ""' <<<"$PR_JSON")"; then
+                TRUSTED=true
+              fi ;;
+          esac
 
           # ── Branch: mai main/master/dev, nomi semplici (finiscono negli script e nei comandi git).
           case "$BRANCH" in main|master|HEAD|"$BASE_BRANCH") refuse "l'agente non lavora direttamente sul branch $BRANCH." ;; esac
@@ -241,6 +280,8 @@ jobs:
           out model "$MODEL"
           out author "$AUTHOR"
           out react_path "$RPATH"
+          out plan_ref "$PLAN_REF"
+          out trusted "$TRUSTED"
           DELIM="REQ_$(openssl rand -hex 16)"
           { echo "request<<$DELIM"; printf '%s' "$REQUEST" | head -c 20000 || true; echo; echo "$DELIM"; } >> "$GITHUB_OUTPUT"
           {
@@ -248,6 +289,7 @@ jobs:
             echo "- Richiesta di **@$AUTHOR** ($ASSOC), tipo \`$KIND\` ${NUMBER:+su #$NUMBER}"
             echo "- Branch \`$BRANCH\` (base \`$BASE\`, partenza \`$START_REF\`)"
             echo "- Modello \`$MODEL\`"
+            echo "- Piano citato: \`${PLAN_REF:-nessuno}\`; contenuto fidato (merge automatico possibile): $TRUSTED"
           } >> "$GITHUB_STEP_SUMMARY"
 
   # ── 2. Agente: piano, build, verifica Gradle, review ───────────────────────
@@ -271,9 +313,11 @@ jobs:
       AGENT_MODEL: ${{ needs.gate.outputs.model }}
       AUTHOR: ${{ needs.gate.outputs.author }}
       REQUEST: ${{ needs.gate.outputs.request }}
+      PLAN_REF: ${{ needs.gate.outputs.plan_ref }}
       MAX_ITERATIONS: ${{ vars.OPENCODE_MAX_ITERATIONS || '4' }}
-      # Oltre questi minuti (dall'inizio del job) non si comincia un nuovo giro: un giro nel caso
-      # peggiore dura ~95 minuti (35 build + 25 Gradle + 35 review) e il job ne ha 150.
+      # Oltre questi minuti (dall'inizio del job) non si comincia un nuovo giro. Un giro dura fino a
+      # ~95 minuti (35 build + 25 Gradle + 35 review), ~130 con il ripiego di modello, e il job ne ha 150:
+      # per questo oc_exec riduce i timeout di OpenCode al tempo che resta (vedi remaining_s).
       TIME_BUDGET_MIN: "45"
       OPENCODE_DISABLE_AUTOUPDATE: "true"
     steps:
@@ -300,7 +344,8 @@ jobs:
           echo false > "$FF/state/build_ok"
           echo 0 > "$FF/state/iterations"
           : > "$FF/state/plan_file"
-          : > "$FF/state/title"
+          # Titolo di riserva: se la Fase 1 si ferma prima di scriverlo, la PR non nasce con un titolo vuoto.
+          printf 'chore(opencode): %s' "$PLAN_KEY" > "$FF/state/title"
           # Solo locale: contesto dell'agente e cartella che Kotlin 2 crea alla radice durante la build.
           for p in .opencode/ .kotlin/; do
             grep -qxF "$p" .git/info/exclude 2>/dev/null || echo "$p" >> .git/info/exclude
@@ -383,19 +428,34 @@ jobs:
           RUNNER_VARS="-u GITHUB_ENV -u GITHUB_OUTPUT -u GITHUB_PATH -u GITHUB_STATE -u GITHUB_STEP_SUMMARY -u ACTIONS_RUNTIME_TOKEN -u ACTIONS_ID_TOKEN_REQUEST_TOKEN -u ACTIONS_ID_TOKEN_REQUEST_URL"
           CONV_RE='^(feat|fix|perf|refactor|docs|test|build|ci|chore|style|revert)(\([A-Za-z0-9._/-]+\))?!?: .{3,}'
 
+          # Secondi che restano a OpenCode: il job ha 150 minuti dall'inizio (t0); gli ultimi 45 restano
+          # alla verifica Gradle (fino a 25), all'impacchettamento e all'upload del lavoro.
+          remaining_s() { echo $(( (150 - 45) * 60 - ($(date +%s) - $(cat "$FF/state/t0")) )); }
           # OpenCode senza i file di comando del runner nell'ambiente. $1 agente, $2 modello, $3 output, $4 prompt
           # stdin da /dev/null: "opencode run" legge tutto lo stdin quando non e un terminale.
+          # Il timeout e OC_TIMEOUT (in minuti, "20m"), ridotto al tempo che resta al job.
           oc_exec() {
+            local lim t r
+            lim="${OC_TIMEOUT:-20m}"
+            t=$(( ${lim%m} * 60 ))
+            r=$(remaining_s)
+            if [ "$r" -lt "$t" ]; then t=$r; fi
+            if [ "$t" -lt 120 ]; then
+              echo "::warning::Tempo del job quasi esaurito: salto la chiamata a OpenCode ($1)."
+              : > "$3"
+              return 1
+            fi
             # shellcheck disable=SC2086
-            env $RUNNER_VARS timeout --kill-after=30s "$OC_TIMEOUT" \
+            env $RUNNER_VARS timeout --kill-after=30s "${t}s" \
               opencode run --agent "$1" --auto --model "$2" "$4" < /dev/null > "$3" 2> "$3.err" && [ -s "$3" ]
           }
-          # Ripiega una volta sul modello gratuito se quello scelto non risponde. $1 agente, $2 output, $3 prompt
+          # Ripiega una volta sul modello gratuito se quello scelto non risponde, e solo se restano almeno
+          # 10 minuti. $1 agente, $2 output, $3 prompt
           run_oc() {
             local model; model="$(cat "$FF/state/model")"
             if oc_exec "$1" "$model" "$2" "$3"; then return 0; fi
-            tail -n 20 "$2.err" || true
-            if [ "$model" != "$FALLBACK_MODEL" ]; then
+            tail -n 20 "$2.err" 2> /dev/null || true
+            if [ "$model" != "$FALLBACK_MODEL" ] && [ "$(remaining_s)" -ge 600 ]; then
               echo "::warning::$model non ha risposto ($1): ripiego su $FALLBACK_MODEL"
               echo "$FALLBACK_MODEL" > "$FF/state/model"
               oc_exec "$1" "$FALLBACK_MODEL" "$2" "$3" && return 0
@@ -479,7 +539,10 @@ jobs:
               echo "## #$NUMBER: $(jq -r '.title' <<<"$ISSUE_JSON")"
               echo "Aperta da @$(jq -r '.user.login' <<<"$ISSUE_JSON") ($(jq -r '.author_association' <<<"$ISSUE_JSON"))."
               echo
-              jq -r '.body // ""' <<<"$ISSUE_JSON" | head -c 30000 || true
+              # I commenti HTML non si vedono nella pagina dell'issue: chi scrive /oc non li ha letti, quindi
+              # non entrano nel contesto (nemmeno un "<!--" mai chiuso, che nasconde il resto del testo).
+              jq -r '(.body // "") | gsub("<!--[\\s\\S]*?-->"; "[commento HTML rimosso]") | gsub("<!--"; "[commento HTML non chiuso]")' \
+                <<<"$ISSUE_JSON" | head -c 30000 || true
               echo
               echo
               echo "## Commenti di owner e collaboratori (gli altri sono esclusi)"
@@ -590,8 +653,9 @@ jobs:
           set -uo pipefail
           source "$RUNNER_TEMP/ff/lib.sh"
           PLAN=""
-          # 1) piano pronto citato nella richiesta  2) piano gia scritto per questo branch  3) piano nuovo
-          REF=$(printf '%s' "$REQUEST" | grep -oE 'issue_plans/[A-Za-z0-9._-]+\.md' | head -n 1 || true)
+          # 1) piano pronto citato nel comando, nell'issue o nella PR (lo cerca il gate)
+          # 2) piano gia scritto per questo branch  3) piano nuovo
+          REF="$PLAN_REF"
           if [ -n "$REF" ] && [ -f "$REF" ]; then
             PLAN="$REF"; echo "Piano pronto: $PLAN"
           elif [ -f "issue_plans/$PLAN_KEY.md" ]; then
@@ -688,6 +752,18 @@ jobs:
           SYNC=$(cat "$FF/state/sync_sha")
           T0=$(cat "$FF/state/t0")
           FEEDBACK="Prima iterazione: nessun feedback."
+          # Con un piano gia scritto (pronto o di un giro precedente) la richiesta corrente puo chiedere
+          # altro, per esempio un "/oc <correzione>" sulla PR: build e review la devono soddisfare,
+          # altrimenti i vecchi criteri, gia verdi, darebbero PASS senza la correzione.
+          BUILD_REQ=""; REQ_CHECK=""
+          case "$REQUEST" in
+            "Porta a termine quanto chiesto"*) ;;
+            *)
+              if [ -n "$PLAN_FILE" ]; then
+                BUILD_REQ="Soddisfa anche la RICHIESTA DI @$AUTHOR qui sotto: se cambia o aggiunge qualcosa al piano, vale la richiesta."
+                REQ_CHECK="Verifica ANCHE che la RICHIESTA DI @$AUTHOR qui sotto sia soddisfatta sul codice (per le parti verificabili sul codice e in CI): se non lo e, il verdetto e FAIL anche con tutti i criteri del piano OK."
+              fi ;;
+          esac
 
           for i in $(seq 1 "$MAX_ITERATIONS"); do
             ELAPSED=$(( ($(date +%s) - T0) / 60 ))
@@ -703,6 +779,7 @@ jobs:
           1. Prima di toccare il codice leggi AGENTS.md e docs/ARCHITECTURE.md (contratti vincolanti), poi docs/SPEC.md
              e i file indicati dal piano. Per grafica e testi segui docs/brand/BRAND.md se esiste.
           2. Implementa il piano: completa TUTTI i task e soddisfa TUTTI gli Acceptance Criteria.
+             $BUILD_REQ
           3. Prima di finire esegui
                gradle --no-daemon :core-thermal:test :app:testDebugUnitTest :app:assembleDebug
              e correggi ogni errore finche passa. Dai al comando un timeout di almeno 20 minuti: la build e lenta.
@@ -748,6 +825,7 @@ jobs:
           Sei il revisore di FotoFlash, in SOLA LETTURA: non modificare alcun file.
           Leggi AGENTS.md e docs/ARCHITECTURE.md, poi verifica sul codice ATTUALE se OGNI Acceptance Criterion del piano
           (o, senza piano, la richiesta) e soddisfatto.
+          $REQ_CHECK
 
           Fatti accertati dal workflow: la build Gradle (:core-thermal:test :app:testDebugUnitTest :app:assembleDebug)
           e appena passata. File cambiati rispetto alla base:
@@ -858,10 +936,12 @@ jobs:
       KIND: ${{ needs.gate.outputs.kind }}
       NUMBER: ${{ needs.gate.outputs.number }}
       AGENT_RESULT: ${{ needs.agent.result }}
+      TRUSTED: ${{ needs.gate.outputs.trusted }}
       AUTO_MERGE: ${{ vars.OPENCODE_AUTO_MERGE || 'true' }}
       RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
     outputs:
       pushed: ${{ steps.push.outputs.pushed }}
+      alt_branch: ${{ steps.push.outputs.alt_branch }}
       pr_number: ${{ steps.pr.outputs.number }}
       merged: ${{ steps.merge.outputs.merged }}
       note: ${{ steps.merge.outputs.note }}
@@ -874,9 +954,12 @@ jobs:
           name: opencode-${{ github.run_id }}
           path: ${{ runner.temp }}/agent
 
+      # Ref esplicito: per i commenti di review l'evento punta a refs/pull/N/merge, che non esiste quando
+      # la PR e in conflitto. Qui servono solo gli oggetti git (origin/$BRANCH, origin/$BASE, il bundle).
       - name: Checkout (senza credenziali)
         uses: actions/checkout@v6
         with:
+          ref: ${{ needs.gate.outputs.base }}
           fetch-depth: 0
           persist-credentials: false
 
@@ -897,9 +980,11 @@ jobs:
           NEW=$(git rev-parse refs/agent/head)
           [ "$NEW" = "$(meta head_sha)" ] || { echo "::error::Il pacchetto non corrisponde ai metadati."; exit 1; }
           git merge-base --is-ancestor "$START" "$NEW" || { echo "::error::Il lavoro non discende dal commit di partenza."; exit 1; }
-          # Il branch remoto non deve essere cambiato mentre l'agente lavorava (mai force push).
+          # Il branch remoto non deve essere cambiato mentre l'agente lavorava (mai force push). Se un'altra
+          # run /oc lo ha aggiornato nel frattempo, il lavoro va su un branch laterale (in fondo allo step).
+          MOVED=false
           if git rev-parse -q --verify "refs/remotes/origin/$BRANCH" > /dev/null; then
-            [ "$(git rev-parse "origin/$BRANCH")" = "$START" ] || { echo "::error::origin/$BRANCH e cambiato durante il lavoro dell'agente."; exit 1; }
+            [ "$(git rev-parse "origin/$BRANCH")" = "$START" ] || MOVED=true
           else
             git merge-base --is-ancestor "$START" "origin/$BASE" || { echo "::error::Il commit di partenza non e su origin/$BASE."; exit 1; }
           fi
@@ -912,8 +997,14 @@ jobs:
             case "$p" in .github/workflows/*) BAD="$BAD $p(workflow)"; continue ;; esac
             git diff --quiet "origin/$BASE" "$NEW" -- "$p" || BAD="$BAD $p"
           done < <(git diff --no-renames --name-only "$START" "$NEW" | grep -E '^(\.github/|signing/|opencode\.jsonc?$|\.opencode/)' || true)
+          # VERSION_*: ammesse solo uguali a quelle di partenza o a quelle di $BASE arrivate con un merge
+          # (il merge-base copre anche un $BASE avanzato durante la run). Un branch rimasto indietro rispetto
+          # a $BASE puo cambiare altre righe di gradle.properties senza essere rifiutato.
           if ! git diff --quiet "$START" "$NEW" -- gradle.properties; then
-            if [ "$(git show "$NEW:gradle.properties" | grep -E '^VERSION_(NAME|CODE)=')" != "$(git show "origin/$BASE:gradle.properties" | grep -E '^VERSION_(NAME|CODE)=')" ]; then
+            V() { git show "$1:gradle.properties" 2> /dev/null | grep -E '^VERSION_(NAME|CODE)=' || true; }
+            VN=$(V "$NEW")
+            MB=$(git merge-base "$NEW" "origin/$BASE" || true)
+            if [ "$VN" != "$(V "$START")" ] && { [ -z "$MB" ] || [ "$VN" != "$(V "$MB")" ]; }; then
               BAD="$BAD gradle.properties(VERSION_*)"
             fi
           fi
@@ -922,6 +1013,15 @@ jobs:
           B64=$(printf 'x-access-token:%s' "$GH_TOKEN" | base64 -w0)
           echo "::add-mask::$B64"
           export GIT_CONFIG_COUNT=1 GIT_CONFIG_KEY_0="http.https://github.com/.extraheader" GIT_CONFIG_VALUE_0="AUTHORIZATION: basic $B64"
+          if [ "$MOVED" = true ]; then
+            # Niente force push e niente lavoro perso: branch laterale, senza PR e senza merge.
+            ALT="$BRANCH-r$GITHUB_RUN_NUMBER"
+            echo "::warning::origin/$BRANCH e cambiato durante il lavoro dell'agente: salvo il lavoro su $ALT."
+            git -c core.hooksPath=/dev/null push -q origin "refs/agent/head:refs/heads/$ALT"
+            echo "pushed=false" >> "$GITHUB_OUTPUT"
+            echo "alt_branch=$ALT" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
           git -c core.hooksPath=/dev/null push -q origin "refs/agent/head:refs/heads/$BRANCH"
           echo "pushed=true" >> "$GITHUB_OUTPUT"
           echo "head_sha=$NEW" >> "$GITHUB_OUTPUT"
@@ -957,7 +1057,8 @@ jobs:
           | Build e test nel runner dell'agente | $BUILD_OK |
           | Run | $RUN_URL |
 
-          Il merge automatico su \`$BASE\` avviene solo con review PASS e check «$CI_CHECK_NAME» verde su questo commit.
+          Il merge automatico su \`$BASE\` avviene solo con review PASS, check «$CI_CHECK_NAME» verde su questo commit
+          e issue aperta da un owner, un collaboratore o un utente autorizzato.
           Per chiedere correzioni: commenta \`/oc <cosa cambiare>\` qui sotto.
 
           $CLOSES
@@ -965,10 +1066,17 @@ jobs:
           <!-- fotoflash-agent issue=$LINKED -->
           EOF
             )
-            if ! PR=$(gh api -X POST "repos/$REPO/pulls" -f title="$(meta title)" -f head="$BRANCH" -f base="$BASE" \
+            # Un titolo vuoto (Fase 1 interrotta) farebbe rispondere 422 a GitHub.
+            T=$(meta title)
+            [ -n "$T" ] || T="chore(opencode): ${BRANCH//\//-}"
+            if ! PR=$(gh api -X POST "repos/$REPO/pulls" -f title="$T" -f head="$BRANCH" -f base="$BASE" \
                   -f body="$BODY" -F draft="$DRAFT" --jq '.number' 2> "$RUNNER_TEMP/pr.err"); then
               cat "$RUNNER_TEMP/pr.err"
-              echo "::error::Creazione della PR fallita. Serve Settings -> Actions -> General -> 'Allow GitHub Actions to create and approve pull requests'."
+              if grep -qiE 'HTTP 403|not permitted' "$RUNNER_TEMP/pr.err"; then
+                echo "::error::Creazione della PR fallita. Serve Settings -> Actions -> General -> 'Allow GitHub Actions to create and approve pull requests'."
+              else
+                echo "::error::Creazione della PR fallita: $(tail -n 1 "$RUNNER_TEMP/pr.err")"
+              fi
               exit 1
             fi
             echo "PR #$PR creata (bozza: $DRAFT)."
@@ -1011,6 +1119,9 @@ jobs:
           [ "$(meta build_ok)" = true ] || note "La build nel runner dell'agente non passa: la PR resta aperta."
           [[ "$BRANCH" == opencode/* ]] || note "Il branch $BRANCH non e dell'agente: il merge lo decide una persona."
           [ "$BASE" = "$BASE_BRANCH" ] || note "La PR punta a $BASE, non a $BASE_BRANCH: niente merge automatico."
+          # Verdetto e build_ok vengono dal runner dell'agente, che ha letto il testo dell'issue: non sono
+          # una barriera se quel testo l'ha scritto un esterno (istruzioni nascoste). Allora decide una persona.
+          [ "$TRUSTED" = true ] || note "Issue aperta da un utente esterno: il merge lo decide una persona."
 
           PRJ=$(gh api "repos/$REPO/pulls/$PR")
           [ "$(jq -r '.user.login' <<<"$PRJ")" = "github-actions[bot]" ] || note "La PR #$PR non e stata aperta dall'agente."
@@ -1116,6 +1227,7 @@ jobs:
           AGENT_RESULT: ${{ needs.agent.result }}
           PUBLISH_RESULT: ${{ needs.publish.result }}
           PUSHED: ${{ needs.publish.outputs.pushed }}
+          ALT_BRANCH: ${{ needs.publish.outputs.alt_branch }}
           PR: ${{ needs.publish.outputs.pr_number }}
           MERGED: ${{ needs.publish.outputs.merged }}
           NOTE: ${{ needs.publish.outputs.note }}
@@ -1128,6 +1240,10 @@ jobs:
             MSG="Lavoro pubblicato in #$PR sul branch \`$BRANCH\`. ${NOTE}"
           elif [ "$PUSHED" = true ]; then
             MSG="Lavoro salvato sul branch \`$BRANCH\`, ma la PR non e stata aperta."
+          elif [ -n "$ALT_BRANCH" ]; then
+            MSG="Il branch \`$BRANCH\` e cambiato durante la run (un'altra run /oc ci ha lavorato): il lavoro e salvato su \`$ALT_BRANCH\`, senza PR e senza merge."
+          elif [ "$PUBLISH_RESULT" = failure ] || [ "$PUBLISH_RESULT" = cancelled ]; then
+            MSG="Il lavoro dell'agente non e stato pubblicato: il job publish si e fermato prima del push (file protetti, branch cambiato o errore di verifica). Il lavoro resta nell'artifact opencode-${GITHUB_RUN_ID} della run."
           elif [ "$AGENT_RESULT" = success ]; then
             MSG="L'agente non ha prodotto modifiche."
           else
@@ -1140,6 +1256,6 @@ jobs:
             gh api -X POST "repos/$REPO/issues/$NUMBER/comments" -f body="$MSG" > /dev/null || true
           fi
           if [ -n "$REACT_PATH" ]; then
-            if [ "$AGENT_RESULT" = success ] && [ "$PUBLISH_RESULT" != failure ] && [ "$PUBLISH_RESULT" != cancelled ]; then R=rocket; else R=confused; fi
+            if [ "$AGENT_RESULT" = success ] && [ "$PUBLISH_RESULT" != failure ] && [ "$PUBLISH_RESULT" != cancelled ] && [ -z "$ALT_BRANCH" ]; then R=rocket; else R=confused; fi
             gh api -X POST "$REACT_PATH" -f content="$R" > /dev/null || true
           fi

@@ -9,6 +9,7 @@ import android.content.Intent
 import android.content.pm.PackageManager
 import android.graphics.Bitmap
 import android.net.Uri
+import android.os.SystemClock
 import android.provider.Settings as SystemSettings
 import android.util.Log
 import android.view.Surface
@@ -16,12 +17,15 @@ import android.view.ViewGroup
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.camera.core.CameraInfo
 import androidx.camera.core.CameraSelector
+import androidx.camera.core.CameraState
 import androidx.camera.core.ImageAnalysis
 import androidx.camera.core.ImageCapture
 import androidx.camera.view.CameraController
 import androidx.camera.view.LifecycleCameraController
 import androidx.camera.view.PreviewView
+import androidx.camera.view.RotationProvider
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.Crossfade
 import androidx.compose.animation.animateColorAsState
@@ -98,6 +102,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
@@ -105,6 +110,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.shadow
@@ -146,6 +152,7 @@ import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.Observer
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -172,6 +179,9 @@ private const val TAG = "FotoFlashCameraUi"
 
 /** Opacita massima del lampo bianco a schermo dopo lo scatto. */
 private const val FLASH_PEAK_ALPHA = 0.88f
+
+/** Un rifiuto del permesso piu rapido di cosi arriva senza dialogo: il permesso e bloccato. */
+private const val INSTANT_DENIAL_MS = 500L
 
 private val ViewfinderShape = RoundedCornerShape(28.dp)
 private val PillShape = RoundedCornerShape(percent = 50)
@@ -226,21 +236,35 @@ fun CameraScreen(
     var hasPermission by remember { mutableStateOf(context.hasCameraPermission()) }
     var permissionRequested by rememberSaveable { mutableStateOf(false) }
     var canAskAgain by rememberSaveable { mutableStateOf(true) }
+    // Per distinguere "dialogo chiuso senza rispondere" da "bloccato": entrambi danno rifiuto senza razionale.
+    var rationaleBefore by remember { mutableStateOf(false) }
+    var launchedAt by remember { mutableLongStateOf(0L) }
+    var silentDenials by rememberSaveable { mutableIntStateOf(0) }
     // I contratti si ricordano: un'istanza nuova a ogni ricomposizione registrerebbe di nuovo il launcher.
     val permissionContract = remember { ActivityResultContracts.RequestPermission() }
     val permissionLauncher = rememberLauncherForActivityResult(permissionContract) { granted ->
         hasPermission = granted
         if (!granted) {
-            // Dopo un rifiuto definitivo il sistema non mostra piu la richiesta: si passa dalle impostazioni.
-            canAskAgain = context.findActivity()?.let {
-                ActivityCompat.shouldShowRequestPermissionRationale(it, Manifest.permission.CAMERA)
-            } ?: false
+            val rationaleNow = context.cameraRationale()
+            // Risposta istantanea = il sistema non ha mostrato nessun dialogo, quindi e un blocco.
+            val instant = SystemClock.elapsedRealtime() - launchedAt < INSTANT_DENIAL_MS
+            // Dopo un rifiuto definitivo il sistema non mostra piu la richiesta: si passa dalle
+            // impostazioni. Un dialogo chiuso col tasto indietro (Android 11+) invece si puo
+            // rimostrare: lo si capisce dal razionale di prima; su un tablet lento si perde al
+            // massimo un tocco, poi silentDenials porta comunque alle impostazioni.
+            canAskAgain = rationaleNow || !(rationaleBefore || instant || silentDenials > 0)
+            if (!rationaleNow) silentDenials += 1
         }
+    }
+    val requestPermission: () -> Unit = {
+        rationaleBefore = context.cameraRationale()
+        launchedAt = SystemClock.elapsedRealtime()
+        permissionLauncher.launch(Manifest.permission.CAMERA)
     }
     LaunchedEffect(Unit) {
         if (!hasPermission && !permissionRequested) {
             permissionRequested = true
-            permissionLauncher.launch(Manifest.permission.CAMERA)
+            requestPermission()
         }
     }
 
@@ -294,10 +318,14 @@ fun CameraScreen(
                 CameraEvent.OpenEditor -> currentOpenEditor()
                 is CameraEvent.PrintFailed -> launch {
                     val text = event.message.ifBlank { context.getString(failureText(event.failure)) }
+                    // Composizione fallita o stampante occupata da un altro lavoro: la schermata
+                    // della stampante non risolve nulla, quindi niente azione "Stampante".
+                    val printerAction = event.failure != PrintFailure.RENDER_FAILED &&
+                        event.failure != PrintFailure.BUSY
                     snackbarHostState.currentSnackbarData?.dismiss()
                     val result = snackbarHostState.showSnackbar(
                         message = text,
-                        actionLabel = context.getString(R.string.cam_action_printer),
+                        actionLabel = if (printerAction) context.getString(R.string.cam_action_printer) else null,
                         withDismissAction = true,
                         duration = SnackbarDuration.Long,
                     )
@@ -335,7 +363,7 @@ fun CameraScreen(
                     importing = ui.importing,
                     printerState = printerState,
                     snackbarHostState = snackbarHostState,
-                    onRequestPermission = { permissionLauncher.launch(Manifest.permission.CAMERA) },
+                    onRequestPermission = requestPermission,
                     onOpenAppSettings = { openAppSettings(context) },
                     onGallery = openGallery,
                     onOpenHistory = onOpenHistory,
@@ -414,6 +442,9 @@ private fun CameraContent(
         }
     }
 
+    // Fotocamera collegata, per seguirne gli errori dopo l'avvio (vedi l'osservatore piu sotto).
+    var boundInfo by remember { mutableStateOf<CameraInfo?>(null) }
+
     // Fotocamera frontale/posteriore; poi flash disponibile e orientamento per l'anteprima termica.
     LaunchedEffect(cameraController, ui.useFrontCamera, ui.cameraReady) {
         val selector = if (ui.useFrontCamera) CameraSelector.DEFAULT_FRONT_CAMERA else CameraSelector.DEFAULT_BACK_CAMERA
@@ -422,10 +453,19 @@ private fun CameraContent(
                 cameraController.cameraSelector = selector
             } catch (e: RuntimeException) {
                 Log.w(TAG, "cambio fotocamera rifiutato", e)
+                // Il controller ha gia scollegato tutto e rimesso solo il selettore di prima: senza
+                // un nuovo collegamento il mirino resterebbe nero con l'otturatore attivo.
+                runCatching { cameraController.bindToLifecycle(lifecycleOwner) }
+                    .onFailure {
+                        Log.e(TAG, "ricollegamento della fotocamera fallito", it)
+                        viewModel.onCameraUnavailable()
+                    }
                 viewModel.onCameraSwitchFailed()
                 return@LaunchedEffect
             }
         }
+        // Anche con l'avviso d'errore a schermo: un cambio di fotocamera va osservato sulla nuova.
+        cameraController.cameraInfo?.let { boundInfo = it }
         if (ui.cameraReady) {
             val info = cameraController.cameraInfo
             val displayRotation = view.display?.rotation ?: Surface.ROTATION_0
@@ -440,6 +480,44 @@ private fun CameraContent(
     LaunchedEffect(cameraController, ui.flash) {
         cameraController.imageCaptureFlashMode = ui.flash.cameraXMode
     }
+
+    // Errori della fotocamera dopo l'avvio: occupata da un'altra app, disabilitata, guasto dell'HAL.
+    // Gli errori recuperabili minori li riprova CameraX da sola; quando torna aperta si riparte.
+    DisposableEffect(boundInfo, lifecycleOwner) {
+        val live = boundInfo?.cameraState
+        val observer = Observer<CameraState> { state ->
+            val error = state.error
+            if (error != null && (
+                    error.type == CameraState.ErrorType.CRITICAL ||
+                        error.code == CameraState.ERROR_CAMERA_IN_USE ||
+                        error.code == CameraState.ERROR_MAX_CAMERAS_IN_USE
+                    )
+            ) {
+                Log.w(TAG, "fotocamera in errore: codice ${error.code}")
+                viewModel.onCameraError()
+            } else if (state.type == CameraState.Type.OPEN) {
+                viewModel.onCameraRecovered()
+            }
+        }
+        live?.observe(lifecycleOwner, observer)
+        onDispose { live?.removeObserver(observer) }
+    }
+
+    // La foto esce dritta rispetto al mondo (CameraX segue l'orientamento fisico), il mirino resta
+    // fermo con lo schermo: conta la differenza tra le due rotazioni, non quella del telefono da
+    // sola (sul tablet SM-T550 il verso naturale e orizzontale).
+    var deviceRotation by remember { mutableIntStateOf(view.display?.rotation ?: Surface.ROTATION_0) }
+    DisposableEffect(context) {
+        val rotationProvider = RotationProvider(context)
+        val listener = RotationProvider.Listener { rotation -> deviceRotation = rotation }
+        if (!rotationProvider.addListener(ContextCompat.getMainExecutor(context), listener)) {
+            Log.w(TAG, "orientamento del telefono non rilevabile: la guida resta verticale")
+        }
+        onDispose { rotationProvider.removeListener(listener) }
+    }
+    val screenRotation = view.display?.rotation ?: Surface.ROTATION_0
+    val rotationGap = (deviceRotation - screenRotation + 4) % 4
+    val sideways = rotationGap == 1 || rotationGap == 3
 
     // Anteprima termica: l'analizzatore si collega solo quando serve.
     val livePreview = settings.livePreview
@@ -463,11 +541,15 @@ private fun CameraContent(
                 executor = viewModel.captureExecutor,
                 mirror = front,
                 onShutter = viewModel::onShutterFired,
+                onExposed = viewModel::onExposureDone,
             )
             viewModel.onCaptured(requestId, photo)
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
+            viewModel.onCaptureFailed(requestId, e)
+        } catch (e: OutOfMemoryError) {
+            // JPEG o bitmap troppo grandi per la memoria rimasta: uno scatto perso, non l'app intera.
             viewModel.onCaptureFailed(requestId, e)
         }
     }
@@ -515,6 +597,7 @@ private fun CameraContent(
                 settings = settings,
                 printerState = printerState,
                 snackbarHostState = snackbarHostState,
+                sideways = sideways,
             )
         }
         ModeRow(
@@ -539,9 +622,11 @@ private fun CameraContent(
                 enabled = !controlsLocked,
                 importing = ui.importing,
             )
+            // Coda piena: l'otturatore resta toccabile (onShutter spiega di aspettare), solo attenuato.
             ShutterButton(
                 onClick = viewModel::onShutter,
-                enabled = ui.cameraReady && (ui.countdown != null || !queueFull),
+                modifier = Modifier.alpha(if (queueFull && ui.countdown == null) 0.4f else 1f),
+                enabled = ui.cameraReady,
                 busy = ui.busy,
                 countdown = ui.countdown,
             )
@@ -669,6 +754,7 @@ private fun Viewfinder(
     settings: AppSettings,
     printerState: PrinterState,
     snackbarHostState: SnackbarHostState,
+    sideways: Boolean,
 ) {
     var focusTap by remember { mutableStateOf<FocusTap?>(null) }
     var tapCount by remember { mutableIntStateOf(0) }
@@ -714,7 +800,7 @@ private fun Viewfinder(
             ThermalOverlay(frames = viewModel.thermalFrames)
         }
 
-        FramingGuide(aspect = guideAspect(ui.mode, settings.template))
+        FramingGuide(aspect = guideAspect(ui.mode, settings.template, sideways))
 
         focusTap?.let { tap -> key(tap.id) { FocusRing(position = tap.position) } }
 
@@ -818,12 +904,21 @@ private fun ThermalOverlay(frames: StateFlow<Bitmap?>) {
     )
 }
 
-/** Rapporto della foto nel modello di stampa; null = tutta l'inquadratura (3:4). */
-private fun guideAspect(mode: CaptureMode, template: TemplateKind): Float? = when {
-    mode == CaptureMode.STRIP -> 4f / 3f
-    template == TemplateKind.POLAROID || template == TemplateKind.RECEIPT -> 1f
-    template == TemplateKind.STRIP -> 4f / 3f
-    else -> null
+/**
+ * Rapporto (larghezza/altezza sullo schermo) della parte di inquadratura che finisce sulla carta;
+ * null = tutta l'inquadratura (3:4). Con il telefono di lato ([sideways]) la foto esce dritta
+ * rispetto al mondo mentre il mirino resta in verticale: il riquadro si gira di 90 gradi.
+ */
+private fun guideAspect(mode: CaptureMode, template: TemplateKind, sideways: Boolean): Float? {
+    val upright = when {
+        mode == CaptureMode.STRIP -> 4f / 3f
+        template == TemplateKind.POLAROID || template == TemplateKind.RECEIPT -> 1f
+        template == TemplateKind.STRIP -> 4f / 3f
+        else -> null
+    }
+    if (!sideways) return upright
+    // Modello Pieno (foto 3:4 nel mondo): sullo schermo girato diventa una fascia 4:3.
+    return 1f / (upright ?: (3f / 4f))
 }
 
 /** Oscura cio che la stampa tagliera e segna gli angoli della parte che finisce sulla carta. */
@@ -1399,6 +1494,10 @@ private tailrec fun Context.findActivity(): Activity? = when (this) {
     else -> null
 }
 
+/** true se il sistema suggerisce di spiegare il permesso: c'e gia stato un rifiuto, non definitivo. */
+private fun Context.cameraRationale(): Boolean =
+    findActivity()?.let { ActivityCompat.shouldShowRequestPermissionRationale(it, Manifest.permission.CAMERA) } ?: false
+
 private fun openAppSettings(context: Context) {
     val details = Intent(SystemSettings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.fromParts("package", context.packageName, null))
         .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
@@ -1424,5 +1523,6 @@ private fun failureText(failure: PrintFailure?): Int = when (failure) {
     PrintFailure.CONNECT_FAILED -> R.string.cam_print_failed_connect
     PrintFailure.WRITE_FAILED -> R.string.cam_print_failed_write
     PrintFailure.BUSY -> R.string.cam_print_failed_busy
+    PrintFailure.RENDER_FAILED -> R.string.cam_print_failed_render
     null -> R.string.cam_error_print_generic
 }

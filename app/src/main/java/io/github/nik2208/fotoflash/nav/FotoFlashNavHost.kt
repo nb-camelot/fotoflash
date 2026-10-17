@@ -73,6 +73,7 @@ fun FotoFlashNavHost(
             HistoryDetailScreen(
                 entryId = entry.arguments?.getString("id").orEmpty(),
                 onBack = { navController.popBackStack() },
+                onOpenPrinter = { navController.navigate(Routes.PRINTER) { launchSingleTop = true } },
             )
         }
         composable(Routes.SETTINGS) {

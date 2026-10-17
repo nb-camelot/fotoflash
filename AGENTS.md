@@ -57,7 +57,10 @@ tutti i chiamanti nello stesso lavoro, o lo segnali nella PR.
   - prefisso dell'area: `common_`, `cam_`, `ed_`, `prn_`, `hist_`, `set_`, `onb_` (un nome duplicato
     rompe la build);
   - apostrofi escapati (`\'`), niente `&` o `<` non escapati.
-- Icone: `Icons.Rounded.*`; frecce `Icons.AutoMirrored.Rounded.*`.
+- Icone: `Icons.Rounded.*`; per le icone direzionali che hanno la variante AutoMirrored (frecce,
+  `BluetoothSearching`, `Send`, `List`, `Logout`, `Help`…) sempre `Icons.AutoMirrored.Rounded.<Nome>`,
+  con import esplicito `androidx.compose.material.icons.automirrored.rounded.<Nome>`: le versioni
+  `Icons.Rounded` sono deprecate e producono warning di compilazione.
 - Gli errori non si inghiottono: si gestiscono o risalgono come `PrintOutcome.Failure` con un messaggio utile.
 - **Commenti in italiano**, brevi, sul *perché*. Niente `TODO` per funzioni richieste dal piano.
 - Grafica e testi seguono il brand: Ink/Paper/Flash/Coral/Mint/Sky, Righteous per i titoli,
@@ -126,14 +129,19 @@ Un lavoro è finito quando **tutte** queste cose sono vere:
 ## 8. Come funziona `/oc` (per sapere cosa fa il workflow al posto tuo)
 
 1. Un owner o collaboratore scrive `/oc …` all'inizio di un commento (o su una riga del corpo di
-   un'issue). Facoltativo: `--model provider/modello`.
-2. **Piano** (agente `planner`, sola lettura): se la richiesta cita `issue_plans/<nome>.md` usa quello,
-   altrimenti scrive `issue_plans/opencode-issue-<n>.md` con Obiettivo, Task, Acceptance Criteria,
-   Verifica e il titolo del commit.
+   un'issue). Facoltativo: `--model provider/modello`. `/oc` funziona solo se `opencode.yml` è sul
+   **branch di default** del repository (deve essere `dev`): GitHub esegue gli eventi di issue e
+   commenti con il workflow del branch di default.
+2. **Piano** (agente `planner`, sola lettura): se la richiesta, il corpo dell'issue o quello della PR
+   citano `issue_plans/<nome>.md` usa quello, altrimenti scrive `issue_plans/opencode-issue-<n>.md`
+   con Obiettivo, Task, Acceptance Criteria, Verifica e il titolo del commit.
 3. **Build** (agente `build`): implementa il piano. Poi il workflow esegue lui stesso la build Gradle;
    se fallisce, gli errori tornano all'agente come feedback.
-4. **Review** (agente `reviewer`, sola lettura): controlla i criteri; l'ultima riga della risposta deve
-   essere `VERDICT: PASS` oppure `VERDICT: FAIL`. Fino a 4 giri build/review.
+4. **Review** (agente `reviewer`, sola lettura): controlla i criteri del piano e anche la richiesta
+   corrente (un `/oc <correzione>` su un piano già scritto deve essere soddisfatto); l'ultima riga
+   della risposta deve essere `VERDICT: PASS` oppure `VERDICT: FAIL`. Fino a 4 giri build/review
+   (di solito 1-2, entro un budget di 45 minuti).
 5. Il workflow fa i commit, pusha il branch `opencode/…`, apre la PR verso `dev`, avvia la CI e fa lo
-   squash-merge **solo** se la review è PASS e il check «Build e test» è verde su quel commit.
+   squash-merge **solo** se la review è PASS, il check «Build e test» è verde su quel commit e l'issue
+   è stata aperta da un owner, un collaboratore o un utente autorizzato (altrimenti decide una persona).
    Tu non fai commit, push né PR.

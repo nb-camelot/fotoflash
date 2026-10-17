@@ -2,7 +2,8 @@ name: Bump version
 
 # Ogni push su main (cioe il merge di dev in main) e un rilascio:
 #   1. calcola il nuovo numero di versione dai commit arrivati dall'ultimo tag;
-#   2. compila e testa con gli stessi step di ci.yml, PRIMA di scrivere qualsiasi cosa;
+#   2. compila e testa con gli stessi step di ci.yml, piu la build di release non firmata (R8, riduzione
+#      delle risorse, lintVitalRelease), PRIMA di scrivere qualsiasi cosa;
 #   3. aggiorna VERSION_NAME/VERSION_CODE in gradle.properties, commit "chore(release): vX.Y.Z [skip ci]" e tag;
 #   4. chiama release.yml come job dello stesso workflow (needs): APK firmato e Release GitHub.
 # Il rilascio e un job di questo workflow (e non un dispatch) perche un push fatto con GITHUB_TOKEN
@@ -39,10 +40,11 @@ concurrency:
 jobs:
   bump:
     name: Versione, build, test e tag
-    # Anti-loop: il commit di release non si rilascia di nuovo (e "[skip ci]" ferma gli altri workflow).
-    if: >-
-      github.ref == 'refs/heads/main' &&
-      !startsWith(github.event.head_commit.message, 'chore(release):')
+    # Anti-loop senza filtri sul messaggio: il commit di release del bot pushato con GITHUB_TOKEN non
+    # avvia workflow, quello pushato con la deploy key ha "[skip ci]", e lo step "Calcola" salta comunque
+    # una punta che e un commit di release di github-actions[bot]. Un commit umano "chore(release): ..."
+    # (per esempio lo squash della PR dev -> main) e invece un rilascio come gli altri.
+    if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     timeout-minutes: 45
     permissions:
@@ -102,7 +104,10 @@ jobs:
             subj=$(git log -1 --format=%s "$c")
             body=$(git log -1 --format=%b "$c")
             msg=$(git log -1 --format=%B "$c")
-            [[ "$subj" == "chore(release):"* ]] && continue
+            # Si scartano solo i commit di versione del bot (stesso criterio della punta, sopra).
+            if [[ "$subj" == "chore(release):"* ]] && [ "$(git log -1 --format=%an "$c")" = "github-actions[bot]" ]; then
+              continue
+            fi
             COUNT=$((COUNT + 1))
             # Merge di GitHub ("Merge pull request #N from ..."): il titolo della PR e la prima riga del corpo.
             head="$subj"
@@ -203,12 +208,15 @@ jobs:
           grep -qxF "VERSION_CODE=$CODE" gradle.properties
           grep -E '^VERSION_' gradle.properties
 
+      # Anche :app:assembleRelease: qui non ci sono i secret di firma, quindi la signingConfig di release e
+      # nulla e AGP produce app-release-unsigned.apk (scartato). Serve a far girare R8, la riduzione delle
+      # risorse e lintVitalRelease PRIMA del tag: un loro errore in release.yml brucerebbe il numero.
       - name: Build e test
         if: steps.ver.outputs.skip != 'true'
         run: |
           set -o pipefail
           gradle --no-daemon --stacktrace \
-            :core-thermal:test :app:testDebugUnitTest :app:assembleDebug 2>&1 | tee build.log
+            :core-thermal:test :app:testDebugUnitTest :app:assembleDebug :app:assembleRelease 2>&1 | tee build.log
 
       - name: Rapporto errori
         if: failure() && steps.ver.outputs.skip != 'true'

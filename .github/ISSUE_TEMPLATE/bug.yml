@@ -81,10 +81,10 @@ body:
     id: printer_settings
     attributes:
       label: Impostazioni di stampa
-      description: Solo per problemi di stampa. Le trovi in Impostazioni -> Carta e stampa.
+      description: Solo per problemi di stampa. Le trovi in Impostazioni -> Stampante e carta (sezioni Carta, Intensità di stampa e Calibrazione avanzata).
       placeholder: |
         Carta 58 mm, intensita 0, avanzamento 4 righe, taglio no
-        Avanzate: blocco 256 byte, pausa 15 ms, banda 24 righe
+        Calibrazione avanzata: blocco 256 byte, pausa 15 ms, banda 24 righe
 
   - type: textarea
     id: evidence

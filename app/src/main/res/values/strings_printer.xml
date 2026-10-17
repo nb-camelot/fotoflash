@@ -30,6 +30,7 @@
     <string name="prn_error_title_write">Print interrupted</string>
     <string name="prn_error_title_no_printer">No printer chosen</string>
     <string name="prn_error_title_busy">Printer busy</string>
+    <string name="prn_error_title_render">Couldn\'t prepare the print</string>
 
     <!-- Azioni -->
     <string name="prn_action_grant">Allow access</string>
@@ -78,7 +79,7 @@
     <string name="prn_heat_level_2">Medium</string>
     <string name="prn_heat_level_3">Dark</string>
     <string name="prn_heat_level_4">Maximum</string>
-    <string name="prn_heat_hint">More heat gives deeper blacks and richer grays, but prints slower and drains the battery faster. “Printer default” sends no setting at all: choose it if your printer acts strangely with the others.</string>
+    <string name="prn_heat_hint">More heat gives deeper blacks and richer grays, but prints slower and drains the battery faster. “Printer default” sends no setting at all: choose it if your printer acts strangely with the others. Some printers keep the last intensity until you switch them off and on again.</string>
 
     <!-- Calibrazione avanzata -->
     <string name="prn_section_advanced">Advanced calibration</string>
@@ -126,6 +127,8 @@
     <string name="prn_err_write">The connection to %1$s dropped while printing. Check the battery and the paper, then try again.</string>
     <string name="prn_err_write_stalled">%1$s stopped accepting data. It may be out of paper or have the cover open.</string>
     <string name="prn_err_unexpected">Printing failed: %1$s</string>
+    <string name="prn_err_render">The print couldn\'t be prepared. The printer is fine: try again.</string>
+    <string name="prn_err_too_wide">This print was made for %1$d mm paper. Set that paper width in Printer &amp; paper to print it again.</string>
 
     <!-- Pagina di prova: sulla carta finisce solo ASCII (gli accenti vengono tolti) -->
     <string name="prn_test_payoff">Snap. Print. Smile.</string>

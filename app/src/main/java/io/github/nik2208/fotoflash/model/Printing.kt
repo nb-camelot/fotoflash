@@ -28,7 +28,8 @@ sealed interface PrinterState {
     data class Error(val device: PrinterDevice?, val failure: PrintFailure, val message: String) : PrinterState
 }
 
-enum class PrintFailure { NO_PRINTER, NO_PERMISSION, BLUETOOTH_OFF, NOT_BONDED, CONNECT_FAILED, WRITE_FAILED, BUSY }
+/** RENDER_FAILED: la stampa non si e potuta comporre (memoria, immagine non valida): la stampante non c entra. */
+enum class PrintFailure { NO_PRINTER, NO_PERMISSION, BLUETOOTH_OFF, NOT_BONDED, CONNECT_FAILED, WRITE_FAILED, BUSY, RENDER_FAILED }
 
 sealed interface PrintOutcome {
     data class Success(val bytes: Int, val millis: Long) : PrintOutcome

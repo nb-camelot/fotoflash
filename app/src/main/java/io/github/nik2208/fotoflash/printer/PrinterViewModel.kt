@@ -46,6 +46,8 @@ data class PrinterUiState(
     /** L'utente ha negato il permesso almeno una volta: si offre anche la strada delle impostazioni app. */
     val permissionDenied: Boolean = false,
     val testPrinting: Boolean = false,
+    /** Vero dopo la prima lettura dei dispositivi accoppiati: prima [bonded] vuota non vuol dire nulla. */
+    val bondedLoaded: Boolean = false,
 ) {
     val configured: PrinterDevice?
         get() = settings.printerAddress?.let { address -> PrinterDevice(settings.printerName ?: address, address) }
@@ -75,6 +77,7 @@ class PrinterViewModel(private val graph: AppGraph) : ViewModel() {
         val permission: Boolean,
         val enabled: Boolean,
         val bonded: List<BondedPrinterItem>,
+        val bondedLoaded: Boolean = false,
     )
 
     private data class Extras(val permissionDenied: Boolean = false, val testPrinting: Boolean = false)
@@ -104,6 +107,7 @@ class PrinterViewModel(private val graph: AppGraph) : ViewModel() {
                 bonded = sys.bonded,
                 permissionDenied = ext.permissionDenied && !sys.permission,
                 testPrinting = ext.testPrinting,
+                bondedLoaded = sys.bondedLoaded,
             )
         }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), PrinterUiState())
 
@@ -137,7 +141,11 @@ class PrinterViewModel(private val graph: AppGraph) : ViewModel() {
     /** Rilegge permessi, stato del Bluetooth e dispositivi accoppiati (al ritorno sulla schermata). */
     fun refresh() {
         viewModelScope.launch {
-            system.value = withContext(Dispatchers.IO) { readSystem() }
+            system.value = withContext(Dispatchers.IO) {
+                // Un errore risolto qui (permesso, riaccoppiamento) va tolto anche dalle pillole delle altre schermate.
+                printer.revalidate()
+                readSystem()
+            }
         }
     }
 
@@ -167,8 +175,11 @@ class PrinterViewModel(private val graph: AppGraph) : ViewModel() {
                 when (val outcome = printer.printTestPage()) {
                     is PrintOutcome.Success -> _events.trySend(PrinterEvent.TestPageSent)
                     is PrintOutcome.Failure -> {
-                        // Gli altri errori li mostra la scheda di stato; BUSY non cambia lo stato.
-                        if (outcome.failure == PrintFailure.BUSY) _events.trySend(PrinterEvent.Message(outcome.message))
+                        // Gli altri errori li mostra la scheda di stato; BUSY e RENDER_FAILED non cambiano
+                        // lo stato, quindi senza messaggio l'utente non vedrebbe nulla.
+                        if (outcome.failure == PrintFailure.BUSY || outcome.failure == PrintFailure.RENDER_FAILED) {
+                            _events.trySend(PrinterEvent.Message(outcome.message))
+                        }
                     }
                 }
             } finally {
@@ -218,7 +229,7 @@ class PrinterViewModel(private val graph: AppGraph) : ViewModel() {
         } else {
             emptyList()
         }
-        return SystemStatus(available, permission, enabled, bonded)
+        return SystemStatus(available, permission, enabled, bonded, bondedLoaded = true)
     }
 
     /**
@@ -235,6 +246,8 @@ class PrinterViewModel(private val graph: AppGraph) : ViewModel() {
             PrintFailure.BLUETOOTH_OFF -> sys.available && sys.enabled
             PrintFailure.NOT_BONDED -> sys.bonded.any { it.device.address.equals(errorAddress, ignoreCase = true) }
             PrintFailure.NO_PRINTER -> configured != null
+            // Composizione fallita: la stampante non c'entra, non va mai mostrata come suo errore.
+            PrintFailure.RENDER_FAILED -> true
             else -> false
         }
         // Se nel frattempo e stata scelta un'altra stampante, l'errore riguarda quella vecchia.

@@ -151,11 +151,31 @@ fun PrintProgressSheet(
 
 // ---------------------------------------------------------------- in corso
 
+/**
+ * Memoria dell'invio, volutamente non osservabile (cambia solo insieme a printerState, che
+ * ricompone gia). Dopo l'ultimo pacchetto la stampante torna "connessa" mentre si aggiornano
+ * contatore e storico: senza memoria il foglio tornerebbe a "Preparo la stampa" come se ripartisse.
+ */
+private class PrintMemo {
+    var printing = false
+    var last = 0f
+}
+
 @Composable
 private fun RunningContent(printerState: PrinterState) {
     val printing = printerState as? PrinterState.Printing
+    val memo = remember { PrintMemo() }
+    if (printing != null) {
+        memo.printing = true
+        memo.last = printing.progress.coerceIn(0f, 1f)
+    }
+    // Byte tutti inviati, la carta e fuori: restano solo contatore e storico.
+    val finishing = memo.printing && printerState is PrinterState.Connected
+    // Dalla prima percentuale in poi la barra resta determinata (anche se l'invio si interrompe).
+    val sending = printing != null || memo.printing
     val progress by animateFloatAsState(
-        targetValue = printing?.progress?.coerceIn(0f, 1f) ?: 0f,
+        targetValue = printing?.progress?.coerceIn(0f, 1f)
+            ?: (if (finishing) 1f else if (memo.printing) memo.last else 0f),
         animationSpec = tween(durationMillis = 250),
         label = "printProgress",
     )
@@ -169,15 +189,18 @@ private fun RunningContent(printerState: PrinterState) {
     )
 
     PrinterIllustration(
-        paper = if (printing != null) 0.12f + 0.88f * progress else idlePaper,
+        paper = if (sending) 0.12f + 0.88f * progress else idlePaper,
         led = FfColors.Flash,
         badge = null,
     )
     Spacer(Modifier.height(16.dp))
 
-    val title = when (printerState) {
-        is PrinterState.Connecting -> stringResource(R.string.ed_sheet_connecting, printerState.device.name)
-        is PrinterState.Printing -> stringResource(R.string.ed_sheet_printing)
+    val title = when {
+        printerState is PrinterState.Connecting -> stringResource(R.string.ed_sheet_connecting, printerState.device.name)
+        printing != null -> stringResource(R.string.ed_sheet_printing)
+        finishing -> stringResource(R.string.ed_sheet_finishing)
+        // Invio interrotto, l'esito sta per arrivare: la percentuale resta dove si e fermata.
+        memo.printing -> stringResource(R.string.ed_sheet_printing)
         else -> stringResource(R.string.ed_sheet_preparing)
     }
     Text(
@@ -191,7 +214,7 @@ private fun RunningContent(printerState: PrinterState) {
 
     val barColor = MaterialTheme.colorScheme.onSurface
     val trackColor = MaterialTheme.colorScheme.surfaceVariant
-    if (printing != null) {
+    if (sending) {
         LinearProgressIndicator(
             progress = { progress },
             modifier = Modifier
@@ -317,6 +340,11 @@ private fun failureCopy(failure: PrintFailure): FailureCopy = when (failure) {
         R.string.ed_fail_busy_title, R.string.ed_fail_busy_hint,
         FailureAction.RETRY, FailureAction.PRINTER,
     )
+    // La stampante non c'entra: nessuna azione verso stampante o Bluetooth, solo riprovare.
+    PrintFailure.RENDER_FAILED -> FailureCopy(
+        R.string.ed_fail_render_title, R.string.ed_fail_render_hint,
+        FailureAction.RETRY, null,
+    )
 }
 
 @Composable
@@ -330,7 +358,9 @@ private fun FailureContent(
     val haptic = LocalHapticFeedback.current
     LaunchedEffect(outcome) { haptic.performHapticFeedback(HapticFeedbackType.LongPress) }
 
-    PrinterIllustration(paper = 0.18f, led = FfColors.Coral, badge = SheetBadge.ERROR)
+    // Composizione fallita: la stampantina resta "accesa" e serena, il problema non e suo.
+    val led = if (outcome.failure == PrintFailure.RENDER_FAILED) FfColors.Flash else FfColors.Coral
+    PrinterIllustration(paper = 0.18f, led = led, badge = SheetBadge.ERROR)
     Spacer(Modifier.height(16.dp))
     Text(
         text = stringResource(copy.title),

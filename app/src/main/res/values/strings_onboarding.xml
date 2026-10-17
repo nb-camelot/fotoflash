@@ -46,4 +46,5 @@
     <string name="onb_fail_connect">The printer does not answer: is it on and nearby?</string>
     <string name="onb_fail_write">Printing stopped halfway: check the paper and try again</string>
     <string name="onb_fail_busy">The printer is busy, try again in a moment</string>
+    <string name="onb_fail_render">Could not prepare the test page: try again</string>
 </resources>

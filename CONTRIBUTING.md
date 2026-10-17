@@ -16,7 +16,8 @@ poche e scritte: valgono per persone e agenti allo stesso modo.
 Usa i modelli **Bug** e **Funzionalità**. Il titolo è in stile conventional commit (`fix: …`,
 `feat: …`) e i criteri di accettazione sono verificabili in CI: così l'issue è pronta anche per
 l'agente. Per i problemi di stampa indica sempre modello della stampante e impostazioni (Impostazioni
-→ Carta e stampa), e se puoi allega una foto dello scontrino.
+→ Stampante e carta: sezioni Carta, Intensità di stampa e Calibrazione avanzata), e se puoi allega
+una foto dello scontrino.
 
 ## Scrivere codice
 
@@ -37,6 +38,10 @@ Su un'issue scrivi un commento che comincia con `/oc` (owner, collaboratori e ut
 L'agente scrive il piano, implementa, compila, si fa revisionare e apre la PR verso `dev`; se tutto è
 verde la mergia. Per correggere il tiro commenta `/oc <cosa cambiare>` sulla sua PR. Dettagli nel
 [README](README.md#sviluppo-agentico-con-oc).
+
+`/oc` funziona solo se `opencode.yml` è sul **branch di default** del repository, che deve essere
+`dev`: GitHub esegue gli eventi di issue e commenti (e mostra i modelli Bug e Funzionalità) dal
+branch di default. Con `main` di default il comando non avvia niente, senza errori.
 
 ## Rilasci
 

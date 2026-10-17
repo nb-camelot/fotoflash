@@ -66,7 +66,7 @@ già **accoppiate** nelle impostazioni di Android.
 | Stampante | Supporto |
 |---|---|
 | Stampanti portatili ESC/POS da **58 mm** (384 punti) via Bluetooth classico — le classiche "mini stampanti per scontrini" che si accoppiano con PIN `0000` o `1234` | Sì: è il caso principale |
-| Stampanti ESC/POS da **80 mm** (576 punti) via Bluetooth classico | Sì, scegliendo 80 mm in Impostazioni → Carta e stampa |
+| Stampanti ESC/POS da **80 mm** (576 punti) via Bluetooth classico | Sì, scegliendo 80 mm in Impostazioni → Stampante e carta → Carta |
 | "**Cat printer**" e mini stampanti **BLE** a protocollo proprietario (GB01, GB02, GB03, MX05, MX06, MX10 e simili, quelle che si usano solo dalla loro app) | Non ancora: in [roadmap](docs/ROADMAP.md), piano pronto in [`issue_plans/ble-cat-printer.md`](issue_plans/ble-cat-printer.md) |
 | Stampanti di etichette a protocollo proprietario, stampanti USB o Wi-Fi | No |
 
@@ -103,7 +103,8 @@ Impostazioni → Evento; ogni scatto esce già impaginato e numerato.
 Le stampanti economiche non hanno controllo di flusso e hanno buffer piccoli: una foto pesa circa
 dieci volte uno scontrino. FotoFlash invia l'immagine **a bande** e **a blocchi** con una **pausa**
 tra un blocco e l'altro. I valori predefiniti vanno bene per la maggior parte delle stampanti; se la
-tua fa i capricci, stampa la pagina di prova e regola qui (Impostazioni → Carta e stampa → Avanzate).
+tua fa i capricci, stampa la pagina di prova e regola qui (Impostazioni → Stampante e carta: sezioni
+Carta, Intensità di stampa e Calibrazione avanzata, quest'ultima da aprire con un tocco).
 
 | Parametro | Predefinito | Intervallo | A cosa serve |
 |---|---|---|---|
@@ -182,7 +183,8 @@ fotoflash/
 - **`dev`** riceve tutte le PR (anche quelle dell'agente). **`main`** è il rilascio: ogni push su
   `main`, cioè ogni merge di `dev`, produce una versione.
 - `bump-version.yml` valuta **tutti i commit arrivati su `main` dall'ultimo tag**, compila e testa
-  (stessi step della CI) e **solo se è tutto verde** aggiorna `VERSION_NAME`/`VERSION_CODE` in
+  (stessi step della CI, più la build di release non firmata: R8, riduzione delle risorse e
+  `lintVitalRelease` girano prima del tag) e **solo se è tutto verde** aggiorna `VERSION_NAME`/`VERSION_CODE` in
   `gradle.properties`, crea il commit `chore(release): vX.Y.Z [skip ci]` e il tag `vX.Y.Z`. Poi chiama
   `release.yml` come job dello stesso workflow (un push fatto con `GITHUB_TOKEN` non avvierebbe altri
   workflow).
@@ -201,8 +203,9 @@ fotoflash/
 
 Vince il bump più alto tra i commit del rilascio. Il **primo rilascio** (nessun tag) pubblica la
 versione già scritta in `gradle.properties` (0.1.0). `[skip release]` nell'ultimo commit salta il
-rilascio; *Run workflow* su `bump-version.yml` permette di forzare `patch`/`minor`/`major`; *Run
-workflow* su `release.yml` rifà la release di un tag esistente (per esempio dopo aver configurato i
+rilascio; *Run workflow* su `bump-version.yml` permette di forzare `patch`/`minor`/`major` (va
+lanciato scegliendo il branch **`main`**: con `dev`, che è il branch di default, il job viene saltato
+senza messaggi); *Run workflow* su `release.yml` rifà la release di un tag esistente (per esempio dopo aver configurato i
 secret). Per avere note di rilascio precise, prima della PR `dev → main` rinomina in `CHANGELOG.md`
 la sezione `## [Unreleased]` in `## [X.Y.Z] - AAAA-MM-GG`; se non lo fai, la release usa la sezione
 `Unreleased`. Il bump di versione resta su `main`: `dev` mantiene il numero precedente finché non
@@ -220,16 +223,20 @@ apre la PR. Il flusso è in [`.github/workflows/opencode.yml`](.github/workflows
 2. **Autorizzazione** — conta il ruolo di **chi scrive il comando**: OWNER, COLLABORATOR o un utente
    in `OPENCODE_ALLOWED_USERS`. Le PR da fork e i branch `main`/`master`/`dev` sono rifiutati.
 3. **Piano** — un agente in sola lettura scrive `issue_plans/opencode-issue-<n>.md` (o usa il piano
-   pronto citato nell'issue, per esempio `issue_plans/collage-2x2.md`).
+   pronto citato nel comando, nell'issue o nella PR, per esempio `issue_plans/collage-2x2.md`).
 4. **Build** — l'agente implementa, partendo da `AGENTS.md` e dai contratti di `docs/ARCHITECTURE.md`;
    poi il workflow esegue la build Gradle e, se fallisce, rimanda gli errori all'agente.
-5. **Review** — un agente in sola lettura verifica i criteri; conta solo l'ultima riga,
-   `VERDICT: PASS` o `VERDICT: FAIL`. Fino a 4 giri build/review.
+5. **Review** — un agente in sola lettura verifica i criteri del piano e la richiesta corrente; conta
+   solo l'ultima riga, `VERDICT: PASS` o `VERDICT: FAIL`. Fino a 4 giri build/review (di solito 1-2,
+   entro un budget di 45 minuti: i timeout di OpenCode si accorciano al tempo che resta al job).
 6. **PR verso `dev`** — su un runner pulito il workflow controlla il lavoro (niente modifiche a
    `.github/`, `signing/`, `VERSION_*`), pusha `opencode/issue-<n>`, apre la PR e avvia la CI.
-7. **Merge** — squash-merge **della sola PR dell'agente**, solo con review PASS e check «Build e test»
-   verde sul commit revisionato. Altrimenti la PR resta aperta (in bozza se la review non è passata):
-   commenta `/oc <cosa correggere>` sulla PR per un altro giro.
+7. **Merge** — squash-merge **della sola PR dell'agente**, solo con review PASS, check «Build e test»
+   verde sul commit revisionato e issue aperta da un owner, un collaboratore o un utente di
+   `OPENCODE_ALLOWED_USERS` (una PR nata da *Run workflow* non ha un'issue collegata: dopo un `/oc`
+   sulla PR il merge lo decide una persona). Altrimenti la PR resta aperta (in bozza se la review non è passata):
+   commenta `/oc <cosa correggere>` sulla PR per un altro giro. Se due run lavorano sullo stesso
+   branch, la seconda salva il suo lavoro su `opencode/issue-<n>-r<run>` senza PR né merge.
 8. **Rilascio** — resta una decisione umana: PR `dev → main`.
 
 Il `GITHUB_TOKEN` non può pushare commit che cambiano `.github/workflows/`: se nel frattempo `dev` ha
@@ -249,17 +256,26 @@ Sicurezza in breve: l'agente gira con un token in **sola lettura** e senza crede
 dei modelli sono solo negli step che le usano; OpenCode è bloccato a una versione con SHA-256
 verificato; push, PR e merge avvengono in un job separato che non esegue il codice dell'agente; il
 merge automatico tocca solo `dev`. Il testo di un'issue entra nel prompt: affida all'agente solo
-issue di cui ti fidi.
+issue di cui ti fidi. I commenti HTML (`<!-- … -->`), invisibili nella pagina dell'issue, vengono
+tolti dal contesto. Il verdetto della review e l'esito della build nel runner dell'agente sono
+prodotti in un ambiente **non fidato** (l'agente esegue comandi liberamente) e **non sono una
+barriera di sicurezza**: per questo le issue aperte da utenti esterni non vengono mai mergiate in
+automatico, anche se un owner scrive `/oc`. L'unico controllo indipendente resta la CI, e una PR
+`dev → main` la decide sempre una persona.
 
 ## Configurazione del repository
 
 ### Impostazioni (una volta sola)
 
-1. **Branch**: crea `dev` (c'è già) e, consigliato, impostalo come **branch di default**: le PR
-   puntano lì e "Closes #n" chiude le issue al merge. Soprattutto, i comandi `/oc` (eventi su issue
-   e commenti) eseguono il workflow **del branch di default**: con `main` di default, una modifica a
-   `opencode.yml` fatta su `dev` entra in funzione solo dopo il rilascio. Il workflow comunque chiude
-   da solo le issue risolte dall'agente.
+1. **Branch**: imposta `dev` come **branch di default** (Settings → General → Default branch).
+   **Obbligatorio**: GitHub esegue i comandi `/oc` (eventi su issue e commenti) con il workflow **del
+   branch di default** e da lì legge anche i modelli di issue. Finché il default è `main`, che contiene
+   solo `ci.yml`, `/oc` non avvia niente (nessuna run, nessun errore) e i moduli Bug e Funzionalità con
+   il campo *Affida all'agente* non compaiono. Con `dev` di default le PR puntano lì e "Closes #n"
+   chiude le issue al merge (il workflow comunque chiude da solo quelle risolte dall'agente).
+   Alternativa: portare su `main` i soli file di `.github/` (più `README.md`) con un commit che
+   contiene `[skip release]`. Con `dev` di default, *Run workflow* di `bump-version.yml` va lanciato
+   scegliendo `main`.
 2. **Settings → Actions → General**: abilita *Allow GitHub Actions to create and approve pull
    requests* (senza, l'agente non può aprire la PR). I permessi dei token sono dichiarati job per job
    nei workflow, quindi *Workflow permissions* può restare in sola lettura.

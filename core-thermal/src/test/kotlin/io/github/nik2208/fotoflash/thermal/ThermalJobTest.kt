@@ -2,6 +2,7 @@ package io.github.nik2208.fotoflash.thermal
 
 import org.junit.Assert.assertArrayEquals
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class ThermalJobTest {
@@ -70,5 +71,29 @@ class ThermalJobTest {
     fun totalBytesSumsPackets() {
         val packets = ThermalJob.build(BitImage(384, 50), PrintJobOptions())
         assertEquals(2 + (8 + 48 * 24) * 2 + (8 + 48 * 2) + 3, ThermalJob.totalBytes(packets))
+    }
+
+    @Test
+    fun resyncIsAFullBandOfNul() {
+        val fill = ThermalJob.resync(48, 24)
+        assertEquals(8 + 48 * 24, fill.size)
+        assertTrue(fill.all { it.toInt() == 0 })
+        // valori fuori range riportati nel range: almeno 1 byte per riga, 1..255 righe
+        assertEquals(8 + 1 * 1, ThermalJob.resync(0, 0).size)
+        assertEquals(8 + 72 * 255, ThermalJob.resync(72, 999).size)
+    }
+
+    @Test
+    fun resyncForCoversTheLargestPacketOfTheInterruptedJob() {
+        val packets = ThermalJob.build(BitImage(384, 50), PrintJobOptions())
+        val fill = ThermalJob.resyncFor(packets)
+        assertEquals(8 + 48 * 24, fill.size)
+        assertTrue(fill.all { it.toInt() == 0 })
+        // bande alte (impostazione 8..255): il riempimento segue il lavoro, non un valore fisso
+        val tall = ThermalJob.build(BitImage(576, 300), PrintJobOptions(bandHeight = 200))
+        assertEquals(8 + 72 * 200, ThermalJob.resyncFor(tall).size)
+        // pacchetti qualsiasi (pagina di prova): conta il piu grande
+        assertEquals(5, ThermalJob.resyncFor(listOf(ByteArray(3), ByteArray(5), ByteArray(1))).size)
+        assertEquals(0, ThermalJob.resyncFor(emptyList()).size)
     }
 }

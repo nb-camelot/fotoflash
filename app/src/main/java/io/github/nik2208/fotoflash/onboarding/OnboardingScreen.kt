@@ -1,8 +1,10 @@
 package io.github.nik2208.fotoflash.onboarding
 
 import android.Manifest
+import android.app.Activity
 import android.content.ActivityNotFoundException
 import android.content.Context
+import android.content.ContextWrapper
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.net.Uri
@@ -36,9 +38,9 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.rounded.BluetoothSearching
 import androidx.compose.material.icons.rounded.Bluetooth
 import androidx.compose.material.icons.rounded.BluetoothDisabled
-import androidx.compose.material.icons.rounded.BluetoothSearching
 import androidx.compose.material.icons.rounded.CheckCircle
 import androidx.compose.material.icons.rounded.ErrorOutline
 import androidx.compose.material.icons.rounded.PhotoCamera
@@ -77,6 +79,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LifecycleEventEffect
@@ -124,13 +127,31 @@ private fun OnboardingContent(onFinished: () -> Unit) {
     val pagerState = rememberPagerState(pageCount = { PAGE_COUNT })
     val scope = rememberCoroutineScope()
 
+    val activity = remember(context) { context.findActivity() }
     val bluetoothPermissions = remember { vm.bluetoothPermissions() }
     // Contatore che forza la rilettura dei permessi (dopo la richiesta o al ritorno dalle impostazioni).
     var permissionTick by remember { mutableIntStateOf(0) }
-    var permissionsAsked by rememberSaveable { mutableStateOf(false) }
+    // Separati: chiedere il Bluetooth dalla pagina stampante non deve far risultare "negata" la fotocamera.
+    var cameraAsked by rememberSaveable { mutableStateOf(false) }
+    var bluetoothAsked by rememberSaveable { mutableStateOf(false) }
     val cameraGranted = remember(permissionTick) { isGranted(context, Manifest.permission.CAMERA) }
     val bluetoothGranted = remember(permissionTick) { bluetoothPermissions.all { isGranted(context, it) } }
     val allGranted = cameraGranted && bluetoothGranted
+    // "Negato per sempre": gia chiesto, ancora negato e il sistema non mostrerebbe piu la richiesta.
+    // Il rationale e false anche prima della prima richiesta: per questo conta solo dopo averla fatta.
+    val cameraBlocked = remember(permissionTick, cameraAsked) {
+        cameraAsked && !isGranted(context, Manifest.permission.CAMERA) &&
+            isBlocked(activity, Manifest.permission.CAMERA)
+    }
+    val bluetoothBlocked = remember(permissionTick, bluetoothAsked) {
+        bluetoothAsked && bluetoothPermissions.any { !isGranted(context, it) && isBlocked(activity, it) }
+    }
+    val permanentlyDenied = cameraBlocked || bluetoothBlocked
+    // Dopo un solo rifiuto Android mostra di nuovo la richiesta: quei permessi si richiedono ancora.
+    val requestable = buildList<String> {
+        if (!cameraGranted && !cameraBlocked) add(Manifest.permission.CAMERA)
+        if (!bluetoothGranted && !bluetoothBlocked) addAll(bluetoothPermissions)
+    }.distinct()
 
     fun goTo(page: Int) {
         scope.launch { pagerState.animateScrollToPage(page) }
@@ -138,8 +159,10 @@ private fun OnboardingContent(onFinished: () -> Unit) {
 
     val permissionLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions(),
-    ) { _ ->
-        permissionsAsked = true
+    ) { result ->
+        // Un risultato vuoto (richiesta annullata dal sistema) non conta come risposta dell'utente.
+        if (Manifest.permission.CAMERA in result) cameraAsked = true
+        if (bluetoothPermissions.any { it in result }) bluetoothAsked = true
         permissionTick++
         vm.refresh()
         val granted = isGranted(context, Manifest.permission.CAMERA) &&
@@ -167,6 +190,14 @@ private fun OnboardingContent(onFinished: () -> Unit) {
 
     val finish: () -> Unit = { vm.finish(onFinished) }
     val page = pagerState.currentPage
+    // Dalla pagina stampante (raggiungibile anche scorrendo, senza aver toccato "Consenti").
+    val grantBluetooth: () -> Unit = {
+        if (bluetoothBlocked || bluetoothPermissions.isEmpty()) {
+            openAppSettings(context)
+        } else {
+            permissionLauncher.launch(bluetoothPermissions.toTypedArray())
+        }
+    }
 
     Surface(modifier = Modifier.fillMaxSize(), color = FfColors.Paper, contentColor = FfColors.Ink) {
         Column(modifier = Modifier.fillMaxSize().systemBarsPadding()) {
@@ -208,14 +239,18 @@ private fun OnboardingContent(onFinished: () -> Unit) {
                         cameraGranted = cameraGranted,
                         bluetoothNeeded = bluetoothPermissions.isNotEmpty(),
                         bluetoothGranted = bluetoothGranted,
-                        asked = permissionsAsked,
+                        cameraAsked = cameraAsked,
+                        bluetoothAsked = bluetoothAsked,
+                        permanentlyDenied = permanentlyDenied,
                         onOpenAppSettings = { openAppSettings(context) },
                     )
 
                     else -> PrinterPage(
                         state = state,
                         printerState = printerState,
+                        bluetoothBlocked = bluetoothBlocked,
                         onSelect = vm::select,
+                        onGrantBluetooth = grantBluetooth,
                         onOpenBluetoothSettings = { openBluetoothSettings(context) },
                         onRefresh = vm::refresh,
                         onTestPage = vm::printTestPage,
@@ -229,9 +264,9 @@ private fun OnboardingContent(onFinished: () -> Unit) {
                 modifier = Modifier.align(Alignment.CenterHorizontally).padding(vertical = 16.dp),
             )
 
-            // Dopo un rifiuto il sistema spesso non mostra piu la richiesta: rilanciarla sarebbe un
-            // pulsante morto. Si va avanti; per riattivare c'e "Apri impostazioni dell'app".
-            val askPermissions = page == PAGE_PERMISSIONS && !allGranted && !permissionsAsked
+            // "Consenti" resta finche il sistema mostrerebbe ancora la richiesta; con un permesso negato
+            // per sempre rilanciarla sarebbe un pulsante morto: si va avanti e c'e "Apri impostazioni dell'app".
+            val askPermissions = page == PAGE_PERMISSIONS && !allGranted && requestable.isNotEmpty()
             val primaryText = when {
                 page < PAGE_KEEP -> stringResource(R.string.onb_next)
                 page == PAGE_KEEP -> stringResource(R.string.onb_start)
@@ -242,9 +277,7 @@ private fun OnboardingContent(onFinished: () -> Unit) {
             val onPrimary: () -> Unit = {
                 when {
                     page < PAGE_PERMISSIONS -> goTo(page + 1)
-                    askPermissions -> permissionLauncher.launch(
-                        (listOf(Manifest.permission.CAMERA) + bluetoothPermissions).distinct().toTypedArray(),
-                    )
+                    askPermissions -> permissionLauncher.launch(requestable.toTypedArray())
                     page == PAGE_PERMISSIONS -> goTo(PAGE_PRINTER)
                     else -> finish()
                 }
@@ -304,7 +337,9 @@ private fun PermissionsPage(
     cameraGranted: Boolean,
     bluetoothNeeded: Boolean,
     bluetoothGranted: Boolean,
-    asked: Boolean,
+    cameraAsked: Boolean,
+    bluetoothAsked: Boolean,
+    permanentlyDenied: Boolean,
     onOpenAppSettings: () -> Unit,
 ) {
     Column(
@@ -325,7 +360,7 @@ private fun PermissionsPage(
             icon = Icons.Rounded.PhotoCamera,
             title = stringResource(R.string.onb_perm_camera),
             description = stringResource(R.string.onb_perm_camera_desc),
-            status = permissionStatus(cameraGranted, asked),
+            status = permissionStatus(cameraGranted, cameraAsked),
         )
         if (bluetoothNeeded) {
             Spacer(modifier = Modifier.height(12.dp))
@@ -333,10 +368,11 @@ private fun PermissionsPage(
                 icon = Icons.Rounded.Bluetooth,
                 title = stringResource(R.string.onb_perm_bluetooth),
                 description = stringResource(R.string.onb_perm_bluetooth_desc),
-                status = permissionStatus(bluetoothGranted, asked),
+                status = permissionStatus(bluetoothGranted, bluetoothAsked),
             )
         }
-        if (asked && !(cameraGranted && bluetoothGranted)) {
+        // Solo quando la richiesta non comparirebbe piu: prima di allora basta "Consenti".
+        if (permanentlyDenied && !(cameraGranted && bluetoothGranted)) {
             Spacer(modifier = Modifier.height(20.dp))
             Text(
                 text = stringResource(R.string.onb_perm_denied_hint),
@@ -357,7 +393,9 @@ private fun PermissionsPage(
 private fun PrinterPage(
     state: OnboardingUiState,
     printerState: PrinterState,
+    bluetoothBlocked: Boolean,
     onSelect: (PrinterDevice) -> Unit,
+    onGrantBluetooth: () -> Unit,
     onOpenBluetoothSettings: () -> Unit,
     onRefresh: () -> Unit,
     onTestPage: () -> Unit,
@@ -396,10 +434,19 @@ private fun PrinterPage(
                 text = stringResource(R.string.onb_printer_bt_unavailable),
             )
 
-            !state.hasBluetoothPermission -> Notice(
-                icon = Icons.Rounded.Bluetooth,
-                text = stringResource(R.string.onb_printer_no_permission),
-            )
+            // Senza un'azione qui l'unica via sarebbe tornare a mano alla pagina dei permessi.
+            !state.hasBluetoothPermission -> Column {
+                Notice(
+                    icon = Icons.Rounded.Bluetooth,
+                    text = stringResource(R.string.onb_printer_no_permission),
+                )
+                Spacer(modifier = Modifier.height(12.dp))
+                GhostButton(
+                    text = stringResource(if (bluetoothBlocked) R.string.onb_perm_settings else R.string.onb_perm_allow),
+                    onClick = onGrantBluetooth,
+                    icon = if (bluetoothBlocked) Icons.Rounded.Settings else Icons.Rounded.Bluetooth,
+                )
+            }
 
             !state.bluetoothEnabled -> Notice(
                 icon = Icons.Rounded.BluetoothDisabled,
@@ -407,7 +454,7 @@ private fun PrinterPage(
             )
 
             state.printers.isEmpty() -> Notice(
-                icon = Icons.Rounded.BluetoothSearching,
+                icon = Icons.AutoMirrored.Rounded.BluetoothSearching,
                 text = stringResource(R.string.onb_printer_none),
             )
 
@@ -634,6 +681,7 @@ private fun failureText(failure: PrintFailure): String = stringResource(
         PrintFailure.CONNECT_FAILED -> R.string.onb_fail_connect
         PrintFailure.WRITE_FAILED -> R.string.onb_fail_write
         PrintFailure.BUSY -> R.string.onb_fail_busy
+        PrintFailure.RENDER_FAILED -> R.string.onb_fail_render
     },
 )
 
@@ -641,6 +689,17 @@ private fun failureText(failure: PrintFailure): String = stringResource(
 
 private fun isGranted(context: Context, permission: String): Boolean =
     ContextCompat.checkSelfPermission(context, permission) == PackageManager.PERMISSION_GRANTED
+
+/** Vero se il sistema non mostrerebbe la richiesta. Senza Activity si ripiega sulle impostazioni dell'app. */
+private fun isBlocked(activity: Activity?, permission: String): Boolean =
+    activity == null || !ActivityCompat.shouldShowRequestPermissionRationale(activity, permission)
+
+/** LocalContext puo essere un ContextWrapper: per il rationale serve l'Activity vera. */
+private tailrec fun Context.findActivity(): Activity? = when (this) {
+    is Activity -> this
+    is ContextWrapper -> baseContext.findActivity()
+    else -> null
+}
 
 // android.provider.Settings resta qualificato: il nome Settings e gia l'icona importata sopra.
 private fun openBluetoothSettings(context: Context) {

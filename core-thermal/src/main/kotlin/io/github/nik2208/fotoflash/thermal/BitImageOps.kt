@@ -34,6 +34,20 @@ fun BitImage.blit(src: BitImage, left: Int, top: Int) {
     }
 }
 
+/**
+ * L'immagine portata alla larghezza [width] della testina, con la stessa altezza: se e piu
+ * stretta viene centrata nel bianco, se e piu larga si ritaglia la parte centrale (i bordi si
+ * perdono). Con la larghezza giusta restituisce questa stessa immagine, senza copiarla.
+ * Serve per ristampare una voce dello Storico dopo un cambio di carta 58/80 mm: mandare un
+ * GS v 0 piu largo della testina fa uscire la stampa tagliata o sfasata a scaletta.
+ */
+fun BitImage.centeredOn(width: Int): BitImage {
+    if (width == this.width) return this
+    val out = BitImage(width, this.height)
+    out.blit(this, (width - this.width) / 2, 0)
+    return out
+}
+
 /** Riempie [rect] di nero ([black] = true) o di bianco, tagliando cio che esce dall'immagine. */
 fun BitImage.fillRect(rect: Rect, black: Boolean) {
     val x0 = maxOf(0, rect.left)

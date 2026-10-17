@@ -30,6 +30,7 @@
     <string name="prn_error_title_write">Stampa interrotta</string>
     <string name="prn_error_title_no_printer">Nessuna stampante scelta</string>
     <string name="prn_error_title_busy">Stampante occupata</string>
+    <string name="prn_error_title_render">Stampa non preparata</string>
 
     <!-- Azioni -->
     <string name="prn_action_grant">Consenti accesso</string>
@@ -78,7 +79,7 @@
     <string name="prn_heat_level_2">Media</string>
     <string name="prn_heat_level_3">Scura</string>
     <string name="prn_heat_level_4">Massima</string>
-    <string name="prn_heat_hint">Più calore dà neri più pieni e grigi più ricchi, ma stampa più lentamente e consuma più batteria. «Default stampante» non invia nessuna impostazione: sceglilo se la tua stampante si comporta male con le altre.</string>
+    <string name="prn_heat_hint">Più calore dà neri più pieni e grigi più ricchi, ma stampa più lentamente e consuma più batteria. «Default stampante» non invia nessuna impostazione: sceglilo se la tua stampante si comporta male con le altre. Alcune stampanti tengono l\'ultima intensità finché non le spegni e riaccendi.</string>
 
     <!-- Calibrazione avanzata -->
     <string name="prn_section_advanced">Calibrazione avanzata</string>
@@ -126,6 +127,8 @@
     <string name="prn_err_write">Il collegamento con %1$s si è interrotto durante la stampa. Controlla batteria e carta, poi riprova.</string>
     <string name="prn_err_write_stalled">%1$s ha smesso di ricevere dati. Forse è finita la carta o il coperchio è aperto.</string>
     <string name="prn_err_unexpected">Stampa non riuscita: %1$s</string>
+    <string name="prn_err_render">Non sono riuscito a preparare la stampa. La stampante non c\'entra: riprova.</string>
+    <string name="prn_err_too_wide">Questa stampa è fatta per carta da %1$d mm. Imposta quella larghezza in Stampante e carta per ristamparla.</string>
 
     <!-- Pagina di prova: sulla carta finisce solo ASCII (gli accenti vengono tolti) -->
     <string name="prn_test_payoff">Scatta. Stampa. Sorridi.</string>

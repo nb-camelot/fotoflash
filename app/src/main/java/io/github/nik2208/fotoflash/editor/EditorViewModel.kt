@@ -213,9 +213,21 @@ class EditorViewModel(private val graph: AppGraph) : ViewModel() {
                 throw e
             } catch (e: Exception) {
                 Log.e(TAG, "rendering dell'anteprima fallito", e)
-                _state.update { it.copy(rendering = false, renderFailed = true) }
+                clearPreview()
+            } catch (e: OutOfMemoryError) {
+                Log.e(TAG, "rendering dell'anteprima fallito (memoria)", e)
+                clearPreview()
             }
         }
+    }
+
+    /**
+     * Dopo un rendering fallito il risultato vecchio non vale piu (WYSIWYG): niente anteprima di un
+     * altro modello, e Salva/Condividi restano spenti finche un rendering non riesce.
+     */
+    private fun clearPreview() {
+        current = null
+        _state.update { it.copy(rendering = false, renderFailed = true, preview = null, paperLengthMm = 0) }
     }
 
     /**
@@ -231,8 +243,9 @@ class EditorViewModel(private val graph: AppGraph) : ViewModel() {
     /**
      * Stampa con i parametri correnti. Gira nello scope dell'app, non in quello del ViewModel:
      * se l'utente chiude il foglio o torna indietro a meta invio, la stampante non riceve mezza foto.
-     * La richiesta si ricostruisce sempre (data e numero devono essere quelli del momento) e si
-     * riusa il rendering dell'anteprima se coincide.
+     * La richiesta si ricostruisce sempre (il numero deve essere quello del momento); se coincide
+     * con l'anteprima mostrata o con l'ultimo invio, a meno del valore della data, si riusa quel
+     * rendering: sulla carta va la data dell'anteprima (WYSIWYG) e "Riprova" non crea doppioni.
      */
     fun print() {
         val s = _state.value
@@ -240,20 +253,51 @@ class EditorViewModel(private val graph: AppGraph) : ViewModel() {
         val candidates = listOfNotNull(lastSent, current)
         _state.update { it.copy(printPhase = PrintPhase.Running) }
         graph.scope.launch {
-            val outcome = try {
+            // Prima la composizione, poi la stampa: un errore qui non e colpa della stampante.
+            var cause: Throwable? = null
+            val prepared: Pair<PrintRequest, RenderedPrint>? = try {
                 val request = coordinator.buildRequest(s.photos, s.template, s.caption, s.tone, s.dither)
-                val rendered = candidates.firstOrNull { it.first == request }?.second ?: coordinator.render(request)
-                lastSent = request to rendered
-                coordinator.printAndRecord(request, rendered, s.copies)
+                candidates.firstOrNull { it.first.sameJob(request) } ?: (request to coordinator.render(request))
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
-                Log.e(TAG, "stampa fallita prima dell'invio", e)
-                PrintOutcome.Failure(PrintFailure.WRITE_FAILED, graph.appContext.getString(R.string.ed_error_render))
+                cause = e
+                null
+            } catch (e: OutOfMemoryError) {
+                cause = e
+                null
+            }
+            val outcome = if (prepared == null) {
+                Log.e(TAG, "composizione della stampa fallita", cause)
+                // Titolo e consiglio li da il foglio; qui resta il dettaglio tecnico, mostrato in piccolo.
+                PrintOutcome.Failure(PrintFailure.RENDER_FAILED, cause?.message ?: cause?.javaClass?.simpleName.orEmpty())
+            } else {
+                lastSent = prepared
+                coordinator.printAndRecord(prepared.first, prepared.second, s.copies)
             }
             _state.update { it.copy(printPhase = PrintPhase.Done(outcome, s.copies)) }
         }
     }
+
+    /**
+     * "Ristampa" dal foglio "Stampato!": la stessa carta appena uscita, senza ricomporre e senza
+     * consumare un altro numero (come la ristampa dallo storico).
+     */
+    fun reprint() {
+        val s = _state.value
+        if (s.printPhase is PrintPhase.Running) return
+        val sent = lastSent ?: return print()
+        _state.update { it.copy(printPhase = PrintPhase.Running) }
+        graph.scope.launch {
+            val outcome = coordinator.printAndRecord(sent.first, sent.second, s.copies)
+            _state.update { it.copy(printPhase = PrintPhase.Done(outcome, s.copies)) }
+        }
+    }
+
+    /** Stesso lavoro di stampa a meno del valore della data (che cambia ogni minuto); la presenza conta. */
+    private fun PrintRequest.sameJob(other: PrintRequest): Boolean =
+        copy(texts = texts.copy(dateText = texts.dateText?.let { "" })) ==
+            other.copy(texts = other.texts.copy(dateText = other.texts.dateText?.let { "" }))
 
     /** Chiude il foglio di avanzamento; durante l'invio non si chiude. */
     fun dismissPrint() {
@@ -294,8 +338,19 @@ class EditorViewModel(private val graph: AppGraph) : ViewModel() {
                 } catch (e: Exception) {
                     // Il PNG e in galleria: lo storico mancato non deve far sembrare fallito il salvataggio.
                     Log.w(TAG, "salvataggio nello storico fallito", e)
+                } catch (e: OutOfMemoryError) {
+                    Log.w(TAG, "salvataggio nello storico fallito (memoria)", e)
                 }
                 _events.send(EditorEvent.Message(R.string.ed_saved))
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                Log.w(TAG, "salvataggio fallito", e)
+                _events.send(EditorEvent.Message(R.string.ed_save_failed))
+            } catch (e: OutOfMemoryError) {
+                // L'ingrandimento 2x di una striscia lunga puo non stare in memoria: messaggio, non crash.
+                Log.w(TAG, "salvataggio fallito (memoria)", e)
+                _events.send(EditorEvent.Message(R.string.ed_save_failed))
             } finally {
                 _state.update { it.copy(exporting = false) }
             }
@@ -320,6 +375,9 @@ class EditorViewModel(private val graph: AppGraph) : ViewModel() {
             } catch (e: Exception) {
                 Log.w(TAG, "condivisione fallita", e)
                 _events.send(EditorEvent.Message(R.string.ed_share_failed))
+            } catch (e: OutOfMemoryError) {
+                Log.w(TAG, "condivisione fallita (memoria)", e)
+                _events.send(EditorEvent.Message(R.string.ed_share_failed))
             } finally {
                 _state.update { it.copy(exporting = false) }
             }
@@ -340,7 +398,7 @@ class EditorViewModel(private val graph: AppGraph) : ViewModel() {
         const val MAX_COPIES = 5
 
         private const val TAG = "EditorViewModel"
-        private const val RENDER_DEBOUNCE_MS = 150L
+        private const val RENDER_DEBOUNCE_MS = 120L
         /** Testina a 203 dpi: 8 punti per millimetro, su entrambe le larghezze di carta. */
         private const val DOTS_PER_MM = 8
 

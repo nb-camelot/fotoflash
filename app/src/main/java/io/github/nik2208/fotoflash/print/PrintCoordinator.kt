@@ -18,6 +18,7 @@ import io.github.nik2208.fotoflash.thermal.TemplateTexts
 import io.github.nik2208.fotoflash.thermal.ToneAdjustments
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import java.lang.ref.WeakReference
 import java.text.DateFormat
 import java.util.Date
 import java.util.Locale
@@ -39,12 +40,19 @@ class PrintCoordinator(
     /**
      * L'ultima stampa registrata nello storico. Se la stessa stampa (stessa istanza) viene
      * ritentata dopo un errore, o salvata e poi stampata, si aggiorna la voce esistente invece
-     * di crearne un doppione.
+     * di crearne un doppione. Il rendering e tenuto per riferimento debole: questo oggetto vive
+     * quanto il processo, e il confronto serve solo finche qualcuno (l'editor) tiene la stampa.
      */
-    private class Recorded(val rendered: RenderedPrint, val entry: HistoryEntry)
+    private class Recorded(rendered: RenderedPrint, val entry: HistoryEntry) {
+        val ref: WeakReference<RenderedPrint> = WeakReference(rendered)
+    }
 
     private val recordLock = Mutex()
     private var lastRecorded: Recorded? = null
+
+    /** L'ultimo rendering che ha gia consumato un numero: ristamparlo non ne consuma un altro. */
+    @Volatile
+    private var numbered: WeakReference<RenderedPrint>? = null
 
     /** Richiesta di stampa con i default delle impostazioni; i parametri non null li sostituiscono. */
     suspend fun buildRequest(
@@ -55,17 +63,19 @@ class PrintCoordinator(
         dither: DitherAlgorithm? = null,
     ): PrintRequest {
         val current = settings.current()
+        val kind = template ?: current.template
         val texts = TemplateTexts(
             caption = caption.trim(),
             eventTitle = current.eventTitle.trim(),
             hashtag = current.hashtag.trim(),
             dateText = if (current.showDate) formatNow() else null,
-            // Il numero diventa "consumato" solo a stampa riuscita (vedi printAndRecord).
-            printNumber = if (current.showPrintNumber) current.printCounter + 1 else null,
+            // Il numero diventa "consumato" solo a stampa riuscita (vedi printAndRecord), e solo
+            // lo Scontrino lo stampa: gli altri modelli non devono far saltare la numerazione.
+            printNumber = if (current.showPrintNumber && kind == TemplateKind.RECEIPT) current.printCounter + 1 else null,
         )
         return PrintRequest(
             photos = photos,
-            template = template ?: current.template,
+            template = kind,
             paper = current.paper,
             dither = dither ?: current.dither,
             tone = tone ?: current.tone,
@@ -77,14 +87,17 @@ class PrintCoordinator(
 
     /**
      * Stampa e registra nello storico in ogni caso: anche una stampa fallita resta ristampabile.
-     * Il contatore avanza solo se la stampa e riuscita e portava un numero.
+     * Il contatore avanza solo se la stampa e riuscita e portava un numero non ancora consumato
+     * (la "Ristampa" dello stesso rendering ripete il numero, come la ristampa dallo storico).
      */
     suspend fun printAndRecord(request: PrintRequest, rendered: RenderedPrint, copies: Int = 1): PrintOutcome {
+        val alreadyNumbered = numbered?.get() === rendered
         val outcome = printer.print(rendered.bitImage, copies.coerceAtLeast(1))
         val printed = outcome is PrintOutcome.Success
-        if (printed && request.texts.printNumber != null) {
+        if (printed && request.texts.printNumber != null && !alreadyNumbered) {
             try {
                 settings.nextPrintNumber()
+                numbered = WeakReference(rendered)
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
@@ -99,6 +112,9 @@ class PrintCoordinator(
         } catch (e: Exception) {
             // Idem per lo storico: l'esito della stampa e cio che conta per chi aspetta il foglio.
             Log.w(TAG, "stampa non registrata nello storico", e)
+        } catch (e: OutOfMemoryError) {
+            // La carta e gia uscita: la memoria finita mentre si scrive lo storico non fa cadere l'app.
+            Log.w(TAG, "stampa non registrata nello storico (memoria)", e)
         }
         return outcome
     }
@@ -116,8 +132,11 @@ class PrintCoordinator(
             throw e
         } catch (e: Exception) {
             Log.e(TAG, "rendering della stampa istantanea fallito", e)
-            // Non c'e un codice dedicato: per l'utente conta che il foglio non e uscito.
-            return PrintOutcome.Failure(PrintFailure.WRITE_FAILED, appContext.getString(R.string.ed_error_render))
+            // Il messaggio localizzato e quello che il mirino mostra: niente testo d'eccezione grezzo.
+            return PrintOutcome.Failure(PrintFailure.RENDER_FAILED, appContext.getString(R.string.ed_error_render))
+        } catch (e: OutOfMemoryError) {
+            Log.e(TAG, "rendering della stampa istantanea fallito (memoria)", e)
+            return PrintOutcome.Failure(PrintFailure.RENDER_FAILED, appContext.getString(R.string.ed_error_render))
         }
         val copies = settings.current().copies
         return printAndRecord(prepared.first, prepared.second, copies)
@@ -126,7 +145,7 @@ class PrintCoordinator(
     private suspend fun record(request: PrintRequest, rendered: RenderedPrint, printed: Boolean): HistoryEntry =
         recordLock.withLock {
             val last = lastRecorded
-            if (last != null && last.rendered === rendered && history.find(last.entry.id) != null) {
+            if (last != null && last.ref.get() === rendered && history.find(last.entry.id) != null) {
                 if (printed && !last.entry.printed) {
                     history.markPrinted(last.entry.id)
                     val updated = last.entry.copy(printed = true)

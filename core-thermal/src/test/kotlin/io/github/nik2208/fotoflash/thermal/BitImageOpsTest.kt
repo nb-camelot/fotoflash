@@ -4,6 +4,7 @@ import org.junit.Assert.assertArrayEquals
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotSame
+import org.junit.Assert.assertSame
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -82,6 +83,43 @@ class BitImageOpsTest {
             val expected = sx in 0 until 13 && sy in 0 until 5 && (sx + sy) % 2 == 0
             assertEquals("punto $x,$y", expected, dst[x, y])
         }
+    }
+
+    @Test
+    fun centeredOnCentersNarrowPrints() {
+        // stampa da 58 mm ristampata su 80 mm: 96 punti di bianco per lato
+        val src = BitImage(384, 3)
+        src[0, 0] = true
+        src[383, 2] = true
+        val out = src.centeredOn(576)
+        assertEquals(576, out.width)
+        assertEquals(3, out.height)
+        assertEquals(2, out.countBlack())
+        assertTrue(out[96, 0])
+        assertTrue(out[96 + 383, 2])
+    }
+
+    @Test
+    fun centeredOnCropsWidePrintsAroundTheCenter() {
+        // stampa da 80 mm ristampata su 58 mm: si tengono i 384 punti centrali
+        val src = BitImage(576, 2)
+        src[0, 0] = true
+        src[95, 0] = true
+        src[96, 0] = true
+        src[96 + 383, 1] = true
+        src[575, 1] = true
+        val out = src.centeredOn(384)
+        assertEquals(384, out.width)
+        assertEquals(2, out.height)
+        assertEquals(2, out.countBlack())
+        assertTrue(out[0, 0])
+        assertTrue(out[383, 1])
+    }
+
+    @Test
+    fun centeredOnWithTheSameWidthReturnsTheImage() {
+        val src = solid(384, 4)
+        assertSame(src, src.centeredOn(384))
     }
 
     @Test

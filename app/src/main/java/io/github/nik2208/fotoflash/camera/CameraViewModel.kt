@@ -14,7 +14,9 @@ import io.github.nik2208.fotoflash.model.AppSettings
 import io.github.nik2208.fotoflash.model.CaptureSource
 import io.github.nik2208.fotoflash.model.PrintFailure
 import io.github.nik2208.fotoflash.model.PrintOutcome
+import io.github.nik2208.fotoflash.model.PrintRequest
 import io.github.nik2208.fotoflash.model.PrinterState
+import io.github.nik2208.fotoflash.model.RenderedPrint
 import io.github.nik2208.fotoflash.thermal.TemplateKind
 import io.github.nik2208.fotoflash.ui.theme.FfColors
 import java.util.concurrent.ExecutorService
@@ -36,6 +38,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
@@ -170,6 +173,9 @@ class CameraViewModel(private val graph: AppGraph) : ViewModel() {
 
     @Volatile private var shotSoundEnabled = true
 
+    /** La fotocamera collegata e in errore (occupata, disabilitata, guasta): l'avviso copre il mirino. */
+    private var cameraError = false
+
     /** Le stampe istantanee escono una alla volta, nell'ordine degli scatti. */
     private val printLock = Mutex()
 
@@ -295,8 +301,25 @@ class CameraViewModel(private val graph: AppGraph) : ViewModel() {
      */
     fun onCameraReleased() {
         cancelSequence()
+        cameraError = false
         _ui.update { it.copy(cameraReady = false, cameraUnavailable = false) }
         thermalAnalyzer.reset()
+    }
+
+    /**
+     * La fotocamera collegata e in errore dopo l'avvio (usata da un'altra app, disabilitata,
+     * guasto dell'HAL): si dice com'e invece di lasciare un mirino nero con l'otturatore attivo.
+     */
+    fun onCameraError() {
+        cameraError = true
+        _ui.update { it.copy(cameraReady = false, cameraUnavailable = true) }
+    }
+
+    /** La fotocamera e tornata aperta dopo un errore: si riprende a scattare. */
+    fun onCameraRecovered() {
+        if (!cameraError) return
+        cameraError = false
+        _ui.update { it.copy(cameraReady = true, cameraUnavailable = false) }
     }
 
     /** Il controller ha rifiutato il cambio di fotocamera: si torna a quella di prima. */
@@ -319,9 +342,14 @@ class CameraViewModel(private val graph: AppGraph) : ViewModel() {
 
     /** Chiamato dal thread dello scatto quando il sensore inizia a esporre. */
     fun onShutterFired() {
+        // Niente vibrazione qui: con poca luce l'esposizione dura 1/15-1/30 s e la foto verrebbe mossa.
         feedback.playShutter(shotSoundEnabled)
-        feedback.vibrate()
         _events.trySend(CameraEvent.ShutterFlash)
+    }
+
+    /** Chiamato dal thread dello scatto a esposizione finita, prima della decodifica. */
+    fun onExposureDone() {
+        feedback.vibrate()
     }
 
     fun onCaptured(requestId: Long, photo: Bitmap) {
@@ -359,7 +387,20 @@ class CameraViewModel(private val graph: AppGraph) : ViewModel() {
                 // Il primo conto usa il timer se e piu lungo: il tempo di mettersi in posa.
                 val seconds = if (index == 0) max(STRIP_COUNTDOWN_SECONDS, settings.timerSeconds) else STRIP_COUNTDOWN_SECONDS
                 countdown(seconds, settings.shutterSound)
-                val photo = shoot(settings.shutterSound) ?: return
+                // Uno scatto fallito non butta via la posa di tutti: si riprova una volta con un
+                // nuovo 3-2-1; se fallisce ancora, le foto gia fatte bastano per una striscia piu corta.
+                val firstTry = shoot(settings.shutterSound)
+                val retried = firstTry ?: run {
+                    countdown(STRIP_COUNTDOWN_SECONDS, settings.shutterSound)
+                    shoot(settings.shutterSound)
+                }
+                val photo = retried ?: run {
+                    if (photos.size >= MIN_STRIP_SHOTS) {
+                        delay(STRIP_REVEAL_MS)
+                        openEditor(photos.toList(), CaptureSource.CAMERA, TemplateKind.STRIP)
+                    }
+                    return
+                }
                 photos += photo
                 val thumb = withContext(Dispatchers.Default) { photo.thumbnail() }
                 _ui.update { state ->
@@ -423,7 +464,7 @@ class CameraViewModel(private val graph: AppGraph) : ViewModel() {
     private fun enqueueInstantPrint(photos: List<Bitmap>) {
         _ui.update { it.copy(pendingPrints = it.pendingPrints + 1) }
         val job = graph.scope.async {
-            printLock.withLock { graph.coordinator.quickPrint(photos) }
+            printLock.withLock { printInstantly(photos) }
         }
         viewModelScope.launch {
             val outcome: PrintOutcome? = try {
@@ -433,6 +474,10 @@ class CameraViewModel(private val graph: AppGraph) : ViewModel() {
             } catch (e: Exception) {
                 Log.e(TAG, "stampa istantanea fallita", e)
                 null
+            } catch (e: OutOfMemoryError) {
+                // Memoria finita componendo o impaginando: si avvisa invece di far cadere l'app nel mirino.
+                Log.e(TAG, "memoria esaurita nella stampa istantanea", e)
+                PrintOutcome.Failure(PrintFailure.RENDER_FAILED, "")
             } finally {
                 _ui.update { it.copy(pendingPrints = max(0, it.pendingPrints - 1)) }
             }
@@ -441,6 +486,48 @@ class CameraViewModel(private val graph: AppGraph) : ViewModel() {
                 is PrintOutcome.Failure -> _events.send(CameraEvent.PrintFailed(outcome.failure, outcome.message))
                 null -> _events.send(CameraEvent.PrintFailed(null, ""))
             }
+        }
+    }
+
+    /**
+     * Una stampa istantanea, sotto [printLock]. La stampante risponde subito BUSY a chi arriva
+     * mentre gira un altro lavoro (una ristampa dallo storico, una pagina di prova): invece di
+     * perdere la foto si aspetta che si liberi e si riprova con lo stesso rendering, cosi lo
+     * storico aggiorna la voce gia creata invece di duplicarla.
+     */
+    private suspend fun printInstantly(photos: List<Bitmap>): PrintOutcome {
+        val coordinator = graph.coordinator
+        // Prima di comporre: il numero dello Scontrino si calcola dopo che l'altra stampa ha preso il suo.
+        awaitPrinterIdle()
+        val prepared: Pair<PrintRequest, RenderedPrint> = try {
+            val request = coordinator.buildRequest(photos)
+            request to coordinator.render(request)
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            // La stampante non c'entra: messaggio vuoto, il mirino usa il suo testo per RENDER_FAILED.
+            Log.e(TAG, "composizione della stampa istantanea fallita", e)
+            return PrintOutcome.Failure(PrintFailure.RENDER_FAILED, "")
+        } catch (e: OutOfMemoryError) {
+            Log.e(TAG, "memoria esaurita componendo la stampa istantanea", e)
+            return PrintOutcome.Failure(PrintFailure.RENDER_FAILED, "")
+        }
+        val copies = graph.settings.current().copies
+        var attempt = 1
+        while (true) {
+            val outcome = coordinator.printAndRecord(prepared.first, prepared.second, copies)
+            val busy = outcome is PrintOutcome.Failure && outcome.failure == PrintFailure.BUSY
+            if (!busy || attempt >= BUSY_ATTEMPTS) return outcome
+            attempt += 1
+            delay(BUSY_RETRY_DELAY_MS)
+            awaitPrinterIdle()
+        }
+    }
+
+    /** Aspetta (al massimo un minuto) che la stampante non stia collegandosi o stampando. */
+    private suspend fun awaitPrinterIdle() {
+        withTimeoutOrNull(PRINTER_IDLE_WAIT_MS) {
+            graph.printer.state.first { it !is PrinterState.Printing && it !is PrinterState.Connecting }
         }
     }
 
@@ -485,6 +572,11 @@ class CameraViewModel(private val graph: AppGraph) : ViewModel() {
         private const val CAPTURE_TIMEOUT_MS = 10_000L
         private const val CAPTURE_THREAD_KEEP_ALIVE_S = 5L
         private const val PRINTED_BADGE_MS = 2_600L
+
+        /** Tentativi di una stampa istantanea che trova la stampante occupata da un altro lavoro. */
+        private const val BUSY_ATTEMPTS = 3
+        private const val BUSY_RETRY_DELAY_MS = 1_500L
+        private const val PRINTER_IDLE_WAIT_MS = 60_000L
         private const val TAG = "FotoFlashCamera"
 
         fun nextTimer(current: Int): Int {

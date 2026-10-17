@@ -73,6 +73,14 @@ class EscPosBuilder {
     )
 
     /**
+     * DLE EOT 4: chiede lo stato del sensore carta; la stampante risponde con UN byte da leggere
+     * con [EscPosStatus]. E un comando in tempo reale: va mandato fuori da un lavoro (mai in mezzo
+     * ai dati raster) e molte stampanti economiche non rispondono affatto, quindi chi lo usa deve
+     * aspettare la risposta con un timeout breve e trattare il silenzio come "stato sconosciuto".
+     */
+    fun paperStatusRequest(): EscPosBuilder = raw(DLE, EOT, 4)
+
+    /**
      * Immagine raster a bande di [bandHeight] righe (1..255), un comando GS v 0 per banda:
      * le stampanti con buffer piccolo reggono meglio tanti comandi corti che uno lungo.
      */
@@ -114,7 +122,31 @@ class EscPosBuilder {
         const val ESC = 0x1B
         const val GS = 0x1D
         const val LF = 0x0A
+        const val DLE = 0x10
+        const val EOT = 0x04
     }
+}
+
+/**
+ * Risposta a DLE EOT 4 ([EscPosBuilder.paperStatusRequest]): un byte con i bit 1 e 4 sempre a 1
+ * e i bit 0 e 7 sempre a 0. Bit 2-3 = carta quasi finita, bit 5-6 = carta finita.
+ * Un byte che non rispetta i bit fissi (eco, rumore, risposta a un altro comando) da null:
+ * meglio "non so" che un falso allarme.
+ */
+object EscPosStatus {
+
+    private const val FIXED_MASK = 0x93
+    private const val FIXED_VALUE = 0x12
+    private const val PAPER_END = 0x60
+    private const val PAPER_NEAR_END = 0x0C
+
+    /** true = carta finita, false = carta presente, null = risposta non valida. */
+    fun paperEnd(b: Int): Boolean? = if (isValid(b)) (b and PAPER_END) != 0 else null
+
+    /** true = carta quasi finita (sensore di fine rotolo, se c'e), null = risposta non valida. */
+    fun paperNearEnd(b: Int): Boolean? = if (isValid(b)) (b and PAPER_NEAR_END) != 0 else null
+
+    private fun isValid(b: Int): Boolean = b in 0..255 && (b and FIXED_MASK) == FIXED_VALUE
 }
 
 /** Comando raster ESC/POS GS v 0. */

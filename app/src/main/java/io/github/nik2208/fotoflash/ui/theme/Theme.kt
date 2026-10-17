@@ -3,6 +3,8 @@ package io.github.nik2208.fotoflash.ui.theme
 import android.app.Activity
 import android.content.Context
 import android.content.ContextWrapper
+import android.os.Build
+import android.view.Window
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.ColorScheme
 import androidx.compose.material3.MaterialTheme
@@ -26,9 +28,13 @@ import androidx.core.view.WindowCompat
 // Niente colore dinamico (Material You): il giallo FotoFlash deve restare riconoscibile.
 
 internal val FfLightColors: ColorScheme = lightColorScheme(
-    primary = FfColors.Flash,
-    onPrimary = FfColors.Ink,
-    primaryContainer = FfTones.FlashContainer,
+    // Material usa primary anche come colore di testo e tratti (TextButton, campi a fuoco,
+    // cursore, spinner): il giallo su carta non si legge, quindi qui va un tono scuro e il giallo
+    // passa al contenitore. I componenti FotoFlash gialli (FlashButton, otturatore, chip scelti)
+    // usano FfColors.Flash in modo esplicito.
+    primary = FfTones.FlashInk,
+    onPrimary = FfTones.White,
+    primaryContainer = FfColors.Flash,
     onPrimaryContainer = FfColors.Ink,
     inversePrimary = FfColors.Flash,
     // Ink sul corallo e sul cielo ha contrasto ~6:1, il bianco solo ~3:1.
@@ -195,7 +201,21 @@ private fun ApplySystemBars(lightBars: Boolean) {
         val controller = WindowCompat.getInsetsController(window, view)
         controller.isAppearanceLightStatusBars = lightBars
         controller.isAppearanceLightNavigationBars = lightBars
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) {
+            window.applyLegacyNavigationBarScrim(lightBars)
+        }
     }
+}
+
+/**
+ * Fino ad Android 9 enableEdgeToEdge() mette sotto i tasti di navigazione uno scrim fisso scelto
+ * dal tema del telefono, non dall'app: nel mirino i tasti chiari finirebbero su una barra bianca.
+ * Qui lo scrim segue le icone. Da Android 10 il contrasto lo gestisce il sistema.
+ */
+@Suppress("DEPRECATION")
+private fun Window.applyLegacyNavigationBarScrim(lightBars: Boolean) {
+    // Carta al 90% sotto icone scure, notte al 50% sotto icone chiare.
+    navigationBarColor = if (lightBars) 0xE6FBF8F1.toInt() else 0x800E0C0A.toInt()
 }
 
 private tailrec fun Context.findActivity(): Activity? = when (this) {

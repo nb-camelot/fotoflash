@@ -52,6 +52,15 @@
     <string name="hist_fail_connect">La stampante non risponde: è accesa e vicina?</string>
     <string name="hist_fail_write">La stampa si è interrotta a metà: controlla la carta e riprova</string>
     <string name="hist_fail_busy">La stampante è occupata con un\'altra stampa</string>
+    <string name="hist_fail_render">Non è stato possibile preparare la stampa: riprova</string>
+    <string name="hist_msg_paper_mismatch">Questa stampa è per carta da %1$d mm: cambia la carta nelle impostazioni della stampante</string>
+    <string name="hist_msg_paper_mismatch_generic">Questa stampa è più larga della carta impostata: cambia la carta nelle impostazioni della stampante</string>
+
+    <!-- Azioni della snackbar dopo una ristampa non riuscita -->
+    <string name="hist_fix_retry">Riprova</string>
+    <string name="hist_fix_bluetooth">Bluetooth</string>
+    <string name="hist_fix_allow">Consenti</string>
+    <string name="hist_fix_printer">Stampante</string>
 
     <string name="hist_not_found_title">Stampa non trovata</string>
     <string name="hist_not_found_message">Forse è stata eliminata.</string>

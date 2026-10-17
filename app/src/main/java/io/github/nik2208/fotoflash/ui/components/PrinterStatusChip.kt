@@ -22,7 +22,7 @@ import androidx.compose.foundation.layout.widthIn
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
+import androidx.compose.runtime.State
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -33,6 +33,7 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
@@ -66,13 +67,28 @@ private class ChipLook(
  *
  * Il testo e il nome della stampante quando c'e e funziona (e la cosa che l'utente riconosce),
  * altrimenti dice cosa sta succedendo o cosa non va.
+ *
+ * [onClickLabel] e l'azione annunciata da TalkBack: di default "Impostazioni stampante", da
+ * cambiare quando il tocco fa altro (nell'onboarding aggiorna lo stato).
  */
 @Composable
-fun PrinterStatusChip(state: PrinterState, onClick: () -> Unit, modifier: Modifier = Modifier) {
+fun PrinterStatusChip(
+    state: PrinterState,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    onClickLabel: String? = null,
+) {
     val look = chipLook(state)
     val onSurface = MaterialTheme.colorScheme.onSurface
-    val container = MaterialTheme.colorScheme.surface.copy(alpha = 0.78f)
-    val openLabel = stringResource(R.string.common_printer_open)
+    val surface = MaterialTheme.colorScheme.surface
+    val container = surface.copy(alpha = 0.78f)
+    val openLabel = onClickLabel ?: stringResource(R.string.common_printer_open)
+    // Il giallo sulla carta chiara ha contrasto 1,4:1: un anello sottile tiene visibile il pallino.
+    val ring = if (look.dot == FfColors.Flash && surface.luminance() > 0.5f) {
+        onSurface.copy(alpha = 0.6f)
+    } else {
+        null
+    }
 
     val outline = if (look.configured) {
         Modifier.border(width = 1.dp, color = onSurface.copy(alpha = 0.14f), shape = FfPillShape)
@@ -105,7 +121,7 @@ fun PrinterStatusChip(state: PrinterState, onClick: () -> Unit, modifier: Modifi
             .padding(start = 10.dp, end = 14.dp, top = 6.dp, bottom = 6.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        StatusDot(color = look.dot, pulsing = look.pulsing, hollow = !look.configured)
+        StatusDot(color = look.dot, pulsing = look.pulsing, hollow = !look.configured, ring = ring)
         Spacer(Modifier.width(8.dp))
         Text(
             text = look.label,
@@ -117,28 +133,38 @@ fun PrinterStatusChip(state: PrinterState, onClick: () -> Unit, modifier: Modifi
     }
 }
 
+/** Nessuna stampante scelta. Pallino neutro del tema: Graphite sul chiaro, grigio chiaro sullo scuro. */
+@Composable
+private fun notConfiguredLook(): ChipLook {
+    val notConfigured = stringResource(R.string.common_printer_not_configured)
+    return ChipLook(
+        dot = MaterialTheme.colorScheme.onSurfaceVariant,
+        label = notConfigured,
+        spoken = stringResource(R.string.common_printer_cd, notConfigured),
+        pulsing = false,
+        configured = false,
+    )
+}
+
+/** Stampante scelta ma non collegata: si collega da sola quando si stampa. */
+@Composable
+private fun idleLook(device: PrinterDevice): ChipLook = ChipLook(
+    dot = MaterialTheme.colorScheme.onSurfaceVariant,
+    label = device.label(),
+    spoken = stringResource(
+        R.string.common_printer_cd_device,
+        device.label(),
+        stringResource(R.string.common_printer_state_idle),
+    ),
+    pulsing = false,
+    configured = true,
+)
+
 @Composable
 private fun chipLook(state: PrinterState): ChipLook {
-    val notConfigured = stringResource(R.string.common_printer_not_configured)
     return when (state) {
-        PrinterState.NotConfigured -> ChipLook(
-            dot = FfColors.Graphite,
-            label = notConfigured,
-            spoken = stringResource(R.string.common_printer_cd, notConfigured),
-            pulsing = false,
-            configured = false,
-        )
-        is PrinterState.Disconnected -> ChipLook(
-            dot = FfColors.Graphite,
-            label = state.device.label(),
-            spoken = stringResource(
-                R.string.common_printer_cd_device,
-                state.device.label(),
-                stringResource(R.string.common_printer_state_idle),
-            ),
-            pulsing = false,
-            configured = true,
-        )
+        PrinterState.NotConfigured -> notConfiguredLook()
+        is PrinterState.Disconnected -> idleLook(state.device)
         is PrinterState.Connecting -> {
             val text = stringResource(R.string.common_printer_connecting)
             ChipLook(
@@ -171,7 +197,11 @@ private fun chipLook(state: PrinterState): ChipLook {
                 configured = true,
             )
         }
-        is PrinterState.Error -> {
+        is PrinterState.Error -> if (state.failure == PrintFailure.RENDER_FAILED) {
+            // Composizione fallita: la stampante non c'entra e la pillola continua a descrivere lei.
+            val device = state.device
+            if (device != null) idleLook(device) else notConfiguredLook()
+        } else {
             val text = stringResource(failureLabel(state.failure))
             val device = state.device
             val detail = if (state.message.isNotBlank()) {
@@ -206,14 +236,16 @@ private fun failureLabel(failure: PrintFailure): Int = when (failure) {
     PrintFailure.CONNECT_FAILED -> R.string.common_printer_err_connect
     PrintFailure.WRITE_FAILED -> R.string.common_printer_err_write
     PrintFailure.BUSY -> R.string.common_printer_err_busy
+    PrintFailure.RENDER_FAILED -> R.string.common_printer_err_render
 }
 
+/** [ring]: contorno sottile attorno al pallino pieno, quando il suo colore non si stacca dallo sfondo. */
 @Composable
-private fun StatusDot(color: Color, pulsing: Boolean, hollow: Boolean) {
+private fun StatusDot(color: Color, pulsing: Boolean, hollow: Boolean, ring: Color?) {
     // Alone che si allarga e svanisce: "sta lavorando", visibile anche con la coda dell'occhio.
-    val halo = if (pulsing) {
-        val transition = rememberInfiniteTransition(label = "printerPulse")
-        val value by transition.animateFloat(
+    // Lo State si legge solo nel disegno: a ogni frame si ridisegna il pallino, senza ricomporre.
+    val halo: State<Float>? = if (pulsing) {
+        rememberInfiniteTransition(label = "printerPulse").animateFloat(
             initialValue = 0f,
             targetValue = 1f,
             animationSpec = infiniteRepeatable(
@@ -222,23 +254,26 @@ private fun StatusDot(color: Color, pulsing: Boolean, hollow: Boolean) {
             ),
             label = "printerPulseHalo",
         )
-        value
     } else {
-        0f
+        null
     }
     Canvas(modifier = Modifier.size(16.dp)) {
         val r = 4.5.dp.toPx()
-        if (pulsing) {
+        if (halo != null) {
+            val h = halo.value
             drawCircle(
                 color = color,
-                radius = r + (size.minDimension / 2f - r) * halo,
-                alpha = 0.55f * (1f - halo),
+                radius = r + (size.minDimension / 2f - r) * h,
+                alpha = 0.55f * (1f - h),
             )
         }
         if (hollow) {
             drawCircle(color = color, radius = r - 0.75.dp.toPx(), style = Stroke(width = 1.5.dp.toPx()))
         } else {
             drawCircle(color = color, radius = r)
+            if (ring != null) {
+                drawCircle(color = ring, radius = r, style = Stroke(width = 1.dp.toPx()))
+            }
         }
     }
 }
@@ -255,6 +290,10 @@ private fun PrinterChipsPreviewContent() {
         PrinterStatusChip(state = PrinterState.Printing(PreviewDevice, 0.42f), onClick = {})
         PrinterStatusChip(
             state = PrinterState.Error(PreviewDevice, PrintFailure.BLUETOOTH_OFF, "Bluetooth is off"),
+            onClick = {},
+        )
+        PrinterStatusChip(
+            state = PrinterState.Error(PreviewDevice, PrintFailure.RENDER_FAILED, "Out of memory"),
             onClick = {},
         )
     }

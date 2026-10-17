@@ -2,6 +2,7 @@ package io.github.nik2208.fotoflash.thermal
 
 import org.junit.Assert.assertArrayEquals
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
 import org.junit.Test
 
 class EscPosTest {
@@ -135,6 +136,32 @@ class EscPosTest {
         assertEquals(2 * 8 + 300, big.size)
         assertEquals(255, big[6].toInt() and 0xFF)
         assertEquals(45, big[8 + 255 + 6].toInt() and 0xFF)
+    }
+
+    @Test
+    fun paperStatusRequestIsDleEot4() {
+        assertArrayEquals(bytes(0x10, 0x04, 0x04), EscPosBuilder().paperStatusRequest().bytes())
+    }
+
+    @Test
+    fun paperStatusResponseIsParsed() {
+        // carta presente
+        assertEquals(false, EscPosStatus.paperEnd(0x12))
+        assertEquals(false, EscPosStatus.paperNearEnd(0x12))
+        // carta finita (bit 5-6)
+        assertEquals(true, EscPosStatus.paperEnd(0x72))
+        // quasi finita (bit 2-3), carta ancora presente
+        assertEquals(false, EscPosStatus.paperEnd(0x1E))
+        assertEquals(true, EscPosStatus.paperNearEnd(0x1E))
+        // entrambe
+        assertEquals(true, EscPosStatus.paperEnd(0x7E))
+        assertEquals(true, EscPosStatus.paperNearEnd(0x7E))
+        // bit fissi sbagliati o fuori byte: risposta non valida
+        assertNull(EscPosStatus.paperEnd(0x00))
+        assertNull(EscPosStatus.paperEnd(0xFF))
+        assertNull(EscPosStatus.paperEnd(0x92))
+        assertNull(EscPosStatus.paperEnd(-1))
+        assertNull(EscPosStatus.paperNearEnd(0x13))
     }
 
     @Test

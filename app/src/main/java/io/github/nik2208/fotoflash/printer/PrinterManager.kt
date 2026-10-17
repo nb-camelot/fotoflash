@@ -24,8 +24,10 @@ import io.github.nik2208.fotoflash.model.PrintOutcome
 import io.github.nik2208.fotoflash.model.PrinterDevice
 import io.github.nik2208.fotoflash.model.PrinterState
 import io.github.nik2208.fotoflash.thermal.BitImage
+import io.github.nik2208.fotoflash.thermal.PaperWidth
 import io.github.nik2208.fotoflash.thermal.PrintJobOptions
 import io.github.nik2208.fotoflash.thermal.ThermalJob
+import io.github.nik2208.fotoflash.thermal.blit
 import java.util.Locale
 import java.util.concurrent.ConcurrentHashMap
 import kotlinx.coroutines.CancellationException
@@ -44,6 +46,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeoutOrNull
 
 /**
  * Unico proprietario della stampante: stato osservabile, connessione, lavori di stampa.
@@ -80,6 +83,10 @@ class PrinterManager(context: Context, private val settings: SettingsRepository,
     @Volatile
     private var idleDisconnect: Job? = null
 
+    /** Vero mentre gira un lavoro di stampa: distingue un lavoro vero da una chiusura che tiene il lock. */
+    @Volatile
+    private var jobRunning: Boolean = false
+
     /** Esito della classificazione "sembra una stampante", calcolato in bondedPrinters(). */
     private val likelyPrinters = ConcurrentHashMap<String, Boolean>()
 
@@ -88,10 +95,12 @@ class PrinterManager(context: Context, private val settings: SettingsRepository,
             when (intent.action) {
                 BluetoothAdapter.ACTION_STATE_CHANGED -> {
                     when (intent.getIntExtra(BluetoothAdapter.EXTRA_STATE, BluetoothAdapter.ERROR)) {
-                        BluetoothAdapter.STATE_TURNING_OFF, BluetoothAdapter.STATE_OFF -> onLinkLost(null)
-                        BluetoothAdapter.STATE_ON -> clearStaleBluetoothError()
+                        BluetoothAdapter.STATE_TURNING_OFF, BluetoothAdapter.STATE_OFF -> onBluetoothOff()
+                        BluetoothAdapter.STATE_ON -> revalidate()
                     }
                 }
+                // Stampante riaccoppiata: un errore "non accoppiata" non e piu vero.
+                BluetoothDevice.ACTION_BOND_STATE_CHANGED -> revalidate()
                 BluetoothDevice.ACTION_ACL_DISCONNECTED -> {
                     val device = IntentCompat.getParcelableExtra(intent, BluetoothDevice.EXTRA_DEVICE, BluetoothDevice::class.java)
                     val address = try {
@@ -117,6 +126,7 @@ class PrinterManager(context: Context, private val settings: SettingsRepository,
         val filter = IntentFilter().apply {
             addAction(BluetoothAdapter.ACTION_STATE_CHANGED)
             addAction(BluetoothDevice.ACTION_ACL_DISCONNECTED)
+            addAction(BluetoothDevice.ACTION_BOND_STATE_CHANGED)
         }
         // Broadcast protetti inviati anche dal processo Bluetooth (non dall'UID di sistema): per
         // riceverli serve EXPORTED; nessun'altra app puo falsificarli.
@@ -198,18 +208,35 @@ class PrinterManager(context: Context, private val settings: SettingsRepository,
         settings.update { it.copy(printerAddress = null, printerName = null) }
     }
 
-    suspend fun print(image: BitImage, copies: Int = 1): PrintOutcome =
-        scope.async {
+    suspend fun print(image: BitImage, copies: Int = 1): PrintOutcome {
+        // Ristampa dallo storico dopo un cambio di carta: un'immagine piu larga della testina uscirebbe
+        // come spazzatura, quindi si rifiuta subito, senza toccare stato e connessione.
+        if (image.width > settings.current().paper.dots) {
+            return PrintOutcome.Failure(PrintFailure.RENDER_FAILED, tooWideMessage(image.width))
+        }
+        return scope.async {
             runJob(copies.coerceIn(1, PrinterTuning.COPIES_MAX)) { s, _ ->
+                val dots = s.paper.dots
+                // Carta cambiata nel frattempo: il try di runJob lo traduce in RENDER_FAILED.
+                if (image.width > dots) throw RenderRejectedException(tooWideMessage(image.width))
                 val options = PrintJobOptions(
                     bandHeight = PrinterTuning.clampBandHeight(s.bandHeight),
                     feedLinesAfter = PrinterTuning.clampFeedLines(s.feedLines),
                     cut = s.cutPaper,
                     heat = PrinterTuning.heatFor(s.heatLevel),
                 )
-                withContext(Dispatchers.Default) { ThermalJob.build(image, options) }
+                withContext(Dispatchers.Default) {
+                    // Composta per carta piu stretta: la si centra invece di lasciarla attaccata a sinistra.
+                    val fitted = if (image.width < dots) {
+                        BitImage(dots, image.height).also { it.blit(image, (dots - image.width) / 2, 0) }
+                    } else {
+                        image
+                    }
+                    ThermalJob.build(fitted, options)
+                }
             }
         }.await()
+    }
 
     suspend fun printTestPage(): PrintOutcome =
         scope.async {
@@ -220,11 +247,39 @@ class PrinterManager(context: Context, private val settings: SettingsRepository,
 
     /** Chiude subito la connessione (dopo lo svuotamento), per liberare la stampante per un altro telefono. */
     suspend fun disconnect() {
-        cancelIdleDisconnect()
-        jobLock.withLock {
-            closeConnection(drain = true)
-            markDisconnected()
+        // Nello scope dell'app: se la schermata sparisce durante lo svuotamento la chiusura finisce
+        // comunque (altrimenti il socket resterebbe aperto, senza timer, e la stampante occupata).
+        scope.launch {
+            cancelIdleDisconnect()
+            jobLock.withLock {
+                closeConnection(drain = true)
+                markDisconnected()
+            }
+        }.join()
+    }
+
+    /**
+     * Toglie dallo stato un errore di sistema che non e piu vero (permesso concesso, stampante
+     * riaccoppiata, Bluetooth riacceso): le pillole di tutte le schermate devono dire com'e adesso.
+     */
+    fun revalidate() {
+        val current = _state.value as? PrinterState.Error ?: return
+        val errorDevice = current.device
+        val stale = when (current.failure) {
+            PrintFailure.NO_PERMISSION -> hasBluetoothPermission()
+            PrintFailure.BLUETOOTH_OFF -> adapter() != null && isBluetoothEnabled()
+            PrintFailure.NOT_BONDED -> {
+                val adapter = adapter()
+                adapter != null && errorDevice != null && hasBluetoothPermission() &&
+                    isBonded(adapter, errorDevice.address) == true
+            }
+            else -> false
         }
+        if (!stale) return
+        _state.compareAndSet(
+            current,
+            if (errorDevice != null) PrinterState.Disconnected(errorDevice) else PrinterState.NotConfigured,
+        )
     }
 
     /** Connected (o residui di Connecting/Printing) → Disconnected; gli altri stati restano. */
@@ -246,9 +301,16 @@ class PrinterManager(context: Context, private val settings: SettingsRepository,
         buildPackets: suspend (AppSettings, PrinterDevice) -> List<ByteArray>,
     ): PrintOutcome {
         if (!jobLock.tryLock()) {
-            // Lo stato non cambia: sta gia mostrando il lavoro in corso.
-            return PrintOutcome.Failure(PrintFailure.BUSY, appContext.getString(R.string.prn_err_busy))
+            // Il lock puo tenerlo anche una chiusura in corso (svuotamento fino a 4 s), non un lavoro:
+            // in quel caso si aspetta un poco invece di dire "occupata" senza nessuna stampa in corso.
+            val acquired = !jobRunning &&
+                withTimeoutOrNull(PrinterTuning.DRAIN_MAX_MS + 1_000L) { jobLock.lock() } != null
+            if (!acquired) {
+                // Lo stato non cambia: sta gia mostrando il lavoro in corso.
+                return PrintOutcome.Failure(PrintFailure.BUSY, appContext.getString(R.string.prn_err_busy))
+            }
         }
+        jobRunning = true
         var device: PrinterDevice? = null
         try {
             cancelIdleDisconnect()
@@ -258,27 +320,44 @@ class PrinterManager(context: Context, private val settings: SettingsRepository,
             device = target
             precheck(target)?.let { return it }
 
-            val packets = buildPackets(s, target)
+            // Composizione: se fallisce la stampante non c'entra, quindi niente errore nello stato
+            // e nessuna chiusura di una connessione sana.
+            val packets = try {
+                buildPackets(s, target)
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: RenderRejectedException) {
+                Log.w(TAG, "composizione rifiutata", e)
+                return PrintOutcome.Failure(PrintFailure.RENDER_FAILED, e.userMessage)
+            } catch (e: Exception) {
+                Log.w(TAG, "composizione fallita", e)
+                return PrintOutcome.Failure(PrintFailure.RENDER_FAILED, appContext.getString(R.string.prn_err_render))
+            } catch (e: OutOfMemoryError) {
+                Log.w(TAG, "memoria insufficiente per comporre la stampa", e)
+                return PrintOutcome.Failure(PrintFailure.RENDER_FAILED, appContext.getString(R.string.prn_err_render))
+            }
             val total = packets.sumOf { it.size.toLong() } * copies
             transport.configure(s.chunkSize, s.chunkDelayMs)
             val startedAt = SystemClock.elapsedRealtime()
             var retried = false
             while (true) {
                 val reused = transport.isConnected && connectedAddress == target.address
+                var sentBytes = 0L
                 try {
                     if (!reused) {
                         // Socket aperto verso un'altra stampante (o morto): si chiude prima di riaprire.
                         if (connectedAddress != null) closeConnection(drain = true)
                         open(target)
                     }
-                    send(target, packets, copies, total)
+                    send(target, packets, copies, total) { n -> sentBytes += n }
                     break
                 } catch (e: PrinterWriteException) {
                     closeConnection(drain = false)
-                    if (reused && !retried) {
-                        // Una connessione tenuta aperta puo essere morta in silenzio (stampante
-                        // spenta e riaccesa): si riconnette una volta e si rifa il lavoro da capo.
-                        Log.w(TAG, "scrittura fallita su connessione riusata, riprovo", e)
+                    // Una riconnessione sola: se il collegamento riusato era morto in silenzio (stampante
+                    // spenta e riaccesa) o se uno nuovo e caduto prima di accettare dati. Mai dopo uno
+                    // stallo (carta finita, coperchio aperto): raddoppierebbe solo l'attesa.
+                    if (!retried && !e.stalled && (reused || sentBytes == 0L)) {
+                        Log.w(TAG, "scrittura fallita (riusata=$reused, inviati=$sentBytes), riprovo", e)
                         retried = true
                         continue
                     }
@@ -304,6 +383,10 @@ class PrinterManager(context: Context, private val settings: SettingsRepository,
             withContext(NonCancellable) { closeConnection(drain = false) }
             return failFrom(device, e)
         } finally {
+            // Socket rimasto aperto senza timer (es. precheck fallito o composizione fallita con una
+            // connessione viva): si riprogramma la chiusura, altrimenti la stampante resta occupata.
+            if (connectedAddress != null && idleDisconnect == null) scheduleIdleDisconnect()
+            jobRunning = false
             jobLock.unlock()
         }
     }
@@ -315,7 +398,14 @@ class PrinterManager(context: Context, private val settings: SettingsRepository,
         _state.value = PrinterState.Connected(device)
     }
 
-    private suspend fun send(device: PrinterDevice, packets: List<ByteArray>, copies: Int, total: Long) {
+    /** Invia il lavoro; [onBytes] riceve i byte accettati di ogni blocco (serve a decidere se riprovare). */
+    private suspend fun send(
+        device: PrinterDevice,
+        packets: List<ByteArray>,
+        copies: Int,
+        total: Long,
+        onBytes: (Int) -> Unit,
+    ) {
         var sent = 0L
         var shownPercent = -1
         _state.value = PrinterState.Printing(device, 0f)
@@ -323,6 +413,7 @@ class PrinterManager(context: Context, private val settings: SettingsRepository,
             for (packet in packets) {
                 transport.write(packet) { n ->
                     sent += n
+                    onBytes(n)
                     // Al massimo un aggiornamento per punto percentuale: niente tempeste di ricomposizioni.
                     val percent = if (total > 0L) (sent * 100L / total).toInt() else 100
                     if (percent != shownPercent) {
@@ -371,6 +462,13 @@ class PrinterManager(context: Context, private val settings: SettingsRepository,
 
     private fun failFrom(device: PrinterDevice?, error: Throwable): PrintOutcome.Failure {
         val name = device?.name ?: appContext.getString(R.string.prn_unknown_printer)
+        // Bluetooth spento durante la connessione o la stampa: arriva come errore di socket, ma la
+        // causa vera e questa, e l'azione giusta e "Accendi il Bluetooth", non "Riprova".
+        if (error !is BluetoothUnavailableException && error !is BluetoothPermissionException &&
+            error !is SecurityException && hasBluetoothPermission() && adapter() != null && !isBluetoothEnabled()
+        ) {
+            return fail(device, PrintFailure.BLUETOOTH_OFF, appContext.getString(R.string.prn_err_bluetooth_off))
+        }
         return when (error) {
             is BluetoothUnavailableException ->
                 fail(device, PrintFailure.BLUETOOTH_OFF, appContext.getString(R.string.prn_err_no_bluetooth))
@@ -414,14 +512,18 @@ class PrinterManager(context: Context, private val settings: SettingsRepository,
 
     /** Chiude il socket; con [drain] aspetta prima che la stampante abbia ricevuto la coda dell'ultimo lavoro. */
     private suspend fun closeConnection(drain: Boolean) {
-        if (drain && connectedAddress != null) {
-            val needed = PrinterTuning.drainMillis(lastJobBytes)
-            val elapsed = SystemClock.elapsedRealtime() - lastJobEndedAt
-            val wait = needed - elapsed
-            if (wait > 0L) delay(wait)
+        try {
+            if (drain && connectedAddress != null) {
+                val needed = PrinterTuning.drainMillis(lastJobBytes)
+                val elapsed = SystemClock.elapsedRealtime() - lastJobEndedAt
+                val wait = needed - elapsed
+                if (wait > 0L) delay(wait)
+            }
+        } finally {
+            // Anche se chi chiude viene cancellato durante l'attesa, il socket si chiude davvero.
+            withContext(NonCancellable) { transport.close() }
+            connectedAddress = null
         }
-        transport.close()
-        connectedAddress = null
     }
 
     private fun scheduleIdleDisconnect() {
@@ -458,6 +560,12 @@ class PrinterManager(context: Context, private val settings: SettingsRepository,
             }
             _state.value = when {
                 device == null -> PrinterState.NotConfigured
+                // Bluetooth gia spento (anche all'avvio): la pillola lo dice subito, non dopo lo scatto.
+                isBluetoothKnownOff() -> PrinterState.Error(
+                    device,
+                    PrintFailure.BLUETOOTH_OFF,
+                    appContext.getString(R.string.prn_err_bluetooth_off),
+                )
                 connectedAddress == device.address && transport.isConnected -> PrinterState.Connected(device)
                 else -> PrinterState.Disconnected(device)
             }
@@ -482,16 +590,50 @@ class PrinterManager(context: Context, private val settings: SettingsRepository,
         }
     }
 
-    /** Il Bluetooth e tornato: un errore "Bluetooth spento" non e piu vero. */
-    private fun clearStaleBluetoothError() {
-        val current = _state.value
-        if (current is PrinterState.Error && current.failure == PrintFailure.BLUETOOTH_OFF) {
-            val device = current.device
-            _state.compareAndSet(
-                current,
-                if (device != null) PrinterState.Disconnected(device) else PrinterState.NotConfigured,
-            )
+    /**
+     * Bluetooth spento: il socket aperto non vale piu nulla e, a riposo, lo stato deve dirlo subito
+     * (altrimenti la pillola resta "a riposo" e lo si scopre solo dopo lo scatto).
+     */
+    private fun onBluetoothOff() {
+        scope.launch {
+            if (!jobLock.tryLock()) {
+                // Durante un lavoro la scrittura fallira da sola e il lavoro riportera l'errore;
+                // se il lock lo tiene una chiusura, si aspetta che finisca.
+                if (jobRunning) return@launch
+                withTimeoutOrNull(PrinterTuning.DRAIN_MAX_MS + 1_000L) { jobLock.lock() } ?: return@launch
+            }
+            try {
+                cancelIdleDisconnect()
+                if (connectedAddress != null) closeConnection(drain = false)
+                val device = configuredDevice(settings.current())
+                // Si ricontrolla qui: se il Bluetooth e gia tornato acceso, l'errore sarebbe falso.
+                if (device != null && isBluetoothKnownOff()) {
+                    _state.value = PrinterState.Error(
+                        device,
+                        PrintFailure.BLUETOOTH_OFF,
+                        appContext.getString(R.string.prn_err_bluetooth_off),
+                    )
+                } else {
+                    markDisconnected()
+                }
+            } finally {
+                jobLock.unlock()
+            }
         }
+    }
+
+    /**
+     * Vero solo se il Bluetooth risulta davvero spento: senza permesso isBluetoothEnabled() puo
+     * restituire false anche ad adattatore acceso, e l'errore sarebbe falso.
+     */
+    private fun isBluetoothKnownOff(): Boolean =
+        adapter() != null && hasBluetoothPermission() && !isBluetoothEnabled()
+
+    /** Messaggio per un'immagine composta per una carta piu larga di quella impostata. */
+    private fun tooWideMessage(width: Int): String {
+        val mm = PaperWidth.entries.filter { it.dots >= width }.minByOrNull { it.dots }?.mm
+            ?: PaperWidth.entries.maxBy { it.dots }.mm
+        return appContext.getString(R.string.prn_err_too_wide, mm)
     }
 
     private fun configuredDevice(s: AppSettings): PrinterDevice? {
@@ -514,3 +656,6 @@ class PrinterManager(context: Context, private val settings: SettingsRepository,
         val PRINTER_HINTS = listOf("print", "pos", "58", "mtp", "pt-", "thermal", "receipt")
     }
 }
+
+/** Composizione rifiutata con un messaggio gia pronto per l'utente (es. immagine piu larga della carta). */
+private class RenderRejectedException(val userMessage: String) : Exception(userMessage)

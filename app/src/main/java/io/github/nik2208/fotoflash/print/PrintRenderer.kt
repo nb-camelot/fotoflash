@@ -61,7 +61,8 @@ class PrintRenderer(context: Context) {
         layout.photos.forEachIndexed { index, rect ->
             ensureActive()
             if (rect.width <= 0 || rect.height <= 0) return@forEachIndexed
-            // Se il modello ha piu riquadri che foto (es. striscia da una foto sola) le foto si ripetono.
+            // La Striscia ha tanti riquadri quante foto (1..4); gli altri modelli usano solo la prima.
+            // Il modulo e solo una difesa: il core non da mai piu riquadri che foto.
             val photo = request.photos[index % request.photos.size]
             print.blit(renderPhoto(photo, rect, request), rect.left, rect.top)
         }

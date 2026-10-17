@@ -22,7 +22,6 @@ import androidx.camera.view.CameraController
 import java.io.IOException
 import java.util.concurrent.Executor
 import java.util.concurrent.atomic.AtomicBoolean
-import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
 import kotlin.math.max
 import kotlin.math.roundToInt
@@ -165,9 +164,11 @@ fun ImageProxy.toUprightPhoto(mirror: Boolean, maxSide: Int = MAX_PHOTO_SIDE): B
 /**
  * Scatta una foto in memoria e la restituisce dritta (vedi [toUprightPhoto]).
  *
- * [onShutter] scatta quando il sensore inizia l'esposizione (il momento giusto per suono, lampo
- * e vibrazione) e gira sull'[executor], non sul main thread. L'elaborazione pesante (decodifica,
- * rotazione) avviene anch'essa sull'[executor].
+ * [onShutter] scatta quando il sensore inizia l'esposizione (il momento giusto per suono e
+ * lampo); [onExposed] quando l'esposizione e finita, prima della decodifica: e il momento della
+ * vibrazione, che durante l'esposizione muoverebbe la foto con poca luce. Entrambi girano
+ * sull'[executor], non sul main thread. L'elaborazione pesante (decodifica, rotazione) avviene
+ * anch'essa sull'[executor].
  */
 @MainThread
 suspend fun CameraController.takeUprightPhoto(
@@ -175,6 +176,7 @@ suspend fun CameraController.takeUprightPhoto(
     mirror: Boolean,
     maxSide: Int = MAX_PHOTO_SIDE,
     onShutter: () -> Unit = {},
+    onExposed: () -> Unit = {},
 ): Bitmap = suspendCancellableCoroutine { continuation ->
     val shutterFired = AtomicBoolean(false)
     fun fireShutter() {
@@ -190,6 +192,7 @@ suspend fun CameraController.takeUprightPhoto(
             override fun onCaptureSuccess(image: ImageProxy) {
                 // Se il dispositivo salta onCaptureStarted, il feedback arriva comunque.
                 fireShutter()
+                onExposed()
                 val photo = try {
                     image.toUprightPhoto(mirror, maxSide)
                 } catch (t: Throwable) {
@@ -198,7 +201,9 @@ suspend fun CameraController.takeUprightPhoto(
                 } finally {
                     image.close()
                 }
-                continuation.resume(photo)
+                // Scatto annullato nel frattempo (uscita dal mirino, timeout): nessuno ricevera la
+                // foto, quindi la si ricicla subito invece di lasciare 12 MB al GC.
+                continuation.resume(photo) { _, value, _ -> value.recycle() }
             }
 
             override fun onError(exception: ImageCaptureException) {

@@ -75,6 +75,7 @@
     <string name="ed_sheet_preparing">Getting the print ready</string>
     <string name="ed_sheet_connecting">Connecting to %1$s</string>
     <string name="ed_sheet_printing">Printing</string>
+    <string name="ed_sheet_finishing">Almost done…</string>
     <string name="ed_sheet_percent">%1$d%%</string>
     <string name="ed_sheet_keep_close">Keep the phone close to the printer</string>
     <string name="ed_sheet_done">Printed!</string>
@@ -102,4 +103,6 @@
     <string name="ed_fail_write_hint">The connection dropped while sending. Check the paper and try again.</string>
     <string name="ed_fail_busy_title">Printer busy</string>
     <string name="ed_fail_busy_hint">Another print is on its way: wait for it to finish, then try again.</string>
+    <string name="ed_fail_render_title">Couldn\'t compose the print</string>
+    <string name="ed_fail_render_hint">The printer is fine: the image couldn\'t be prepared. Try again, or pick another template or photo.</string>
 </resources>

@@ -384,11 +384,15 @@ internal object TextFit {
         return lines
     }
 
-    /** Lunghezza del prefisso piu lungo che sta in [avail]; almeno un carattere, per avanzare sempre. */
+    /**
+     * Lunghezza del prefisso piu lungo che sta in [avail]; almeno un cluster, per avanzare sempre.
+     * Si taglia solo tra cluster ([TextMetrics.clusterEnd]): mai tra le due meta di una bandiera
+     * o subito dopo uno ZWJ.
+     */
     private fun fittingPrefix(s: String, font: FontRole, size: Int, avail: Int): Int {
-        var end = Character.charCount(Character.codePointAt(s, 0))
+        var end = TextMetrics.clusterEnd(s, 0)
         while (end < s.length) {
-            val next = end + Character.charCount(Character.codePointAt(s, end))
+            val next = TextMetrics.clusterEnd(s, end)
             if (TextMetrics.width(s.substring(0, next), font, size) > avail) break
             end = next
         }
@@ -401,17 +405,22 @@ internal object TextFit {
         val kept = ArrayList<String>(lines.subList(0, maxLines))
         var last = kept[maxLines - 1].trimEnd()
         while (last.isNotEmpty() && TextMetrics.width(last + ELLIPSIS, font, size) > avail) {
-            last = dropLastCodePoint(last).trimEnd()
+            last = dropLastCluster(last).trimEnd()
         }
         kept[maxLines - 1] = last + ELLIPSIS
         return kept
     }
 
-    private fun dropLastCodePoint(s: String): String {
-        val n = s.length
-        val pair = n >= 2 && Character.isLowSurrogate(s[n - 1]) && Character.isHighSurrogate(s[n - 2])
-        val drop = if (pair) 2 else 1
-        return s.substring(0, n - drop)
+    /** Toglie l'ultimo cluster intero: una bandiera o un'emoji composta spariscono tutte insieme. */
+    private fun dropLastCluster(s: String): String {
+        // i cluster si contano dall'inizio: le coppie di indicatori regionali dipendono dalla parita
+        var start = 0
+        var lastStart = 0
+        while (start < s.length) {
+            lastStart = start
+            start = TextMetrics.clusterEnd(s, start)
+        }
+        return s.substring(0, lastStart)
     }
 }
 
@@ -445,16 +454,72 @@ internal object TextMetrics {
         1190, 1151, 1186, 1186, 1186, 1186, 1186, 1012, 1186, 1151, 1151, 1151, 1151, 1153, 1247, 1153,
     )
 
-    /** Larghezza in punti di [text] al corpo [size]. */
+    private const val ZWJ = 0x200D
+    private const val KEYCAP = 0x20E3
+
+    /**
+     * Larghezza in punti di [text] al corpo [size].
+     *
+     * Le emoji si misurano per glifo disegnato, non per code point: selettori di variante,
+     * modificatori di carnagione, tag, ZWJ e segni combinanti non occupano spazio, e una coppia
+     * di indicatori regionali e una bandiera sola. Il code point dopo uno ZWJ conta invece per
+     * intero: sui telefoni il cui font emoji non conosce la sequenza (Android 8-10) i glifi escono
+     * davvero affiancati, e sovrastimare riduce solo il corpo, mentre sottostimare tronca.
+     */
     fun width(text: String, font: FontRole, size: Int): Double {
         var em = 0.0
         var i = 0
+        // indicatori regionali consecutivi: il secondo di ogni coppia completa la bandiera
+        var regional = 0
         while (i < text.length) {
             val cp = Character.codePointAt(text, i)
-            em += advance(cp, font)
+            if (isRegionalIndicator(cp)) regional++ else regional = 0
+            val silent = isZeroWidth(cp) || (regional > 0 && regional % 2 == 0)
+            if (!silent) em += advance(cp, font)
             i += Character.charCount(cp)
         }
         return em * size
+    }
+
+    /**
+     * Fine (esclusa) del cluster che comincia in [start]: un code point, il secondo indicatore
+     * regionale se il primo lo e, poi i code point a larghezza zero che lo seguono, il keycap e
+     * quello unito da ogni ZWJ. E l'unita minima per andare a capo o troncare: approssima i
+     * grafemi senza BreakIterator, che sulla JVM dei test e su Android (ICU) si comporta in modo
+     * diverso con ZWJ e bandiere. [start] < [s].length.
+     */
+    fun clusterEnd(s: String, start: Int): Int {
+        var prev = Character.codePointAt(s, start)
+        var end = start + Character.charCount(prev)
+        if (isRegionalIndicator(prev) && end < s.length) {
+            val next = Character.codePointAt(s, end)
+            if (isRegionalIndicator(next)) {
+                end += Character.charCount(next)
+                prev = next
+            }
+        }
+        while (end < s.length) {
+            val cp = Character.codePointAt(s, end)
+            // il keycap non e a larghezza zero ma fa parte della cifra che lo precede
+            if (prev != ZWJ && cp != KEYCAP && !isZeroWidth(cp)) break
+            end += Character.charCount(cp)
+            prev = cp
+        }
+        return end
+    }
+
+    private fun isRegionalIndicator(cp: Int): Boolean = cp in 0x1F1E6..0x1F1FF
+
+    /**
+     * Code point che non avanzano: ZWJ, selettori di variante (U+FE0F rende emoji il simbolo
+     * davanti), carnagioni, tag delle bandiere regionali, segni combinanti. Il keycap U+20E3 resta
+     * largo: trasforma la cifra davanti in un'emoji, piu larga della cifra stessa.
+     */
+    private fun isZeroWidth(cp: Int): Boolean {
+        if (cp == KEYCAP) return false
+        if (cp == ZWJ || cp in 0xFE00..0xFE0F || cp in 0x1F3FB..0x1F3FF || cp in 0xE0020..0xE007F) return true
+        val type = Character.getType(cp)
+        return type == Character.NON_SPACING_MARK.toInt() || type == Character.ENCLOSING_MARK.toInt()
     }
 
     /** Avanzamento in em; fuori dalle tabelle stime prudenti (quei glifi arrivano da font di ripiego). */

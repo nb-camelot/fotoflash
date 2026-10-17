@@ -297,6 +297,80 @@ class TemplateGeometryTest {
         assertEquals("N. 0000", TemplateGeometry.printNumberText(-7))
     }
 
+    private fun cps(vararg codePoints: Int): String = buildString { for (cp in codePoints) appendCodePoint(cp) }
+
+    private fun regionalCount(s: String): Int {
+        var n = 0
+        var i = 0
+        while (i < s.length) {
+            val cp = Character.codePointAt(s, i)
+            if (cp in 0x1F1E6..0x1F1FF) n++
+            i += Character.charCount(cp)
+        }
+        return n
+    }
+
+    private val thumb = cps(0x1F44D)
+    private val flag = cps(0x1F1EE, 0x1F1F9)
+    private val family = cps(0x1F468, 0x200D, 0x1F469, 0x200D, 0x1F467, 0x200D, 0x1F466)
+
+    @Test
+    fun emojiModifiersTakeNoSpace() {
+        for (font in FontRole.entries) {
+            // U+FE0F (presentazione emoji) non aggiunge larghezza
+            assertEquals(TextMetrics.width(cps(0x2764), font, 28), TextMetrics.width(cps(0x2764, 0xFE0F), font, 28), 1e-9)
+            // carnagione
+            assertEquals(TextMetrics.width(thumb, font, 28), TextMetrics.width(cps(0x1F44D, 0x1F3FD), font, 28), 1e-9)
+            // una coppia di indicatori regionali e una bandiera sola
+            assertEquals(TextMetrics.width(thumb, font, 22), TextMetrics.width(flag, font, 22), 1e-9)
+            assertEquals(2 * TextMetrics.width(thumb, font, 22), TextMetrics.width(flag + flag, font, 22), 1e-9)
+            // segno combinante
+            assertEquals(TextMetrics.width("e", font, 20), TextMetrics.width("e" + cps(0x301), font, 20), 1e-9)
+            // ZWJ: le persone della famiglia contano per intero (sovrastima prudente), lo ZWJ no
+            assertEquals(4 * TextMetrics.width(thumb, font, 22), TextMetrics.width(family, font, 22), 1e-9)
+            // il keycap trasforma la cifra in emoji: resta largo almeno quanto un'emoji
+            assertTrue(TextMetrics.width(cps(0x31, 0xFE0F, 0x20E3), font, 22) >= TextMetrics.width(thumb, font, 22))
+        }
+    }
+
+    @Test
+    fun captionWithEmojiHeartsKeepsTheNominalSize() {
+        val hearts = cps(0x2764, 0xFE0F).repeat(3)
+        val layout = TemplateGeometry.layout(TemplateKind.POLAROID, PaperWidth.MM58, 1, TemplateTexts(caption = "Auguri nonna $hearts"))
+        val caption = layout.texts.filter { it.role == TextRole.CAPTION }
+        assertEquals(1, caption.size)
+        assertEquals(28, caption[0].sizeDots)
+    }
+
+    @Test
+    fun flagsAreNeverSplitAcrossLinesOrByTheEllipsis() {
+        val tag = "#" + flag.repeat(20)
+        for (maxLines in listOf(1, 3)) {
+            for (avail in 40..344 step 7) {
+                val fit = TextFit.fit(tag, FontRole.MONO, 22, 14, avail, maxLines)
+                assertTrue(fit.lines.size <= maxLines)
+                for (line in fit.lines) {
+                    assertEquals("riga '$line' (larghezza $avail, $maxLines righe)", 0, regionalCount(line) % 2)
+                }
+            }
+        }
+    }
+
+    @Test
+    fun joinedEmojiAreNeverSplit() {
+        val text = family.repeat(10)
+        for (maxLines in listOf(1, 2)) {
+            for (avail in 40..344 step 9) {
+                val fit = TextFit.fit(text, FontRole.MONO, 22, 14, avail, maxLines)
+                for (line in fit.lines) {
+                    val body = line.removeSuffix(cps(0x2026))
+                    assertEquals("riga '$line' (larghezza $avail)", 0, body.length % family.length)
+                    assertEquals(family.repeat(body.length / family.length), body)
+                }
+            }
+        }
+    }
+
     @Test
     fun textMetricsMatchTheBrandFonts() {
         // Space Mono: 612/1000 em per carattere

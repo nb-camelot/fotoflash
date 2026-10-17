@@ -14,8 +14,9 @@ come verificare che è fatto. Ce ne sono di due tipi:
 2. Nel testo cita il piano, per esempio `Piano: issue_plans/collage-2x2.md`.
 3. Nel campo *Affida all'agente* (o in un commento che comincia con `/oc`) scrivi `/oc`.
 
-Il workflow riconosce il percorso `issue_plans/<nome>.md` nella richiesta e usa quel piano invece di
-generarne uno. Si può anche partire a mano: Actions → OpenCode → *Run workflow* con la richiesta
+Il workflow riconosce il percorso `issue_plans/<nome>.md` nel comando, nel corpo dell'issue o in
+quello della PR dell'agente (vale il primo trovato, in quest'ordine) e usa quel piano invece di
+generarne uno; un `/oc` nudo in un commento basta. Si può anche partire a mano: Actions → OpenCode → *Run workflow* con la richiesta
 `segui issue_plans/collage-2x2.md`.
 
 | Piano | Cosa | Tipo |

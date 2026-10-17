@@ -30,10 +30,10 @@ import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.rounded.BluetoothSearching
 import androidx.compose.material.icons.rounded.Bluetooth
 import androidx.compose.material.icons.rounded.BluetoothConnected
 import androidx.compose.material.icons.rounded.BluetoothDisabled
-import androidx.compose.material.icons.rounded.BluetoothSearching
 import androidx.compose.material.icons.rounded.ContentCut
 import androidx.compose.material.icons.rounded.DeleteOutline
 import androidx.compose.material.icons.rounded.ErrorOutline
@@ -400,7 +400,8 @@ private fun statusModel(ui: PrinterUiState): StatusModel {
         )
     }
     return when (val printer = ui.printer) {
-        PrinterState.NotConfigured -> if (ui.bonded.isEmpty()) {
+        // Finche l'elenco degli accoppiati non e stato letto, "vuoto" non vuol dire "nessuno".
+        PrinterState.NotConfigured -> if (ui.bondedLoaded && ui.bonded.isEmpty()) {
             StatusModel(
                 icon = Icons.Rounded.PrintDisabled,
                 accent = FfColors.Flash,
@@ -419,16 +420,33 @@ private fun statusModel(ui: PrinterUiState): StatusModel {
                 action = StatusAction.CHOOSE_PRINTER,
             )
         }
-        is PrinterState.Disconnected -> StatusModel(
-            icon = Icons.Rounded.Print,
-            accent = FfColors.Mint,
-            title = stringResource(R.string.prn_status_ready_title),
-            body = stringResource(R.string.prn_status_ready_body),
-            device = printer.device,
-            action = StatusAction.PRINT_TEST,
-        )
+        is PrinterState.Disconnected -> {
+            val device = printer.device
+            // Stampante disaccoppiata nelle impostazioni Bluetooth: lo si dice subito, non al primo tentativo.
+            val unpaired = ui.bondedLoaded &&
+                ui.bonded.none { it.device.address.equals(device.address, ignoreCase = true) }
+            if (unpaired) {
+                StatusModel(
+                    icon = Icons.Rounded.ErrorOutline,
+                    accent = FfColors.Coral,
+                    title = stringResource(R.string.prn_error_title_not_bonded),
+                    body = stringResource(R.string.prn_err_not_bonded, device.name),
+                    device = device,
+                    action = StatusAction.PAIR_PRINTER,
+                )
+            } else {
+                StatusModel(
+                    icon = Icons.Rounded.Print,
+                    accent = FfColors.Mint,
+                    title = stringResource(R.string.prn_status_ready_title),
+                    body = stringResource(R.string.prn_status_ready_body),
+                    device = device,
+                    action = StatusAction.PRINT_TEST,
+                )
+            }
+        }
         is PrinterState.Connecting -> StatusModel(
-            icon = Icons.Rounded.BluetoothSearching,
+            icon = Icons.AutoMirrored.Rounded.BluetoothSearching,
             accent = FfColors.Sky,
             title = stringResource(R.string.prn_status_connecting_title),
             body = stringResource(R.string.prn_status_connecting_body),
@@ -458,10 +476,13 @@ private fun statusModel(ui: PrinterUiState): StatusModel {
                 PrintFailure.NO_PERMISSION -> R.string.prn_error_title_permission to StatusAction.GRANT_PERMISSION
                 PrintFailure.BLUETOOTH_OFF -> R.string.prn_error_title_bt_off to StatusAction.ENABLE_BLUETOOTH
                 PrintFailure.NOT_BONDED -> R.string.prn_error_title_not_bonded to StatusAction.PAIR_PRINTER
-                PrintFailure.CONNECT_FAILED -> R.string.prn_error_title_connect to StatusAction.RETRY
-                PrintFailure.WRITE_FAILED -> R.string.prn_error_title_write to StatusAction.RETRY
+                // Qui si puo solo provare con una pagina di prova (non con la foto): l'etichetta lo dice.
+                PrintFailure.CONNECT_FAILED -> R.string.prn_error_title_connect to StatusAction.PRINT_TEST
+                PrintFailure.WRITE_FAILED -> R.string.prn_error_title_write to StatusAction.PRINT_TEST
                 PrintFailure.BUSY -> R.string.prn_error_title_busy to StatusAction.NONE
                 PrintFailure.NO_PRINTER -> R.string.prn_error_title_no_printer to chooseOrPair
+                // Non arriva quasi mai qui (il ViewModel lo ripulisce): la stampante funziona, niente azioni Bluetooth.
+                PrintFailure.RENDER_FAILED -> R.string.prn_error_title_render to StatusAction.PRINT_TEST
             }
             StatusModel(
                 icon = Icons.Rounded.ErrorOutline,
@@ -622,7 +643,7 @@ private fun PrintersSection(
             !ui.hasPermission -> HintText(stringResource(R.string.prn_printers_permission))
             !ui.bluetoothEnabled -> HintText(stringResource(R.string.prn_printers_bt_off))
             ui.bonded.isEmpty() -> EmptyState(
-                icon = Icons.Rounded.BluetoothSearching,
+                icon = Icons.AutoMirrored.Rounded.BluetoothSearching,
                 title = stringResource(R.string.prn_printers_empty_title),
                 message = stringResource(R.string.prn_printers_empty_body),
                 modifier = Modifier.fillMaxWidth(),

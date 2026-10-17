@@ -46,4 +46,5 @@
     <string name="onb_fail_connect">La stampante non risponde: è accesa e vicina?</string>
     <string name="onb_fail_write">La stampa si è interrotta a metà: controlla la carta e riprova</string>
     <string name="onb_fail_busy">La stampante è occupata, riprova tra un attimo</string>
+    <string name="onb_fail_render">Non è stato possibile preparare la pagina di prova: riprova</string>
 </resources>

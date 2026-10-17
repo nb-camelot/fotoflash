@@ -16,12 +16,26 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.layout.onPlaced
+import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.layout.positionInParent
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import io.github.nik2208.fotoflash.ui.theme.FfColors
 import io.github.nik2208.fotoflash.ui.theme.FfPillShape
 import io.github.nik2208.fotoflash.ui.theme.FotoFlashTheme
+import kotlin.math.roundToInt
 
 /**
  * Scelta singola tra poche opzioni (modello, retino, timer...) come riga di chip scorrevole.
@@ -37,26 +51,56 @@ fun <T> ChoiceChipsRow(
     onSelect: (T) -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    // Giallo e inchiostro espliciti: il primary del tema chiaro e un tono scuro per i testi.
     val colors = FilterChipDefaults.filterChipColors(
         containerColor = MaterialTheme.colorScheme.surface,
         labelColor = MaterialTheme.colorScheme.onSurface,
-        selectedContainerColor = MaterialTheme.colorScheme.primary,
-        selectedLabelColor = MaterialTheme.colorScheme.onPrimary,
-        selectedLeadingIconColor = MaterialTheme.colorScheme.onPrimary,
+        selectedContainerColor = FfColors.Flash,
+        selectedLabelColor = FfColors.Ink,
+        selectedLeadingIconColor = FfColors.Ink,
     )
+    val scroll = rememberScrollState()
+    // Larghezza visibile della riga e posizione (nel contenuto scorrevole) del chip scelto.
+    var viewport by remember { mutableIntStateOf(0) }
+    var selectedSpan by remember { mutableStateOf<IntRange?>(null) }
+
+    // Il chip scelto puo stare oltre il bordo (retino "Soglia" su un telefono stretto): si porta
+    // in vista scorrendo solo questa riga. bringIntoView scorrerebbe anche la pagina che la contiene.
+    LaunchedEffect(selectedSpan, viewport) {
+        val span = selectedSpan ?: return@LaunchedEffect
+        if (viewport <= 0) return@LaunchedEffect
+        val start = span.first
+        val end = span.last
+        if (start < scroll.value || end > scroll.value + viewport) {
+            val centered = start - (viewport - (end - start)) / 2
+            scroll.animateScrollTo(centered.coerceIn(0, scroll.maxValue))
+        }
+    }
+
     Row(
         modifier = modifier
-            .horizontalScroll(rememberScrollState())
+            .onSizeChanged { viewport = it.width }
+            .horizontalScroll(scroll)
             .selectableGroup(),
         horizontalArrangement = Arrangement.spacedBy(8.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         options.forEach { option ->
             val isSelected = option == selected
+            // FilterChip si dichiara casella di controllo: qui la scelta e singola, come i radio.
+            val chipSemantics = Modifier.semantics { role = Role.RadioButton }
             FilterChip(
                 selected = isSelected,
                 onClick = { onSelect(option) },
                 label = { Text(text = label(option), maxLines = 1) },
+                modifier = if (isSelected) {
+                    chipSemantics.onPlaced { coordinates ->
+                        val x = coordinates.positionInParent().x.roundToInt()
+                        selectedSpan = x..(x + coordinates.size.width)
+                    }
+                } else {
+                    chipSemantics
+                },
                 leadingIcon = if (isSelected) {
                     {
                         Icon(

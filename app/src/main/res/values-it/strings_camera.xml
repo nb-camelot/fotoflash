@@ -47,6 +47,7 @@
     <string name="cam_print_failed_connect">Non raggiungo la stampante. È accesa e vicina?</string>
     <string name="cam_print_failed_write">Stampa interrotta. Controlla la carta e la batteria.</string>
     <string name="cam_print_failed_busy">La stampante è occupata. Riprova tra un momento.</string>
+    <string name="cam_print_failed_render">Non sono riuscito a preparare la stampa. Riprova o scegli un\'altra foto.</string>
 
     <!-- Permesso fotocamera -->
     <string name="cam_perm_title">Accendiamo la fotocamera</string>
