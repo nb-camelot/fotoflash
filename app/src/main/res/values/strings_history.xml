@@ -1,0 +1,111 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Storico stampe (prefisso hist_) -->
+    <string name="hist_title">History</string>
+    <string name="hist_detail_title">Souvenir</string>
+
+    <string name="hist_empty_title">No prints yet</string>
+    <string name="hist_empty_message">Every photo you print or save ends up here, ready to be printed again.</string>
+    <string name="hist_empty_action">Take a photo</string>
+
+    <string name="hist_not_printed">Not printed</string>
+    <string name="hist_print_number">No. %1$04d</string>
+    <string name="hist_thumb_cd">Print from %1$s</string>
+    <string name="hist_preview_cd">Print preview</string>
+
+    <string name="hist_label_date">Date</string>
+    <string name="hist_label_template">Template</string>
+    <string name="hist_label_caption">Caption</string>
+    <string name="hist_label_number">Number</string>
+    <string name="hist_label_photos">Photos</string>
+    <string name="hist_label_status">Status</string>
+    <string name="hist_status_printed">Printed</string>
+    <string name="hist_status_saved">Saved, not printed yet</string>
+
+    <string name="hist_template_polaroid">Polaroid</string>
+    <string name="hist_template_full">Full</string>
+    <string name="hist_template_strip">Strip</string>
+    <string name="hist_template_receipt">Receipt</string>
+
+    <string name="hist_action_reprint">Print again</string>
+    <string name="hist_action_share">Share</string>
+    <string name="hist_action_save">Save print</string>
+    <string name="hist_action_save_photos">Save photos</string>
+    <string name="hist_action_delete">Delete from history</string>
+    <string name="hist_share_chooser">Share print</string>
+    <string name="hist_printing">Printing… %1$d%%</string>
+
+    <string name="hist_delete_title">Delete this print?</string>
+    <string name="hist_delete_message">The print and its original photos will be removed from FotoFlash. Copies saved in your gallery stay where they are.</string>
+    <string name="hist_delete_confirm">Delete</string>
+    <string name="hist_cancel">Cancel</string>
+
+    <string name="hist_msg_printed">Printed!</string>
+    <string name="hist_msg_saved">Print saved to Gallery › FotoFlash</string>
+    <string name="hist_msg_save_failed">Could not save the image</string>
+    <string name="hist_msg_share_failed">Could not share the image</string>
+    <string name="hist_msg_load_failed">The file of this print is damaged</string>
+    <string name="hist_msg_storage_permission">Saving to the gallery needs the storage permission on this Android version</string>
+
+    <string name="hist_fail_no_printer">Choose a printer first (Settings › Printer)</string>
+    <string name="hist_fail_no_permission">FotoFlash is not allowed to use Bluetooth</string>
+    <string name="hist_fail_bluetooth_off">Bluetooth is off: turn it on and try again</string>
+    <string name="hist_fail_not_bonded">The printer is no longer paired with this phone</string>
+    <string name="hist_fail_connect">The printer does not answer: is it on and nearby?</string>
+    <string name="hist_fail_write">Printing stopped halfway: check the paper and try again</string>
+    <string name="hist_fail_busy">The printer is busy with another print</string>
+    <string name="hist_fail_render">Could not prepare this print: try again</string>
+    <string name="hist_msg_paper_mismatch">This print is for %1$d mm paper: change the paper in the printer settings</string>
+    <string name="hist_msg_paper_mismatch_generic">This print is wider than the paper set for the printer: change the paper in the printer settings</string>
+
+    <!-- Azioni della snackbar dopo una ristampa non riuscita -->
+    <string name="hist_fix_retry">Try again</string>
+    <string name="hist_fix_bluetooth">Bluetooth</string>
+    <string name="hist_fix_allow">Allow</string>
+    <string name="hist_fix_printer">Printer</string>
+
+    <string name="hist_not_found_title">Print not found</string>
+    <string name="hist_not_found_message">It may have been deleted.</string>
+    <string name="hist_back">Back to history</string>
+
+    <!-- Foto originali a colori: dettaglio ("Salva foto") ed esportazione di tutto lo storico -->
+    <plurals name="hist_photos_value">
+        <item quantity="one">%d color original</item>
+        <item quantity="other">%d color originals</item>
+    </plurals>
+    <plurals name="hist_msg_photos_saved">
+        <item quantity="one">%d photo saved to Gallery › FotoFlash › Scatti</item>
+        <item quantity="other">%d photos saved to Gallery › FotoFlash › Scatti</item>
+    </plurals>
+    <plurals name="hist_msg_photos_partial">
+        <item quantity="one">Saved %1$d of %2$d photos: try again for the others</item>
+        <item quantity="other">Saved %1$d of %2$d photos: try again for the others</item>
+    </plurals>
+    <string name="hist_msg_photos_failed">Could not save the photos</string>
+    <string name="hist_msg_no_photos">The original photos of this print are no longer available</string>
+    <string name="hist_fix_settings">Settings</string>
+    <string name="hist_ok">OK</string>
+
+    <string name="hist_export_all">Export all photos</string>
+    <string name="hist_export_title">Export all photos?</string>
+    <plurals name="hist_export_message">
+        <item quantity="one">%d original color photo from your history will be saved to Gallery › FotoFlash › Scatti, where it stays even if you uninstall FotoFlash.</item>
+        <item quantity="other">%d original color photos from your history will be saved to Gallery › FotoFlash › Scatti, where they stay even if you uninstall FotoFlash.</item>
+    </plurals>
+    <string name="hist_export_duplicates">Photos you have already exported will be saved again as extra copies.</string>
+    <string name="hist_export_none">There are no original photos to export.</string>
+    <string name="hist_export_confirm">Export</string>
+    <string name="hist_export_running">Saving photos to the gallery…</string>
+    <string name="hist_export_preparing">Getting the photos ready…</string>
+    <string name="hist_export_progress">%1$d/%2$d</string>
+    <string name="hist_export_done_title">Export complete</string>
+    <string name="hist_export_cancelled_title">Export cancelled</string>
+    <string name="hist_export_aborted_title">Export stopped</string>
+    <string name="hist_export_saved_none">No photos saved</string>
+    <plurals name="hist_export_failed">
+        <item quantity="one">%d photo could not be saved</item>
+        <item quantity="other">%d photos could not be saved</item>
+    </plurals>
+    <string name="hist_export_aborted_hint">Too many errors in a row: is there free space on the phone?</string>
+    <string name="hist_export_dismiss">Close</string>
+</resources>

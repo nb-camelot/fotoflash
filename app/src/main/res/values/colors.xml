@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Token colore del brand FotoFlash (vedi docs/brand/BRAND.md) -->
+    <color name="ff_ink">#FF16130F</color>
+    <color name="ff_night">#FF0E0C0A</color>
+    <color name="ff_paper">#FFFBF8F1</color>
+    <color name="ff_fog">#FFEDE8DE</color>
+    <color name="ff_graphite">#FF4A4640</color>
+    <color name="ff_flash">#FFFFCC00</color>
+    <color name="ff_flash_deep">#FFE0A800</color>
+    <color name="ff_coral">#FFFF5B45</color>
+    <color name="ff_mint">#FF22B89A</color>
+    <color name="ff_sky">#FF3D8BFF</color>
+</resources>

@@ -1,0 +1,311 @@
+name: Bump version
+
+# Ogni push su main (cioe il merge di dev in main) e un rilascio:
+#   1. calcola il nuovo numero di versione dai commit arrivati dall'ultimo tag;
+#   2. compila e testa con gli stessi step di ci.yml, piu la build di release non firmata (R8, riduzione
+#      delle risorse, lintVitalRelease), PRIMA di scrivere qualsiasi cosa;
+#   3. aggiorna VERSION_NAME/VERSION_CODE in gradle.properties, commit "chore(release): vX.Y.Z [skip ci]" e tag;
+#   4. chiama release.yml come job dello stesso workflow (needs): APK firmato e Release GitHub.
+# Il rilascio e un job di questo workflow (e non un dispatch) perche un push fatto con GITHUB_TOKEN
+# non avvia altri workflow, e cosi non serve nemmeno il permesso actions: write.
+#
+# Tipo di bump, valutato commit per commit (vince il piu alto):
+#   [semver:major|minor|patch] nel messaggio  -> quello, prima di tutto il resto
+#   tipo!: ...  oppure footer "BREAKING CHANGE:" -> major
+#   feat: ...                                     -> minor
+#   fix: / perf: ...                              -> patch
+#   tutto il resto                                -> patch (ogni merge su main e un rilascio)
+# "[skip release]" nell'ultimo commit salta il rilascio. Primo rilascio (nessun tag v*): si rilascia la
+# versione gia scritta in gradle.properties, senza incrementarla.
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      release_type:
+        description: "Tipo di bump (auto = dedotto dai commit)"
+        required: false
+        default: auto
+        type: choice
+        options: [auto, patch, minor, major]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: fotoflash-bump-main
+  cancel-in-progress: false
+
+jobs:
+  bump:
+    name: Versione, build, test e tag
+    # Anti-loop senza filtri sul messaggio: il commit di release del bot pushato con GITHUB_TOKEN non
+    # avvia workflow, quello pushato con la deploy key ha "[skip ci]", e lo step "Calcola" salta comunque
+    # una punta che e un commit di release di github-actions[bot]. Un commit umano "chore(release): ..."
+    # (per esempio lo squash della PR dev -> main) e invece un rilascio come gli altri.
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    permissions:
+      contents: write
+    outputs:
+      pushed: ${{ steps.push.outputs.pushed }}
+      tag: ${{ steps.push.outputs.tag }}
+    steps:
+      # Si parte dalla punta attuale di main, non da github.sha: con piu push in coda la run successiva
+      # vede il tag della precedente e non ricalcola commit gia rilasciati.
+      - name: Checkout di main
+        uses: actions/checkout@v6
+        with:
+          ref: main
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Calcola la nuova versione
+        id: ver
+        env:
+          FORCED: ${{ inputs.release_type }}
+        run: |
+          set -euo pipefail
+          out() { printf '%s=%s\n' "$1" "$2" >> "$GITHUB_OUTPUT"; }
+          skip() { echo "::notice::$1"; out skip true; exit 0; }
+          AFTER=$(git rev-parse HEAD)
+          out after "$AFTER"
+          FORCED="${FORCED:-auto}"
+
+          SUBJ=$(git log -1 --format=%s "$AFTER")
+          AUTHOR=$(git log -1 --format=%an "$AFTER")
+          if [[ "$SUBJ" == "chore(release):"* ]] && [ "$AUTHOR" = "github-actions[bot]" ] && [ "$FORCED" = auto ]; then
+            skip "La punta di main e gia un commit di release."
+          fi
+          if grep -qF '[skip release]' <<<"$(git log -1 --format=%B "$AFTER")" && [ "$FORCED" = auto ]; then
+            skip "[skip release] nell'ultimo commit."
+          fi
+
+          CUR_NAME=$(sed -n 's/^VERSION_NAME=//p' gradle.properties | tr -d '[:space:]')
+          CUR_CODE=$(sed -n 's/^VERSION_CODE=//p' gradle.properties | tr -d '[:space:]')
+          [[ "$CUR_NAME" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || { echo "::error::VERSION_NAME non valido in gradle.properties: '$CUR_NAME'"; exit 1; }
+          [[ "$CUR_CODE" =~ ^[0-9]+$ ]] || { echo "::error::VERSION_CODE non valido in gradle.properties: '$CUR_CODE'"; exit 1; }
+
+          # Commit da valutare: tutti quelli dall'ultimo tag di rilascio (cioe BEFORE..AFTER del push,
+          # piu quelli di eventuali run precedenti che non hanno rilasciato).
+          LAST_TAG=$(git describe --tags --abbrev=0 --match 'v[0-9]*' "$AFTER" 2>/dev/null || true)
+          if [ -n "$LAST_TAG" ]; then RANGE="$LAST_TAG..$AFTER"; else RANGE="$AFTER"; fi
+          echo "Ultimo tag: ${LAST_TAG:-nessuno}; commit valutati: $RANGE"
+
+          RE_KW='\[semver:(major|minor|patch)\]'
+          RE_BANG='^[A-Za-z]+(\([^)]*\))?!: '
+          RE_FEAT='^feat(\([^)]*\))?: '
+          RE_FIX='^(fix|perf)(\([^)]*\))?: '
+          LEVEL=0; COUNT=0; LOG=""
+          while IFS= read -r c; do
+            [ -n "$c" ] || continue
+            subj=$(git log -1 --format=%s "$c")
+            body=$(git log -1 --format=%b "$c")
+            msg=$(git log -1 --format=%B "$c")
+            # Si scartano solo i commit di versione del bot (stesso criterio della punta, sopra).
+            if [[ "$subj" == "chore(release):"* ]] && [ "$(git log -1 --format=%an "$c")" = "github-actions[bot]" ]; then
+              continue
+            fi
+            COUNT=$((COUNT + 1))
+            # Merge di GitHub ("Merge pull request #N from ..."): il titolo della PR e la prima riga del corpo.
+            head="$subj"
+            if [[ "$subj" == "Merge "* ]]; then head=$(sed '/^[[:space:]]*$/d' <<<"$body" | head -n 1 || true); fi
+            l=0
+            if [[ "$msg" =~ $RE_KW ]]; then
+              case "${BASH_REMATCH[1]}" in major) l=3 ;; minor) l=2 ;; patch) l=1 ;; esac
+            elif [[ "$head" =~ $RE_BANG ]] || grep -qE '^BREAKING[ -]CHANGE: ' <<<"$msg"; then
+              l=3
+            elif [[ "$head" =~ $RE_FEAT ]]; then
+              l=2
+            elif [[ "$head" =~ $RE_FIX ]]; then
+              l=1
+            fi
+            if [ "$l" -gt "$LEVEL" ]; then LEVEL=$l; fi
+            LOG="$LOG
+          - $(git log -1 --format=%h "$c") [$l] $subj"
+          done < <(git rev-list "$RANGE")
+
+          if [ "$COUNT" -eq 0 ] && [ "$FORCED" = auto ]; then skip "Nessun commit nuovo dall'ultimo rilascio ($LAST_TAG)."; fi
+
+          case "$FORCED" in
+            major) LEVEL=3 ;;
+            minor) LEVEL=2 ;;
+            patch) LEVEL=1 ;;
+            *) if [ "$LEVEL" -eq 0 ]; then LEVEL=1; fi ;;
+          esac
+          case "$LEVEL" in 3) BUMP=major ;; 2) BUMP=minor ;; *) BUMP=patch ;; esac
+
+          IFS=. read -r MA MI PA <<<"$CUR_NAME"
+          if [ -z "$LAST_TAG" ] && [ "$FORCED" = auto ]; then
+            # Primo rilascio: la versione scritta nel repo e gia quella giusta.
+            NEW="$CUR_NAME"; NEW_CODE="$CUR_CODE"; CHANGED=false; BUMP=primo-rilascio
+          else
+            case "$BUMP" in
+              major) MA=$((MA + 1)); MI=0; PA=0 ;;
+              minor) MI=$((MI + 1)); PA=0 ;;
+              patch) PA=$((PA + 1)) ;;
+            esac
+            NEW="$MA.$MI.$PA"; NEW_CODE=$((CUR_CODE + 1)); CHANGED=true
+          fi
+          if git rev-parse -q --verify "refs/tags/v$NEW" > /dev/null; then
+            echo "::error::Il tag v$NEW esiste gia: controlla VERSION_NAME in gradle.properties."
+            exit 1
+          fi
+
+          out skip false
+          out bump "$BUMP"
+          out cur_name "$CUR_NAME"
+          out cur_code "$CUR_CODE"
+          out version "$NEW"
+          out code "$NEW_CODE"
+          out tag "v$NEW"
+          out changed "$CHANGED"
+          {
+            echo "### Bump di versione"
+            echo "- \`$CUR_NAME\` (build $CUR_CODE) -> **\`$NEW\`** (build $NEW_CODE), tipo \`$BUMP\`"
+            echo "- Ultimo tag: \`${LAST_TAG:-nessuno}\`, commit valutati: $COUNT"
+            echo
+            echo '```'
+            printf '%s\n' "$LOG" | sed '/^[[:space:]]*$/d'
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      # ── Stessi step di ci.yml: si committa solo una versione che compila e passa i test.
+      - name: Java 17
+        if: steps.ver.outputs.skip != 'true'
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Pacchetti Android SDK
+        if: steps.ver.outputs.skip != 'true'
+        run: |
+          set -e
+          SDKM=$(find "${ANDROID_HOME:-$ANDROID_SDK_ROOT}/cmdline-tools" -maxdepth 3 -type f -name sdkmanager 2>/dev/null | sort -V | tail -n 1)
+          if [ -z "$SDKM" ]; then SDKM=$(command -v sdkmanager || true); fi
+          if [ -z "$SDKM" ]; then echo "::error::sdkmanager non trovato"; exit 1; fi
+          yes | "$SDKM" --licenses > /dev/null || true
+          "$SDKM" "platform-tools" "platforms;android-35" "build-tools;35.0.0" > /dev/null
+
+      - name: Gradle
+        if: steps.ver.outputs.skip != 'true'
+        uses: gradle/actions/setup-gradle@v5
+        with:
+          gradle-version: "8.10.2"
+
+      - name: Scrivi la versione in gradle.properties
+        if: steps.ver.outputs.skip != 'true' && steps.ver.outputs.changed == 'true'
+        env:
+          VERSION: ${{ steps.ver.outputs.version }}
+          CODE: ${{ steps.ver.outputs.code }}
+        run: |
+          set -euo pipefail
+          sed -i -E "s/^VERSION_NAME=.*/VERSION_NAME=$VERSION/; s/^VERSION_CODE=.*/VERSION_CODE=$CODE/" gradle.properties
+          grep -qxF "VERSION_NAME=$VERSION" gradle.properties
+          grep -qxF "VERSION_CODE=$CODE" gradle.properties
+          grep -E '^VERSION_' gradle.properties
+
+      # Anche :app:assembleRelease: qui non ci sono i secret di firma, quindi la signingConfig di release e
+      # nulla e AGP produce app-release-unsigned.apk (scartato). Serve a far girare R8, la riduzione delle
+      # risorse e lintVitalRelease PRIMA del tag: un loro errore in release.yml brucerebbe il numero.
+      - name: Build e test
+        if: steps.ver.outputs.skip != 'true'
+        run: |
+          set -o pipefail
+          gradle --no-daemon --stacktrace \
+            :core-thermal:test :app:testDebugUnitTest :app:assembleDebug :app:assembleRelease 2>&1 | tee build.log
+
+      - name: Rapporto errori
+        if: failure() && steps.ver.outputs.skip != 'true'
+        run: |
+          [ -f build.log ] || exit 0
+          WS="$GITHUB_WORKSPACE/"
+          {
+            echo "## La build non passa: niente bump, niente tag, niente release"
+            echo
+            echo '```'
+            grep -E '^e: ' build.log | sed -E "s#^e: (file://)?##; s#${WS}##" | head -n 40 || true
+            grep -E ' FAILED$|AssertionError' build.log | head -n 30 || true
+            awk '/\* What went wrong:/{f=1} /\* Try:/{f=0} f' build.log | sed "s#${WS}##g" | head -n 60
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Commit, tag e push
+        id: push
+        if: steps.ver.outputs.skip != 'true'
+        env:
+          AFTER: ${{ steps.ver.outputs.after }}
+          VERSION: ${{ steps.ver.outputs.version }}
+          CODE: ${{ steps.ver.outputs.code }}
+          TAG: ${{ steps.ver.outputs.tag }}
+          BUMP: ${{ steps.ver.outputs.bump }}
+          CUR_NAME: ${{ steps.ver.outputs.cur_name }}
+          CUR_CODE: ${{ steps.ver.outputs.cur_code }}
+          CHANGED: ${{ steps.ver.outputs.changed }}
+          GH_TOKEN: ${{ github.token }}
+          # Facoltativa: deploy key con accesso in scrittura, nella lista di bypass della regola di main.
+          # Serve se main richiede PR e check (GITHUB_TOKEN non puo aggirare le regole). Vedi README.
+          DEPLOY_KEY: ${{ secrets.RELEASE_DEPLOY_KEY }}
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          if [ "$CHANGED" = true ]; then
+            git add gradle.properties
+            git commit -q -m "chore(release): $TAG [skip ci]" \
+              -m "Bump $BUMP: $CUR_NAME (build $CUR_CODE) -> $VERSION (build $CODE)."
+          fi
+          git tag -a "$TAG" -m "FotoFlash $VERSION (build $CODE)"
+
+          # Credenziali solo in questo step: mai nell'URL del remote, mai nella config del checkout.
+          if [ -n "$DEPLOY_KEY" ]; then
+            KEY="$RUNNER_TEMP/release_deploy_key"
+            KH="$RUNNER_TEMP/github_known_hosts"
+            ( umask 077; printf '%s\n' "$DEPLOY_KEY" | tr -d '\r' > "$KEY" )
+            # Chiave host di github.com (api.github.com/meta, SHA256:+DiY3wvvV6TuJJhbpZisF/zLDA0zPMSvHdkr4UvCOqU)
+            echo "github.com ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIOMqqnkVzrm0SdG6UOoqKLsabgH5C9okWi0dh2l9GKJl" > "$KH"
+            export GIT_SSH_COMMAND="ssh -i $KEY -o IdentitiesOnly=yes -o UserKnownHostsFile=$KH -o StrictHostKeyChecking=yes -o HostKeyAlgorithms=ssh-ed25519"
+            REMOTE="git@github.com:${GITHUB_REPOSITORY}.git"
+            VIA="deploy key"
+          else
+            B64=$(printf 'x-access-token:%s' "$GH_TOKEN" | base64 -w0)
+            echo "::add-mask::$B64"
+            export GIT_CONFIG_COUNT=1 GIT_CONFIG_KEY_0="http.https://github.com/.extraheader" GIT_CONFIG_VALUE_0="AUTHORIZATION: basic $B64"
+            REMOTE="https://github.com/${GITHUB_REPOSITORY}.git"
+            VIA="GITHUB_TOKEN"
+          fi
+
+          # Se main e avanzato durante la build, rilascia la run successiva (che vedra anche questi commit).
+          REMOTE_MAIN=$(git ls-remote "$REMOTE" refs/heads/main | cut -f1)
+          if [ "$REMOTE_MAIN" != "$AFTER" ]; then
+            echo "::notice::main e avanzato durante la build ($AFTER -> $REMOTE_MAIN): rilascia la prossima run."
+            echo "pushed=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          if [ "$CHANGED" = true ]; then
+            # --atomic: commit e tag insieme o niente.
+            if ! git push --atomic "$REMOTE" "HEAD:refs/heads/main" "refs/tags/$TAG"; then
+              echo "::error::Push su main rifiutato ($VIA). Se main e protetto da una regola che richiede PR o check, aggiungi una deploy key in scrittura alla lista di bypass e salvala nel secret RELEASE_DEPLOY_KEY (vedi README)."
+              exit 1
+            fi
+          else
+            git push "$REMOTE" "refs/tags/$TAG"
+          fi
+          rm -f "$RUNNER_TEMP/release_deploy_key"
+          echo "pushed=true" >> "$GITHUB_OUTPUT"
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+          echo "- Pubblicati $( [ "$CHANGED" = true ] && echo "commit e " )tag \`$TAG\` via $VIA" >> "$GITHUB_STEP_SUMMARY"
+
+  release:
+    name: Release
+    needs: bump
+    if: needs.bump.outputs.pushed == 'true'
+    permissions:
+      contents: write
+    uses: ./.github/workflows/release.yml
+    with:
+      tag: ${{ needs.bump.outputs.tag }}
+    secrets: inherit

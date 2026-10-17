@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Sfondo dell'icona adattiva: il giallo Flash del marchio (uguale a ff_flash, nome separato
+         perche l'icona e del launcher e non deve cambiare se un giorno cambia il tema). -->
+    <color name="ic_launcher_background">#FFFFCC00</color>
+</resources>

@@ -1,0 +1,72 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Modalita di scatto (etichette brevi in maiuscolo, stile scontrino) -->
+    <string name="cam_mode_photo">PHOTO</string>
+    <string name="cam_mode_strip">STRIP</string>
+
+    <!-- Descrizioni dei comandi per TalkBack -->
+    <string name="cam_cd_flash">Flash: %1$s</string>
+    <string name="cam_flash_auto">auto</string>
+    <string name="cam_flash_on">on</string>
+    <string name="cam_flash_off">off</string>
+    <string name="cam_cd_timer">Self-timer: %1$s</string>
+    <string name="cam_timer_off">off</string>
+    <string name="cam_timer_seconds">%1$d seconds</string>
+    <string name="cam_cd_thermal">Thermal print preview: %1$s</string>
+    <string name="cam_state_on">on</string>
+    <string name="cam_state_off">off</string>
+    <string name="cam_cd_switch_camera">Switch camera</string>
+    <string name="cam_cd_gallery">Print a photo from your gallery</string>
+    <string name="cam_cd_gallery_strip">Pick up to 4 photos for a strip</string>
+    <string name="cam_cd_history">Print history</string>
+    <string name="cam_cd_settings">Settings</string>
+
+    <!-- Mirino -->
+    <string name="cam_instant_print">INSTANT PRINT</string>
+    <string name="cam_printing">PRINTING…</string>
+    <string name="cam_printing_percent">PRINTING %1$d%%</string>
+    <string name="cam_printing_queue">+%1$d WAITING</string>
+    <string name="cam_printed">PRINTED! TEAR IT OFF</string>
+    <string name="cam_strip_hint">%1$d SHOTS · 3-2-1 BEFORE EACH</string>
+    <string name="cam_strip_progress">SHOT %1$d OF %2$d</string>
+    <string name="cam_tap_to_cancel">TAP THE SHUTTER TO CANCEL</string>
+    <string name="cam_unavailable_title">Camera not available</string>
+    <string name="cam_unavailable_message">Another app may be using it. Close it and come back here.</string>
+
+    <!-- Esposizione: tocca per esporre e slider di compensazione -->
+    <string name="cam_cd_exposure">Exposure: %1$s</string>
+    <string name="cam_exposure_slider">Exposure compensation</string>
+    <string name="cam_exposure_value">%1$+.1f EV</string>
+    <string name="cam_exposure_value_zero">±0 EV</string>
+    <string name="cam_exposure_auto">AUTO</string>
+    <string name="cam_cd_exposure_auto">Back to automatic exposure</string>
+
+    <!-- Salvataggio automatico degli scatti in galleria -->
+    <string name="cam_autosave_done">Your photos are also saved to the gallery, in Gallery › FotoFlash › Scatti. You can turn this off in Settings.</string>
+    <string name="cam_autosave_failed">Couldn\'t save the photo to your gallery. Is the phone storage full?</string>
+    <string name="cam_autosave_denied">Without storage access, your photos won\'t be copied to the gallery. You can allow it in the app settings.</string>
+
+    <!-- Avvisi -->
+    <string name="cam_action_printer">Printer</string>
+    <string name="cam_queue_full">Hold on, the printer is still busy with your last photos.</string>
+    <string name="cam_error_capture">Couldn\'t take the photo. Try again.</string>
+    <string name="cam_error_import">Couldn\'t open that image. Try another one.</string>
+    <string name="cam_error_picker">No photo picker is available on this phone.</string>
+    <string name="cam_error_print_generic">The photo didn\'t print. Try again.</string>
+    <string name="cam_print_failed_no_printer">Choose a printer first.</string>
+    <string name="cam_print_failed_no_permission">Allow Bluetooth access to print.</string>
+    <string name="cam_print_failed_bluetooth_off">Bluetooth is off: turn it on to print.</string>
+    <string name="cam_print_failed_not_bonded">The printer isn\'t paired with this phone.</string>
+    <string name="cam_print_failed_connect">Can\'t reach the printer. Is it on and nearby?</string>
+    <string name="cam_print_failed_write">Printing stopped. Check the paper and the battery.</string>
+    <string name="cam_print_failed_busy">The printer is busy. Try again in a moment.</string>
+    <string name="cam_print_failed_render">Couldn\'t prepare the print. Try again or pick another photo.</string>
+
+    <!-- Permesso fotocamera -->
+    <string name="cam_perm_title">Let\'s turn on the camera</string>
+    <string name="cam_perm_message">FotoFlash uses the camera to snap the photos you print. Your pictures stay on this phone.</string>
+    <string name="cam_perm_message_blocked">Camera access is turned off for FotoFlash. You can turn it on in the app settings, under Permissions.</string>
+    <string name="cam_perm_allow">Allow camera</string>
+    <string name="cam_perm_open_settings">Open app settings</string>
+    <string name="cam_perm_gallery">Print from gallery</string>
+</resources>

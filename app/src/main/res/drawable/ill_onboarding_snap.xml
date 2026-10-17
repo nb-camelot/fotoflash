@@ -1,0 +1,136 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Onboarding 1/3, Scatta: il telefono diventa una fotocamera istantanea, con lampo e scintille.
+     Stile del brand: tinte piene, contorni Ink da 4, ombre piene spostate, retino a puntini. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="320dp"
+    android:height="240dp"
+    android:viewportWidth="320"
+    android:viewportHeight="240">
+    <!-- sfondo: disco Flash -->
+    <path
+        android:fillColor="#FFCC00"
+        android:pathData="M60,124 A100,100 0 1 0 260,124 A100,100 0 1 0 60,124 Z" />
+    <!-- retino: il lampo visto dalla testina termica -->
+    <path
+        android:fillColor="#16130F"
+        android:pathData="M55.6,145 a0.9,0.9 0 1 0 1.8,0 a0.9,0.9 0 1 0 -1.8,0 Z M64.5,145 a1,1 0 1 0 2.1,0 a1,1 0 1 0 -2.1,0 Z M73.5,145 a1,1 0 1 0 2.1,0 a1,1 0 1 0 -2.1,0 Z M82.6,145 a0.9,0.9 0 1 0 1.8,0 a0.9,0.9 0 1 0 -1.8,0 Z M42.1,152.8 a0.9,0.9 0 1 0 1.8,0 a0.9,0.9 0 1 0 -1.8,0 Z M50.7,152.8 a1.3,1.3 0 1 0 2.5,0 a1.3,1.3 0 1 0 -2.5,0 Z M59.5,152.8 a1.5,1.5 0 1 0 3,0 a1.5,1.5 0 1 0 -3,0 Z M68.4,152.8 a1.6,1.6 0 1 0 3.2,0 a1.6,1.6 0 1 0 -3.2,0 Z M77.5,152.8 a1.5,1.5 0 1 0 3,0 a1.5,1.5 0 1 0 -3,0 Z M86.7,152.8 a1.3,1.3 0 1 0 2.5,0 a1.3,1.3 0 1 0 -2.5,0 Z M96.1,152.8 a0.9,0.9 0 1 0 1.8,0 a0.9,0.9 0 1 0 -1.8,0 Z M37.5,160.6 a1,1 0 1 0 2.1,0 a1,1 0 1 0 -2.1,0 Z M46,160.6 a1.5,1.5 0 1 0 3,0 a1.5,1.5 0 1 0 -3,0 Z M54.6,160.6 a1.9,1.9 0 1 0 3.8,0 a1.9,1.9 0 1 0 -3.8,0 Z M63.4,160.6 a2.1,2.1 0 1 0 4.2,0 a2.1,2.1 0 1 0 -4.2,0 Z M72.4,160.6 a2.1,2.1 0 1 0 4.2,0 a2.1,2.1 0 1 0 -4.2,0 Z M81.6,160.6 a1.9,1.9 0 1 0 3.8,0 a1.9,1.9 0 1 0 -3.8,0 Z M91,160.6 a1.5,1.5 0 1 0 3,0 a1.5,1.5 0 1 0 -3,0 Z M100.5,160.6 a1,1 0 1 0 2.1,0 a1,1 0 1 0 -2.1,0 Z M33,168.4 a1,1 0 1 0 2.1,0 a1,1 0 1 0 -2.1,0 Z M41.4,168.4 a1.6,1.6 0 1 0 3.2,0 a1.6,1.6 0 1 0 -3.2,0 Z M49.9,168.4 a2.1,2.1 0 1 0 4.2,0 a2.1,2.1 0 1 0 -4.2,0 Z M58.5,168.4 a2.5,2.5 0 1 0 5,0 a2.5,2.5 0 1 0 -5,0 Z M67.3,168.4 a2.7,2.7 0 1 0 5.4,0 a2.7,2.7 0 1 0 -5.4,0 Z M76.5,168.4 a2.5,2.5 0 1 0 5,0 a2.5,2.5 0 1 0 -5,0 Z M85.9,168.4 a2.1,2.1 0 1 0 4.2,0 a2.1,2.1 0 1 0 -4.2,0 Z M95.4,168.4 a1.6,1.6 0 1 0 3.2,0 a1.6,1.6 0 1 0 -3.2,0 Z M105,168.4 a1,1 0 1 0 2.1,0 a1,1 0 1 0 -2.1,0 Z M28.6,176.2 a0.9,0.9 0 1 0 1.8,0 a0.9,0.9 0 1 0 -1.8,0 Z M37,176.2 a1.5,1.5 0 1 0 3,0 a1.5,1.5 0 1 0 -3,0 Z M45.4,176.2 a2.1,2.1 0 1 0 4.2,0 a2.1,2.1 0 1 0 -4.2,0 Z M53.8,176.2 a2.7,2.7 0 1 0 5.4,0 a2.7,2.7 0 1 0 -5.4,0 Z M62.3,176.2 a3.2,3.2 0 1 0 6.3,0 a3.2,3.2 0 1 0 -6.3,0 Z M71.3,176.2 a3.2,3.2 0 1 0 6.3,0 a3.2,3.2 0 1 0 -6.3,0 Z M80.8,176.2 a2.7,2.7 0 1 0 5.4,0 a2.7,2.7 0 1 0 -5.4,0 Z M90.4,176.2 a2.1,2.1 0 1 0 4.2,0 a2.1,2.1 0 1 0 -4.2,0 Z M100,176.2 a1.5,1.5 0 1 0 3,0 a1.5,1.5 0 1 0 -3,0 Z M109.6,176.2 a0.9,0.9 0 1 0 1.8,0 a0.9,0.9 0 1 0 -1.8,0 Z M32.7,184 a1.3,1.3 0 1 0 2.5,0 a1.3,1.3 0 1 0 -2.5,0 Z M41.1,184 a1.9,1.9 0 1 0 3.8,0 a1.9,1.9 0 1 0 -3.8,0 Z M49.5,184 a2.5,2.5 0 1 0 5,0 a2.5,2.5 0 1 0 -5,0 Z M57.9,184 a3.2,3.2 0 1 0 6.3,0 a3.2,3.2 0 1 0 -6.3,0 Z M66.2,184 a3.8,3.8 0 1 0 7.6,0 a3.8,3.8 0 1 0 -7.6,0 Z M75.9,184 a3.2,3.2 0 1 0 6.3,0 a3.2,3.2 0 1 0 -6.3,0 Z M85.5,184 a2.5,2.5 0 1 0 5,0 a2.5,2.5 0 1 0 -5,0 Z M95.1,184 a1.9,1.9 0 1 0 3.8,0 a1.9,1.9 0 1 0 -3.8,0 Z M104.7,184 a1.3,1.3 0 1 0 2.5,0 a1.3,1.3 0 1 0 -2.5,0 Z M28.6,191.8 a0.9,0.9 0 1 0 1.8,0 a0.9,0.9 0 1 0 -1.8,0 Z M37,191.8 a1.5,1.5 0 1 0 3,0 a1.5,1.5 0 1 0 -3,0 Z M45.4,191.8 a2.1,2.1 0 1 0 4.2,0 a2.1,2.1 0 1 0 -4.2,0 Z M53.8,191.8 a2.7,2.7 0 1 0 5.4,0 a2.7,2.7 0 1 0 -5.4,0 Z M62.3,191.8 a3.2,3.2 0 1 0 6.3,0 a3.2,3.2 0 1 0 -6.3,0 Z M71.3,191.8 a3.2,3.2 0 1 0 6.3,0 a3.2,3.2 0 1 0 -6.3,0 Z M80.8,191.8 a2.7,2.7 0 1 0 5.4,0 a2.7,2.7 0 1 0 -5.4,0 Z M90.4,191.8 a2.1,2.1 0 1 0 4.2,0 a2.1,2.1 0 1 0 -4.2,0 Z M100,191.8 a1.5,1.5 0 1 0 3,0 a1.5,1.5 0 1 0 -3,0 Z M109.6,191.8 a0.9,0.9 0 1 0 1.8,0 a0.9,0.9 0 1 0 -1.8,0 Z M33,199.6 a1,1 0 1 0 2.1,0 a1,1 0 1 0 -2.1,0 Z M41.4,199.6 a1.6,1.6 0 1 0 3.2,0 a1.6,1.6 0 1 0 -3.2,0 Z M49.9,199.6 a2.1,2.1 0 1 0 4.2,0 a2.1,2.1 0 1 0 -4.2,0 Z M58.5,199.6 a2.5,2.5 0 1 0 5,0 a2.5,2.5 0 1 0 -5,0 Z M67.3,199.6 a2.7,2.7 0 1 0 5.4,0 a2.7,2.7 0 1 0 -5.4,0 Z M76.5,199.6 a2.5,2.5 0 1 0 5,0 a2.5,2.5 0 1 0 -5,0 Z M85.9,199.6 a2.1,2.1 0 1 0 4.2,0 a2.1,2.1 0 1 0 -4.2,0 Z M95.4,199.6 a1.6,1.6 0 1 0 3.2,0 a1.6,1.6 0 1 0 -3.2,0 Z M105,199.6 a1,1 0 1 0 2.1,0 a1,1 0 1 0 -2.1,0 Z M37.5,207.4 a1,1 0 1 0 2.1,0 a1,1 0 1 0 -2.1,0 Z M46,207.4 a1.5,1.5 0 1 0 3,0 a1.5,1.5 0 1 0 -3,0 Z M54.6,207.4 a1.9,1.9 0 1 0 3.8,0 a1.9,1.9 0 1 0 -3.8,0 Z M63.4,207.4 a2.1,2.1 0 1 0 4.2,0 a2.1,2.1 0 1 0 -4.2,0 Z M72.4,207.4 a2.1,2.1 0 1 0 4.2,0 a2.1,2.1 0 1 0 -4.2,0 Z M81.6,207.4 a1.9,1.9 0 1 0 3.8,0 a1.9,1.9 0 1 0 -3.8,0 Z M91,207.4 a1.5,1.5 0 1 0 3,0 a1.5,1.5 0 1 0 -3,0 Z M100.5,207.4 a1,1 0 1 0 2.1,0 a1,1 0 1 0 -2.1,0 Z M42.1,215.2 a0.9,0.9 0 1 0 1.8,0 a0.9,0.9 0 1 0 -1.8,0 Z M50.7,215.2 a1.3,1.3 0 1 0 2.5,0 a1.3,1.3 0 1 0 -2.5,0 Z M59.5,215.2 a1.5,1.5 0 1 0 3,0 a1.5,1.5 0 1 0 -3,0 Z M68.4,215.2 a1.6,1.6 0 1 0 3.2,0 a1.6,1.6 0 1 0 -3.2,0 Z M77.5,215.2 a1.5,1.5 0 1 0 3,0 a1.5,1.5 0 1 0 -3,0 Z M86.7,215.2 a1.3,1.3 0 1 0 2.5,0 a1.3,1.3 0 1 0 -2.5,0 Z M96.1,215.2 a0.9,0.9 0 1 0 1.8,0 a0.9,0.9 0 1 0 -1.8,0 Z M55.6,223 a0.9,0.9 0 1 0 1.8,0 a0.9,0.9 0 1 0 -1.8,0 Z M64.5,223 a1,1 0 1 0 2.1,0 a1,1 0 1 0 -2.1,0 Z M73.5,223 a1,1 0 1 0 2.1,0 a1,1 0 1 0 -2.1,0 Z M82.6,223 a0.9,0.9 0 1 0 1.8,0 a0.9,0.9 0 1 0 -1.8,0 Z" />
+    <!-- il telefono, inclinato -->
+    <group
+        android:rotation="-6"
+        android:pivotX="154"
+        android:pivotY="128">
+        <!-- ombra piena -->
+        <group
+            android:translateX="6"
+            android:translateY="6">
+            <path
+                android:fillColor="#E0A800"
+                android:pathData="M122,40 L186,40 A20,20 0 0 1 206,60 L206,196 A20,20 0 0 1 186,216 L122,216 A20,20 0 0 1 102,196 L102,60 A20,20 0 0 1 122,40 Z" />
+        </group>
+        <!-- scocca -->
+        <path
+            android:fillColor="#16130F"
+            android:strokeColor="#16130F"
+            android:strokeWidth="4"
+            android:strokeLineCap="round"
+            android:strokeLineJoin="round"
+            android:pathData="M122,40 L186,40 A20,20 0 0 1 206,60 L206,196 A20,20 0 0 1 186,216 L122,216 A20,20 0 0 1 102,196 L102,60 A20,20 0 0 1 122,40 Z" />
+        <!-- mirino -->
+        <path
+            android:fillColor="#3D8BFF"
+            android:pathData="M122,47 L186,47 A13,13 0 0 1 199,60 L199,196 A13,13 0 0 1 186,209 L122,209 A13,13 0 0 1 109,196 L109,60 A13,13 0 0 1 122,47 Z" />
+        <!-- il soggetto che sorride -->
+        <path
+            android:fillColor="#FF5B45"
+            android:strokeColor="#16130F"
+            android:strokeWidth="4"
+            android:strokeLineCap="round"
+            android:strokeLineJoin="round"
+            android:pathData="M116,186 C116,160 134,148 154,148 C174,148 192,160 192,186 Z" />
+        <path
+            android:fillColor="#FBF8F1"
+            android:strokeColor="#16130F"
+            android:strokeWidth="4"
+            android:strokeLineCap="round"
+            android:strokeLineJoin="round"
+            android:pathData="M127,116 A27,27 0 1 0 181,116 A27,27 0 1 0 127,116 Z" />
+        <path
+            android:fillColor="#16130F"
+            android:pathData="M141.6,111 A3.4,3.4 0 1 0 148.4,111 A3.4,3.4 0 1 0 141.6,111 Z M159.6,111 A3.4,3.4 0 1 0 166.4,111 A3.4,3.4 0 1 0 159.6,111 Z" />
+        <path
+            android:strokeColor="#16130F"
+            android:strokeWidth="3.5"
+            android:strokeLineCap="round"
+            android:strokeLineJoin="round"
+            android:pathData="M142,122 Q154,134 166,122" />
+        <path
+            android:fillColor="#FF5B45"
+            android:pathData="M133,124 A4,4 0 1 0 141,124 A4,4 0 1 0 133,124 Z M167,124 A4,4 0 1 0 175,124 A4,4 0 1 0 167,124 Z" />
+        <!-- angoli del mirino -->
+        <path
+            android:strokeColor="#FBF8F1"
+            android:strokeWidth="3"
+            android:strokeLineCap="round"
+            android:strokeLineJoin="round"
+            android:pathData="M118,81 L118,69 L130,69 M178,69 L190,69 L190,81 M118,154 L118,166 L130,166 M178,166 L190,166 L190,154" />
+        <!-- barra comandi -->
+        <path
+            android:fillColor="#16130F"
+            android:pathData="M109,175 L199,175 L199,196 A13,13 0 0 1 186,209 L122,209 A13,13 0 0 1 109,196 Z" />
+        <!-- otturatore giallo, galleria e cambio fotocamera -->
+        <path
+            android:fillColor="#FFCC00"
+            android:strokeColor="#FBF8F1"
+            android:strokeWidth="3"
+            android:strokeLineCap="round"
+            android:strokeLineJoin="round"
+            android:pathData="M141.5,192 A12.5,12.5 0 1 0 166.5,192 A12.5,12.5 0 1 0 141.5,192 Z" />
+        <path
+            android:fillColor="#FBF8F1"
+            android:pathData="M124,186 L130,186 A3,3 0 0 1 133,189 L133,195 A3,3 0 0 1 130,198 L124,198 A3,3 0 0 1 121,195 L121,189 A3,3 0 0 1 124,186 Z" />
+        <path
+            android:strokeColor="#FBF8F1"
+            android:strokeWidth="2.5"
+            android:strokeLineCap="round"
+            android:strokeLineJoin="round"
+            android:pathData="M175,192 A6,6 0 1 0 187,192 A6,6 0 1 0 175,192 Z" />
+        <!-- fotocamera frontale -->
+        <path
+            android:fillColor="#16130F"
+            android:pathData="M151,56 A3,3 0 1 0 157,56 A3,3 0 1 0 151,56 Z" />
+    </group>
+    <!-- il lampo del marchio -->
+    <path
+        android:fillColor="#FFCC00"
+        android:strokeColor="#16130F"
+        android:strokeWidth="4"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:pathData="M249.43,42.63 L275.14,47.16 L259.94,66.57 L275.64,69.33 L234.57,101.85 L246.5,75.97 L229.36,72.95 Z" />
+    <!-- raggi del flash -->
+    <path
+        android:strokeColor="#16130F"
+        android:strokeWidth="4"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:pathData="M213.89,52 L201.77,45 M230,35.89 L223,23.77 M252,30 L252,16 M288.04,48.76 L299.51,40.73 M295.83,70.17 L309.78,68.94" />
+    <!-- scintille -->
+    <path
+        android:fillColor="#16130F"
+        android:pathData="M56,49 Q58.34,59.66 69,62 Q58.34,64.34 56,75 Q53.66,64.34 43,62 Q53.66,59.66 56,49 Z M84,23 Q85.26,28.74 91,30 Q85.26,31.26 84,37 Q82.74,31.26 77,30 Q82.74,28.74 84,23 Z M282,158 Q283.8,166.2 292,168 Q283.8,169.8 282,178 Q280.2,169.8 272,168 Q280.2,166.2 282,158 Z" />
+    <!-- coriandoli -->
+    <path
+        android:fillColor="#FF5B45"
+        android:strokeColor="#16130F"
+        android:strokeWidth="3"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:pathData="M238,210 A6,6 0 1 0 250,210 A6,6 0 1 0 238,210 Z" />
+    <path
+        android:fillColor="#3D8BFF"
+        android:strokeColor="#16130F"
+        android:strokeWidth="3"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:pathData="M35,120 A5,5 0 1 0 45,120 A5,5 0 1 0 35,120 Z" />
+</vector>

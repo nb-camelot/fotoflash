@@ -1,0 +1,97 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Impostazioni (prefisso set_) -->
+    <string name="set_title">Settings</string>
+    <string name="set_ok">OK</string>
+    <string name="set_cancel">Cancel</string>
+    <string name="set_open_failed">No app can open this link</string>
+    <string name="set_tagline">Snap. Print. Smile.</string>
+
+    <!-- Stampante e carta -->
+    <string name="set_section_printer">Printer and paper</string>
+    <string name="set_printer_none">No printer selected</string>
+    <string name="set_printer_hint_none">Tap to choose a paired Bluetooth printer</string>
+    <string name="set_printer_paper">%1$d mm paper · tap for paper and calibration</string>
+    <string name="set_printer_open_cd">Open printer settings</string>
+
+    <!-- Immagine -->
+    <string name="set_section_image">Image</string>
+    <string name="set_dither_label">Default dithering</string>
+    <string name="set_dither_atkinson">Atkinson</string>
+    <string name="set_dither_floyd">Floyd-Steinberg</string>
+    <string name="set_dither_bayer">Bayer</string>
+    <string name="set_dither_threshold">Threshold</string>
+    <string name="set_dither_desc_atkinson">Crisp and bright: the best for faces and parties.</string>
+    <string name="set_dither_desc_floyd">Softer shades with a finer grain.</string>
+    <string name="set_dither_desc_bayer">A regular, newspaper-like pattern that looks the same on every print.</string>
+    <string name="set_dither_desc_threshold">Pure black and white: great for drawings and text.</string>
+    <string name="set_brightness">Brightness</string>
+    <string name="set_contrast">Contrast</string>
+    <string name="set_sharpen">Sharpness</string>
+    <string name="set_gamma">Mid-tones (gamma)</string>
+    <string name="set_auto_levels">Auto levels</string>
+    <string name="set_auto_levels_desc">Stretch the tones of every photo before printing</string>
+    <string name="set_shadows">Shadows</string>
+    <string name="set_shadows_desc">Lightens only the dark tones, so faces in the shade stay readable on paper</string>
+    <string name="set_local_contrast">Local contrast</string>
+    <string name="set_local_contrast_desc">Brings out detail in dark areas without burning out the sky</string>
+    <string name="set_auto_backlight">Automatic backlight</string>
+    <string name="set_auto_backlight_desc">Spots subjects against a bright background and lifts them out of the shadow</string>
+    <string name="set_image_help">Starting values for the editor: every photo can still be tweaked.</string>
+    <string name="set_image_reset">Reset</string>
+
+    <!-- Evento -->
+    <string name="set_section_event">Event</string>
+    <string name="set_event_title">Event title</string>
+    <string name="set_event_title_placeholder">e.g. Anna\'s birthday</string>
+    <string name="set_hashtag">Hashtag</string>
+    <string name="set_hashtag_placeholder">#party</string>
+    <string name="set_event_help">Title and hashtag appear on the Strip and Receipt templates.</string>
+    <string name="set_show_date">Print the date</string>
+    <string name="set_show_number">Number the prints</string>
+    <string name="set_show_number_desc">A progressive souvenir number on the receipt</string>
+    <string name="set_counter">Counter</string>
+    <string name="set_counter_value">Last print: no. %1$04d</string>
+    <string name="set_counter_zero">No numbered prints yet</string>
+    <string name="set_counter_reset">Reset</string>
+    <string name="set_counter_reset_title">Reset the counter?</string>
+    <string name="set_counter_reset_message">The next print will be number 0001. Prints already in the history keep their number.</string>
+    <string name="set_default_template">Default template</string>
+    <string name="set_template_polaroid">Polaroid</string>
+    <string name="set_template_full">Full</string>
+    <string name="set_template_strip">Strip</string>
+    <string name="set_template_receipt">Receipt</string>
+
+    <!-- Scatto -->
+    <string name="set_section_capture">Shooting</string>
+    <string name="set_instant_print">Instant print</string>
+    <string name="set_instant_print_desc">Print right after every shot, like a kids\' instant camera</string>
+    <string name="set_auto_save">Save shots to the gallery</string>
+    <string name="set_auto_save_desc">Every camera shot also goes to Gallery › FotoFlash › Scatti: the photos stay even if you uninstall the app</string>
+    <string name="set_auto_save_permission">On this Android version saving shots needs the storage permission</string>
+    <string name="set_auto_save_allow">Allow</string>
+    <string name="set_auto_save_denied">Without the storage permission shots stay only in FotoFlash</string>
+    <string name="set_timer">Default timer</string>
+    <string name="set_timer_off">Off</string>
+    <string name="set_timer_seconds">%1$d s</string>
+    <string name="set_strip_shots">Shots per strip</string>
+    <string name="set_strip_shots_value">%1$d shots</string>
+    <string name="set_shutter_sound">Shutter sound</string>
+    <string name="set_live_preview">Thermal preview</string>
+    <string name="set_live_preview_desc">Show the viewfinder in black and white dots, just like on paper</string>
+
+    <!-- Informazioni -->
+    <string name="set_section_about">About</string>
+    <string name="set_version">Version</string>
+    <string name="set_github">Project on GitHub</string>
+    <string name="set_github_desc">Source code, bug reports and new ideas</string>
+    <string name="set_licenses">Font licenses</string>
+    <string name="set_licenses_desc">Righteous and Space Mono</string>
+    <string name="set_licenses_title">Font licenses</string>
+    <string name="set_font_righteous">Righteous</string>
+    <string name="set_font_space_mono">Space Mono</string>
+    <string name="set_license_righteous">Copyright (c) 2011 by Brian J. Bonislawsky DBA Astigmatic (AOETI), with Reserved Font Name “Righteous”.</string>
+    <string name="set_license_space_mono">Copyright 2016 The Space Mono Project Authors (https://github.com/googlefonts/spacemono).</string>
+    <string name="set_licenses_ofl">Both typefaces are licensed under the SIL Open Font License, Version 1.1, and are bundled unmodified in FotoFlash.</string>
+    <string name="set_licenses_read">Read the license</string>
+</resources>

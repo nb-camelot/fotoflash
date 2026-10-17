@@ -1,0 +1,119 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Editor -->
+    <string name="ed_title">La tua stampa</string>
+    <string name="ed_preview_cd">Anteprima della stampa</string>
+    <string name="ed_preview_paper">%1$d mm di carta</string>
+    <string name="ed_rendering">Aggiorno l\'anteprima</string>
+    <string name="ed_render_failed">Impossibile comporre la stampa. Prova un altro modello o un\'altra foto.</string>
+    <string name="ed_error_render">Impossibile comporre la stampa</string>
+
+    <!-- Schede dei controlli -->
+    <string name="ed_tab_template">Modello</string>
+    <string name="ed_tab_text">Testo</string>
+    <string name="ed_tab_adjust">Regola</string>
+
+    <!-- Modelli -->
+    <string name="ed_template_polaroid">Polaroid</string>
+    <string name="ed_template_full">Pieno</string>
+    <string name="ed_template_strip">Striscia</string>
+    <string name="ed_template_receipt">Scontrino</string>
+    <string name="ed_template_polaroid_desc">Foto quadrata con la fascia bianca per la didascalia, proprio come un\'istantanea.</string>
+    <string name="ed_template_full_desc">Foto 3:4 a tutta larghezza, con didascalia e data sotto.</string>
+    <string name="ed_template_strip_desc">Striscia da fotocabina: gli scatti in colonna, con titolo dell\'evento e piede.</string>
+    <string name="ed_template_receipt_desc">Scontrino ricordo con intestazione, numero, data e un grazie.</string>
+
+    <!-- Didascalia -->
+    <string name="ed_caption_label">Didascalia</string>
+    <string name="ed_caption_placeholder">Scrivi qualcosa da ricordare</string>
+    <string name="ed_caption_counter">%1$d/%2$d</string>
+    <string name="ed_caption_clear">Cancella la didascalia</string>
+    <string name="ed_caption_hint">Titolo dell\'evento, hashtag, data e numerazione si impostano nelle Impostazioni.</string>
+
+    <!-- Regolazioni -->
+    <string name="ed_adjust_brightness">Luminosità</string>
+    <string name="ed_adjust_contrast">Contrasto</string>
+    <string name="ed_adjust_sharpen">Nitidezza</string>
+    <string name="ed_adjust_value_signed">%1$+d</string>
+    <string name="ed_adjust_value">%1$d</string>
+    <string name="ed_adjust_autolevels">Auto-livelli</string>
+    <string name="ed_adjust_autolevels_hint">Distende i toni perché la foto risalti sulla carta termica</string>
+    <string name="ed_adjust_shadows">Ombre</string>
+    <string name="ed_adjust_local_contrast">Contrasto locale</string>
+    <string name="ed_adjust_autobacklight">Controluce automatico</string>
+    <string name="ed_adjust_autobacklight_hint">Schiarisce i visi davanti a un cielo o a una finestra luminosa</string>
+    <string name="ed_adjust_autobacklight_detected">Controluce rilevato: ombre schiarite in automatico</string>
+    <string name="ed_adjust_autobacklight_suggest">Questa foto sembra in controluce: attivalo per schiarire i visi</string>
+
+    <!-- Controluce rilevato sull'anteprima -->
+    <string name="ed_backlight_detected">Controluce rilevato</string>
+    <string name="ed_backlight_detected_cd">Controluce rilevato: la foto è stata schiarita in automatico</string>
+    <string name="ed_adjust_dither">Retino</string>
+    <string name="ed_adjust_reset">Ripristina</string>
+    <string name="ed_dither_atkinson">Atkinson</string>
+    <string name="ed_dither_floyd">Floyd-Steinberg</string>
+    <string name="ed_dither_bayer">Bayer</string>
+    <string name="ed_dither_threshold">Soglia</string>
+
+    <!-- Copie e azioni -->
+    <plurals name="ed_copies">
+        <item quantity="one">%d copia</item>
+        <item quantity="many">%d di copie</item>
+        <item quantity="other">%d copie</item>
+    </plurals>
+    <string name="ed_copies_short">×%1$d</string>
+    <string name="ed_copies_less">Meno copie</string>
+    <string name="ed_copies_more">Più copie</string>
+    <string name="ed_print">Stampa</string>
+    <string name="ed_save">Salva</string>
+    <string name="ed_share">Condividi</string>
+    <string name="ed_share_title">Condividi la stampa</string>
+    <string name="ed_saved">Salvata in galleria</string>
+    <string name="ed_save_failed">Impossibile salvare l\'immagine</string>
+    <string name="ed_save_permission">Consenti l\'accesso alla memoria per salvare in galleria</string>
+    <string name="ed_share_failed">Impossibile condividere l\'immagine</string>
+
+    <!-- Nessuna foto -->
+    <string name="ed_empty_title">Nessuna foto da stampare</string>
+    <string name="ed_empty_message">Scatta una foto o sceglila dalla galleria, poi torna qui.</string>
+    <string name="ed_empty_action">Torna alla fotocamera</string>
+
+    <!-- Testi stampati sulla carta (modello Scontrino) -->
+    <string name="ed_footer_thanks">Grazie per il sorriso!</string>
+    <string name="ed_print_number">RICORDO N. %1$04d</string>
+
+    <!-- Foglio di avanzamento della stampa -->
+    <string name="ed_sheet_preparing">Preparo la stampa</string>
+    <string name="ed_sheet_connecting">Connessione a %1$s</string>
+    <string name="ed_sheet_printing">Stampa in corso</string>
+    <string name="ed_sheet_finishing">Quasi fatto…</string>
+    <string name="ed_sheet_percent">%1$d%%</string>
+    <string name="ed_sheet_keep_close">Tieni il telefono vicino alla stampante</string>
+    <string name="ed_sheet_done">Stampato!</string>
+    <string name="ed_sheet_done_hint">Strappa il foglio e goditi il ricordo.</string>
+    <string name="ed_sheet_new_photo">Nuova foto</string>
+    <string name="ed_sheet_reprint">Ristampa</string>
+    <string name="ed_sheet_retry">Riprova</string>
+    <string name="ed_sheet_printer">Stampante</string>
+    <string name="ed_sheet_choose_printer">Scegli stampante</string>
+    <string name="ed_sheet_open_bluetooth">Apri Bluetooth</string>
+    <string name="ed_sheet_detail">Dettagli: %1$s</string>
+
+    <!-- Errori di stampa: titolo + cosa fare -->
+    <string name="ed_fail_no_printer_title">Nessuna stampante scelta</string>
+    <string name="ed_fail_no_printer_hint">Scegli la stampante termica tra i dispositivi Bluetooth accoppiati.</string>
+    <string name="ed_fail_no_permission_title">Serve il permesso Bluetooth</string>
+    <string name="ed_fail_no_permission_hint">Consenti «Dispositivi nelle vicinanze» perché FotoFlash possa parlare con la stampante.</string>
+    <string name="ed_fail_bluetooth_off_title">Il Bluetooth è spento</string>
+    <string name="ed_fail_bluetooth_off_hint">Accendi il Bluetooth, poi riprova.</string>
+    <string name="ed_fail_not_bonded_title">Stampante non accoppiata</string>
+    <string name="ed_fail_not_bonded_hint">Accoppiala nelle impostazioni Bluetooth del telefono, poi sceglila di nuovo.</string>
+    <string name="ed_fail_connect_title">La stampante non risponde</string>
+    <string name="ed_fail_connect_hint">Controlla che sia accesa, carica e vicina.</string>
+    <string name="ed_fail_write_title">Stampa interrotta</string>
+    <string name="ed_fail_write_hint">La connessione si è interrotta durante l\'invio. Controlla la carta e riprova.</string>
+    <string name="ed_fail_busy_title">Stampante occupata</string>
+    <string name="ed_fail_busy_hint">C\'è già una stampa in corso: aspetta che finisca, poi riprova.</string>
+    <string name="ed_fail_render_title">Impossibile comporre la stampa</string>
+    <string name="ed_fail_render_hint">La stampante non c\'entra: non sono riuscito a preparare l\'immagine. Riprova, oppure scegli un altro modello o un\'altra foto.</string>
+</resources>

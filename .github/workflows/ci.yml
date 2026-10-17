@@ -48,11 +48,28 @@ jobs:
         with:
           gradle-version: "8.10.2"
 
+      # assembleRelease (non firmato senza secret) fa emergere su dev i problemi di R8, shrink e lintVital
+      # invece di scoprirli solo al rilascio.
       - name: Build e test
         run: |
           set -o pipefail
           gradle --no-daemon --stacktrace \
-            :core-thermal:test :app:testDebugUnitTest :app:assembleDebug 2>&1 | tee build.log
+            :core-thermal:test :app:testDebugUnitTest :app:assembleDebug :app:assembleRelease 2>&1 | tee build.log
+
+      # Tutti gli APK di debug devono avere la stessa firma (signing/debug.p12): così si installano
+      # uno sopra l'altro e l'utente non perde foto e storico disinstallando.
+      - name: Firma di debug invariata
+        run: |
+          set -e
+          BT=$(find "${ANDROID_HOME:-$ANDROID_SDK_ROOT}/build-tools" -maxdepth 1 -mindepth 1 -type d | sort -V | tail -n 1)
+          APK=$(ls app/build/outputs/apk/debug/*.apk | head -n 1)
+          GOT=$("$BT/apksigner" verify --print-certs "$APK" | sed -n 's/.*certificate SHA-256 digest: //p' | head -n 1)
+          WANT=$(tr -d '[:space:]' < signing/debug-cert.sha256)
+          echo "certificato dell'APK: $GOT"
+          if [ "$GOT" != "$WANT" ]; then
+            echo "::error::APK di debug firmato con un certificato diverso da signing/debug.p12 (atteso $WANT): l'aggiornamento richiederebbe di disinstallare"
+            exit 1
+          fi
 
       - name: Rapporto errori (annotazioni + check run leggibile via API)
         if: failure()

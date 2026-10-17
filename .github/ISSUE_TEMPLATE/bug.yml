@@ -1,0 +1,113 @@
+name: Bug
+description: Qualcosa non funziona (stampa, Bluetooth, fotocamera, editor, storico).
+title: "fix: "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Grazie! Un bug ben descritto si corregge in fretta, anche dall'agente.
+        Il titolo resta in stile conventional commit (`fix: la striscia si stampa tagliata`): diventa il titolo della PR.
+        Con la stampa conta molto il modello della stampante: indicalo sempre.
+
+  - type: textarea
+    id: what
+    attributes:
+      label: Cosa succede
+      description: Il comportamento sbagliato, con le parole che useresti con un amico.
+      placeholder: La foto in modello Striscia esce tagliata a meta e la stampante si blocca.
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Cosa ti aspettavi
+      placeholder: Le tre foto della striscia stampate per intero, con il piede e la data.
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: Passi per riprodurlo
+      placeholder: |
+        1. Apri FotoFlash, modalita Striscia, 3 scatti
+        2. Nell'editor scegli il retino Atkinson, 1 copia
+        3. Premi Stampa
+    validations:
+      required: true
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options:
+        - Stampa e Bluetooth
+        - Fotocamera e scatto
+        - Editor e modelli di stampa
+        - Storico, salvataggio, condivisione
+        - Impostazioni
+        - Primo avvio (onboarding)
+        - Altro
+    validations:
+      required: true
+
+  - type: input
+    id: app_version
+    attributes:
+      label: Versione di FotoFlash
+      description: Impostazioni -> Informazioni. Indica se e la release o un APK di debug della CI.
+      placeholder: 0.2.0 (release) oppure 0.2.0-debug, run #123
+    validations:
+      required: true
+
+  - type: input
+    id: android
+    attributes:
+      label: Telefono e versione di Android
+      placeholder: Pixel 7, Android 15
+    validations:
+      required: true
+
+  - type: input
+    id: printer
+    attributes:
+      label: Stampante
+      description: Marca e modello, larghezza carta, nome con cui appare nel Bluetooth.
+      placeholder: Goojprt PT-210, 58 mm, "PT-210_A1B2"
+
+  - type: textarea
+    id: printer_settings
+    attributes:
+      label: Impostazioni di stampa
+      description: Solo per problemi di stampa. Le trovi in Impostazioni -> Stampante e carta (sezioni Carta, Intensità di stampa e Calibrazione avanzata).
+      placeholder: |
+        Carta 58 mm, intensita 0, avanzamento 4 righe, taglio no
+        Calibrazione avanzata: blocco 256 byte, pausa 15 ms, banda 24 righe
+
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Foto della stampa, screenshot, log
+      description: Una foto dello scontrino vale piu di mille parole. Per i crash, un estratto di logcat.
+      render: text
+
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Quando lo consideriamo risolto (facoltativo)
+      description: Criteri verificabili; l'agente li usa come acceptance criteria.
+      placeholder: |
+        - [ ] La striscia da 4 foto si stampa per intero con banda 24 e blocco 256
+        - [ ] Un test in core-thermal copre l'altezza del layout STRIP con 4 foto
+
+  - type: textarea
+    id: agent
+    attributes:
+      label: Affida all'agente (facoltativo)
+      description: |
+        Scrivi /oc su questa riga per far partire subito l'agente OpenCode (solo owner, collaboratori e utenti in OPENCODE_ALLOWED_USERS).
+        Puoi aggiungere istruzioni e il modello, per esempio: /oc --model opencode/big-pickle concentrati sul trasporto Bluetooth.
+        Lascia vuoto per decidere dopo: basta un commento che comincia con /oc.
+      placeholder: /oc

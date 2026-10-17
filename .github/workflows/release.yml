@@ -1,0 +1,245 @@
+name: Release
+
+# APK di release FIRMATO dal tag e Release GitHub. La chiama bump-version.yml subito dopo il tag
+# (workflow_call); a mano serve solo per rifare la release di un tag gia esistente, per esempio dopo
+# aver configurato i secret di firma mancanti.
+#
+# Secret richiesti (mai ripiego sulla firma di debug):
+#   SIGNING_KEYSTORE_BASE64  keystore PKCS12 codificato in base64
+#   SIGNING_STORE_PASSWORD, SIGNING_KEY_ALIAS, SIGNING_KEY_PASSWORD
+# Variabile facoltativa:
+#   RELEASE_CERT_SHA256      impronta SHA-256 attesa del certificato: se cambia, la release si ferma.
+
+on:
+  workflow_call:
+    inputs:
+      tag:
+        description: "Tag da rilasciare (vX.Y.Z)"
+        required: true
+        type: string
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Tag gia presente su main da rilasciare (vX.Y.Z)"
+        required: true
+        type: string
+
+jobs:
+  release:
+    name: APK firmato e Release
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    permissions:
+      contents: write
+    concurrency:
+      group: fotoflash-release-${{ inputs.tag }}
+      cancel-in-progress: false
+    env:
+      TAG: ${{ inputs.tag }}
+      APP_ID: io.github.nik2208.fotoflash
+    steps:
+      - name: Controlla il formato del tag
+        run: |
+          set -euo pipefail
+          [[ "$TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]] || { echo "::error::Tag non valido: '$TAG' (atteso vX.Y.Z)."; exit 1; }
+          echo "VERSION=${TAG#v}" >> "$GITHUB_ENV"
+
+      - name: Checkout del tag
+        uses: actions/checkout@v6
+        with:
+          ref: refs/tags/${{ inputs.tag }}
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Verifica tag, versione e release esistente
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          SHA=$(git rev-parse "refs/tags/$TAG^{commit}")
+          git rev-parse -q --verify refs/remotes/origin/main > /dev/null || { echo "::error::origin/main non trovato nel checkout."; exit 1; }
+          git merge-base --is-ancestor "$SHA" origin/main || { echo "::error::Il tag $TAG non e su main: si rilascia solo da main."; exit 1; }
+          NAME=$(sed -n 's/^VERSION_NAME=//p' gradle.properties | tr -d '[:space:]')
+          CODE=$(sed -n 's/^VERSION_CODE=//p' gradle.properties | tr -d '[:space:]')
+          [ "$NAME" = "$VERSION" ] || { echo "::error::gradle.properties al tag dice VERSION_NAME=$NAME, il tag e $TAG."; exit 1; }
+          [[ "$CODE" =~ ^[0-9]+$ ]] || { echo "::error::VERSION_CODE non valido: '$CODE'."; exit 1; }
+          if gh release view "$TAG" --repo "$GITHUB_REPOSITORY" > /dev/null 2>&1; then
+            echo "::error::La release $TAG esiste gia. Per rifarla cancellala (Releases -> Delete, il tag resta) e rilancia questo workflow."
+            exit 1
+          fi
+          echo "VERSION_CODE=$CODE" >> "$GITHUB_ENV"
+          echo "TAG_SHA=$SHA" >> "$GITHUB_ENV"
+
+      - name: Controlla i secret di firma
+        env:
+          SIGNING_KEYSTORE_BASE64: ${{ secrets.SIGNING_KEYSTORE_BASE64 }}
+          SIGNING_STORE_PASSWORD: ${{ secrets.SIGNING_STORE_PASSWORD }}
+          SIGNING_KEY_ALIAS: ${{ secrets.SIGNING_KEY_ALIAS }}
+          SIGNING_KEY_PASSWORD: ${{ secrets.SIGNING_KEY_PASSWORD }}
+        run: |
+          MISSING=""
+          [ -n "$SIGNING_KEYSTORE_BASE64" ] || MISSING="$MISSING SIGNING_KEYSTORE_BASE64"
+          [ -n "$SIGNING_STORE_PASSWORD" ] || MISSING="$MISSING SIGNING_STORE_PASSWORD"
+          [ -n "$SIGNING_KEY_ALIAS" ] || MISSING="$MISSING SIGNING_KEY_ALIAS"
+          [ -n "$SIGNING_KEY_PASSWORD" ] || MISSING="$MISSING SIGNING_KEY_PASSWORD"
+          if [ -n "$MISSING" ]; then
+            echo "::error::Mancano i secret di firma:$MISSING. La release non si firma mai con la chiave di debug: configura i secret (README, sezione Firma) e rilancia questo workflow con il tag $TAG."
+            exit 1
+          fi
+
+      - name: Java 17
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Pacchetti Android SDK
+        run: |
+          set -e
+          SDKM=$(find "${ANDROID_HOME:-$ANDROID_SDK_ROOT}/cmdline-tools" -maxdepth 3 -type f -name sdkmanager 2>/dev/null | sort -V | tail -n 1)
+          if [ -z "$SDKM" ]; then SDKM=$(command -v sdkmanager || true); fi
+          if [ -z "$SDKM" ]; then echo "::error::sdkmanager non trovato"; exit 1; fi
+          yes | "$SDKM" --licenses > /dev/null || true
+          "$SDKM" "platform-tools" "platforms;android-35" "build-tools;35.0.0" > /dev/null
+
+      - name: Gradle
+        uses: gradle/actions/setup-gradle@v5
+        with:
+          gradle-version: "8.10.2"
+          # Una build firmata non si fida di cache scritte da altre run.
+          cache-disabled: true
+
+      - name: Keystore di release
+        env:
+          SIGNING_KEYSTORE_BASE64: ${{ secrets.SIGNING_KEYSTORE_BASE64 }}
+          SIGNING_STORE_PASSWORD: ${{ secrets.SIGNING_STORE_PASSWORD }}
+          SIGNING_KEY_ALIAS: ${{ secrets.SIGNING_KEY_ALIAS }}
+        run: |
+          set -euo pipefail
+          # Fuori dal workspace: non finisce in nessun artifact e sparisce con il runner.
+          KS="$RUNNER_TEMP/release.p12"
+          if ! printf '%s' "$SIGNING_KEYSTORE_BASE64" | tr -d '\r\n ' | base64 -d > "$KS" 2> /dev/null || [ ! -s "$KS" ]; then
+            echo "::error::SIGNING_KEYSTORE_BASE64 non e un base64 valido."
+            exit 1
+          fi
+          # app/build.gradle.kts usa storeType pkcs12: si controllano subito formato, password e alias.
+          if ! keytool -list -keystore "$KS" -storetype PKCS12 -storepass:env SIGNING_STORE_PASSWORD -alias "$SIGNING_KEY_ALIAS" > /dev/null; then
+            echo "::error::Keystore illeggibile: deve essere PKCS12, e SIGNING_STORE_PASSWORD e SIGNING_KEY_ALIAS devono essere quelli giusti."
+            exit 1
+          fi
+          echo "SIGNING_KEYSTORE_FILE=$KS" >> "$GITHUB_ENV"
+
+      - name: Build della release firmata
+        env:
+          SIGNING_STORE_PASSWORD: ${{ secrets.SIGNING_STORE_PASSWORD }}
+          SIGNING_KEY_ALIAS: ${{ secrets.SIGNING_KEY_ALIAS }}
+          SIGNING_KEY_PASSWORD: ${{ secrets.SIGNING_KEY_PASSWORD }}
+        run: |
+          set -o pipefail
+          rm -rf app/build/outputs/apk/release
+          gradle --no-daemon --stacktrace :app:assembleRelease 2>&1 | tee build.log
+
+      - name: Verifica firma, certificato e contenuto dell'APK
+        env:
+          EXPECTED_CERT: ${{ vars.RELEASE_CERT_SHA256 }}
+        run: |
+          set -euo pipefail
+          APK=app/build/outputs/apk/release/app-release.apk
+          if [ ! -f "$APK" ]; then
+            if ls app/build/outputs/apk/release/*unsigned*.apk > /dev/null 2>&1; then
+              echo "::error::Gradle ha prodotto un APK NON firmato: la configurazione di firma non e stata letta."
+            else
+              echo "::error::APK di release non trovato in app/build/outputs/apk/release/."
+            fi
+            ls -la app/build/outputs/apk/release/ || true
+            exit 1
+          fi
+          SDK="${ANDROID_HOME:-$ANDROID_SDK_ROOT}"
+          BT="$SDK/build-tools/35.0.0"
+          [ -x "$BT/apksigner" ] || BT=$(find "$SDK/build-tools" -maxdepth 1 -mindepth 1 -type d | sort -V | tail -n 1)
+
+          "$BT/apksigner" verify --verbose --print-certs "$APK" | tee "$RUNNER_TEMP/apksigner.txt"
+          DIGEST=$(grep -m1 -E 'Signer #1 certificate SHA-256 digest:' "$RUNNER_TEMP/apksigner.txt" \
+            | sed -E 's/.*digest:[[:space:]]*//' | tr -d ':[:space:]' | tr '[:upper:]' '[:lower:]')
+          [ -n "$DIGEST" ] || { echo "::error::Impronta del certificato non trovata nell'output di apksigner."; exit 1; }
+          if [ -n "$EXPECTED_CERT" ]; then
+            EXP=$(printf '%s' "$EXPECTED_CERT" | tr -d ':[:space:]' | tr '[:upper:]' '[:lower:]')
+            if [ "$DIGEST" != "$EXP" ]; then
+              echo "::error::Certificato di firma diverso da RELEASE_CERT_SHA256 ($DIGEST invece di $EXP): gli utenti non potrebbero aggiornare l'app."
+              exit 1
+            fi
+            echo "Certificato verificato: $DIGEST"
+          else
+            echo "::warning::RELEASE_CERT_SHA256 non impostata. Impostala a $DIGEST per bloccare le release firmate con un'altra chiave."
+          fi
+
+          # L'APK deve essere proprio la release di questo tag (non la variante .debug, non un'altra versione).
+          "$BT/aapt2" dump badging "$APK" > "$RUNNER_TEMP/badging.txt"
+          BADGING=$(head -n 1 "$RUNNER_TEMP/badging.txt")
+          echo "$BADGING"
+          grep -qF "name='$APP_ID'" <<<"$BADGING" || { echo "::error::applicationId inatteso."; exit 1; }
+          grep -qF "versionName='$VERSION'" <<<"$BADGING" || { echo "::error::versionName diverso da $VERSION."; exit 1; }
+          grep -qF "versionCode='$VERSION_CODE'" <<<"$BADGING" || { echo "::error::versionCode diverso da $VERSION_CODE."; exit 1; }
+
+          DIST="$RUNNER_TEMP/dist"
+          mkdir -p "$DIST"
+          cp "$APK" "$DIST/fotoflash-$VERSION.apk"
+          ( cd "$DIST" && sha256sum "fotoflash-$VERSION.apk" > "fotoflash-$VERSION.apk.sha256" )
+          echo "CERT_DIGEST=$DIGEST" >> "$GITHUB_ENV"
+          echo "DIST=$DIST" >> "$GITHUB_ENV"
+
+      - name: Note di rilascio
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          # Sezione del CHANGELOG per questa versione; se manca, quella "Unreleased" al momento del tag.
+          section() { awk -v h="$1" 'index($0, h) == 1 {f=1; next} f && /^## / {exit} f {print}' CHANGELOG.md 2> /dev/null || true; }
+          SRC="[$VERSION]"
+          NOTES=$(section "## [$VERSION]")
+          if [ -z "$(printf '%s' "$NOTES" | tr -d '[:space:]')" ]; then
+            SRC="[Unreleased]"
+            NOTES=$(section "## [Unreleased]")
+          fi
+          GENERATED=$(gh api -X POST "repos/$GITHUB_REPOSITORY/releases/generate-notes" -f tag_name="$TAG" --jq '.body' 2> /dev/null || true)
+          APK_SHA=$(cut -d' ' -f1 "$DIST/fotoflash-$VERSION.apk.sha256")
+          {
+            echo "**FotoFlash $VERSION** (build $VERSION_CODE), firmata con la chiave di release."
+            echo
+            echo "Scarica \`fotoflash-$VERSION.apk\` sul telefono (Android 8.0 o successivo) e aprilo per installarlo."
+            echo "Gli aggiornamenti si installano sopra la versione precedente, senza perdere storico e impostazioni."
+            echo
+            echo "- SHA-256 dell'APK: \`$APK_SHA\`"
+            echo "- Certificato di firma (SHA-256): \`$CERT_DIGEST\`"
+            echo "- Commit: $TAG_SHA"
+            if [ -n "$(printf '%s' "$NOTES" | tr -d '[:space:]')" ]; then
+              echo
+              echo "## Novita"
+              echo
+              echo "_Dal CHANGELOG, sezione $SRC._"
+              printf '%s\n' "$NOTES"
+            fi
+            if [ -n "$GENERATED" ]; then
+              echo
+              printf '%s\n' "$GENERATED"
+            fi
+          } > "$RUNNER_TEMP/notes.md"
+          cat "$RUNNER_TEMP/notes.md"
+
+      - name: Pubblica la Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          gh release create "$TAG" \
+            --repo "$GITHUB_REPOSITORY" \
+            --verify-tag \
+            --title "FotoFlash $VERSION" \
+            --notes-file "$RUNNER_TEMP/notes.md" \
+            "$DIST/fotoflash-$VERSION.apk" \
+            "$DIST/fotoflash-$VERSION.apk.sha256"
+          {
+            echo "### Release $TAG pubblicata"
+            echo "- \`fotoflash-$VERSION.apk\` (build $VERSION_CODE)"
+            echo "- Certificato: \`$CERT_DIGEST\`"
+          } >> "$GITHUB_STEP_SUMMARY"

@@ -4,26 +4,46 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
-import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
-import androidx.compose.ui.Alignment
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import io.github.nik2208.fotoflash.thermal.BitImage
+import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
+import androidx.lifecycle.lifecycleScope
+import io.github.nik2208.fotoflash.di.appGraph
+import io.github.nik2208.fotoflash.nav.FotoFlashNavHost
+import io.github.nik2208.fotoflash.nav.Routes
+import io.github.nik2208.fotoflash.ui.theme.FotoFlashTheme
+import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
+
+    /** Prima destinazione: si decide dopo aver letto le impostazioni, intanto resta lo splash. */
+    private var startRoute by mutableStateOf<String?>(null)
+
     override fun onCreate(savedInstanceState: Bundle?) {
+        val splash = installSplashScreen()
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
-        val probe = BitImage(384, 1)
+        splash.setKeepOnScreenCondition { startRoute == null }
+
+        lifecycleScope.launch {
+            val settings = appGraph.settings.current()
+            startRoute = if (settings.onboardingDone) Routes.CAMERA else Routes.ONBOARDING
+        }
+
         setContent {
-            MaterialTheme {
-                Surface(modifier = Modifier.fillMaxSize()) {
-                    Box(contentAlignment = Alignment.Center) {
-                        Text("FotoFlash ${BuildConfig.VERSION_NAME} - ${probe.bytesPerRow} byte/riga")
-                    }
+            FotoFlashTheme {
+                val start = startRoute
+                if (start != null) {
+                    // Sfondo del tema sotto la navigazione: niente lampo di carta chiara nelle dissolvenze in tema scuro.
+                    FotoFlashNavHost(
+                        startDestination = start,
+                        modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background),
+                    )
                 }
             }
         }

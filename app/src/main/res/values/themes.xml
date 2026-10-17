@@ -1,6 +1,16 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <!-- Tema di base: Compose disegna tutto, qui servono solo finestra e barre di sistema -->
     <style name="Theme.FotoFlash" parent="android:Theme.Material.Light.NoActionBar">
-        <item name="android:windowBackground">@android:color/white</item>
+        <item name="android:windowBackground">@color/ff_paper</item>
+        <item name="android:statusBarColor">@android:color/transparent</item>
+        <item name="android:navigationBarColor">@android:color/transparent</item>
+    </style>
+
+    <!-- Splash (androidx.core:core-splashscreen) -->
+    <style name="Theme.FotoFlash.Starting" parent="Theme.SplashScreen">
+        <item name="windowSplashScreenBackground">@color/ff_flash</item>
+        <item name="windowSplashScreenAnimatedIcon">@drawable/ic_splash</item>
+        <item name="postSplashScreenTheme">@style/Theme.FotoFlash</item>
     </style>
 </resources>
