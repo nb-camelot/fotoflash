@@ -8,9 +8,40 @@ export const SETTINGS_KEY = 'fotoflash.settings';
 
 // Stesse stringhe degli enum Kotlin (vedi core/model.js): copiate qui perché lo store
 // deve caricarsi anche se il motore non c'è.
-export const PAPERS = Object.freeze(['MM58', 'MM80']);
+export const PAPERS = Object.freeze(['MM58', 'MM80', 'M02PRO']);
 export const DITHERS = Object.freeze(['ATKINSON', 'FLOYD_STEINBERG', 'ORDERED_BAYER', 'THRESHOLD']);
 export const TEMPLATES = Object.freeze(['POLAROID', 'FULL', 'STRIP', 'RECEIPT']);
+
+/**
+ * Driver di stampa (docs/DRIVERS.md) e carta su cui stampa ciascuno: la carta discende dal
+ * driver. Copia degli id di printer/drivers/, per lo stesso motivo degli enum qui sopra.
+ */
+export const DRIVER_PAPER = Object.freeze({
+  'escpos-58': 'MM58',
+  'escpos-80': 'MM80',
+  'phomemo-m02': 'MM58',
+  'phomemo-m02pro': 'M02PRO',
+});
+export const PRINTER_DRIVERS = Object.freeze(Object.keys(DRIVER_PAPER));
+
+/** Larghezze della riga ammesse per la Phomemo M02 Pro (byte): 72 = 576 punti, 78 = 624. */
+export const PHOMEMO_WIDTH_BYTES = Object.freeze([72, 78]);
+
+/** Carta del driver [id]; un id sconosciuto vale come escpos-58. */
+export function paperForDriver(id) {
+  return Object.prototype.hasOwnProperty.call(DRIVER_PAPER, id) ? DRIVER_PAPER[id] : DRIVER_PAPER['escpos-58'];
+}
+
+/**
+ * Driver per la carta [paper] quando a cambiare è la carta: resta [currentId] se stampa già su
+ * quella carta, altrimenti l'ESC/POS della stessa larghezza (M02PRO → phomemo-m02pro).
+ */
+export function driverForPaper(paper, currentId = 'escpos-58') {
+  if (paperForDriver(currentId) === paper && PRINTER_DRIVERS.includes(currentId)) return currentId;
+  if (paper === 'MM80') return 'escpos-80';
+  if (paper === 'M02PRO') return 'phomemo-m02pro';
+  return 'escpos-58';
+}
 
 // Int di Kotlin: il contatore non può superarlo nemmeno qui.
 const INT_MAX = 2147483647;
@@ -25,6 +56,13 @@ export const SETTINGS_RANGES = Object.freeze({
   timerSeconds: Object.freeze({ min: 0, max: 60 }),
   stripShots: Object.freeze({ min: 2, max: 4 }),
   copies: Object.freeze({ min: 1, max: 5 }),
+  // Invio BLE: byte per scrittura (20 = carico utile con l'MTU minimo, 512 = massimo di Web
+  // Bluetooth) e pausa tra due scritture; stessi limiti di PrinterTuning.kt (BLE_CHUNK_*, BLE_DELAY_*).
+  bleChunkSize: Object.freeze({ min: 20, max: 512 }),
+  bleChunkDelayMs: Object.freeze({ min: 0, max: 100 }),
+  // Phomemo: densità del comando 1F 11 02, velocità del comando 1B 4E 0D (sperimentale).
+  phomemoDensity: Object.freeze({ min: 1, max: 15 }),
+  printerSpeed: Object.freeze({ min: 1, max: 5 }),
   tone: Object.freeze({
     brightness: Object.freeze({ min: -1, max: 1 }),
     contrast: Object.freeze({ min: -1, max: 1 }),
@@ -39,6 +77,14 @@ export const SETTINGS_RANGES = Object.freeze({
 export const DEFAULT_SETTINGS = deepFreeze({
   onboardingDone: false,
   paper: 'MM58',
+  // Driver di stampa; la carta lo segue (DRIVER_PAPER). null = predefiniti del driver.
+  printerDriver: 'escpos-58',
+  bleChunkSize: null,
+  bleChunkDelayMs: null,
+  bleWithoutResponse: null,
+  phomemoDensity: null,
+  phomemoWidthBytes: 72,
+  printerSpeed: null,
   feedLines: 4,
   cutPaper: false,
   heatLevel: 0,
@@ -95,6 +141,18 @@ const float = ({ min, max }) => (v, fb) => {
   return Math.min(max, Math.max(min, n));
 };
 
+// Campi "Int?" e "Boolean?" di Kotlin: null è un valore valido (= predefinito del driver).
+const nullableInt = (range) => {
+  const check = int(range);
+  return (v, fb) => (v === null ? null : check(v, fb));
+};
+const nullableBool = () => (v, fb) => (v === null || typeof v === 'boolean' ? v : fb);
+// Intero tra pochi valori ammessi (anche da stringa numerica).
+const intOneOf = (values) => (v, fb) => {
+  const n = toNumber(v);
+  return values.includes(n) ? n : fb;
+};
+
 const R = SETTINGS_RANGES;
 
 const TONE_SCHEMA = {
@@ -111,6 +169,13 @@ const TONE_SCHEMA = {
 const SCHEMA = {
   onboardingDone: bool(),
   paper: oneOf(PAPERS),
+  printerDriver: oneOf(PRINTER_DRIVERS),
+  bleChunkSize: nullableInt(R.bleChunkSize),
+  bleChunkDelayMs: nullableInt(R.bleChunkDelayMs),
+  bleWithoutResponse: nullableBool(),
+  phomemoDensity: nullableInt(R.phomemoDensity),
+  phomemoWidthBytes: intOneOf(PHOMEMO_WIDTH_BYTES),
+  printerSpeed: nullableInt(R.printerSpeed),
   feedLines: int(R.feedLines),
   cutPaper: bool(),
   heatLevel: int(R.heatLevel),
@@ -168,17 +233,25 @@ export function normalizeSettings(raw, base = DEFAULT_SETTINGS) {
       out[key] = check(src[key], base[key]);
     }
   }
+  // La carta discende dal driver. Senza un driver valido (impostazioni salvate prima dei driver)
+  // lo si ricava dalla carta: chi stampava su 80 mm resta su 80 mm.
+  if (!PRINTER_DRIVERS.includes(src.printerDriver)) out.printerDriver = driverForPaper(out.paper, out.printerDriver);
+  out.paper = paperForDriver(out.printerDriver);
   return out;
 }
 
 /**
  * Applica una patch parziale alle impostazioni correnti. `tone` si fonde campo per campo:
- * aggiornare la luminosità non deve azzerare le altre regolazioni.
+ * aggiornare la luminosità non deve azzerare le altre regolazioni. Carta e driver restano
+ * allineati: se la patch cambia il driver la carta lo segue; se cambia solo la carta, il driver
+ * diventa quello di quella carta (escpos-58 ↔ MM58, escpos-80 ↔ MM80, phomemo-m02pro ↔ M02PRO).
  */
 export function mergeSettings(current, patch) {
   if (!isObject(patch)) return normalizeSettings(current, current);
   const merged = { ...current, ...patch };
   merged.tone = isObject(patch.tone) ? { ...current.tone, ...patch.tone } : current.tone;
+  const driverInPatch = PRINTER_DRIVERS.includes(patch.printerDriver);
+  if (!driverInPatch && PAPERS.includes(patch.paper)) merged.printerDriver = driverForPaper(patch.paper, current.printerDriver);
   return normalizeSettings(merged, current);
 }
 

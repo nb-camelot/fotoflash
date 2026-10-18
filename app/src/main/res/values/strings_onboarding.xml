@@ -18,7 +18,7 @@
     <string name="onb_perm_camera">Camera</string>
     <string name="onb_perm_camera_desc">To take your photos</string>
     <string name="onb_perm_bluetooth">Nearby devices</string>
-    <string name="onb_perm_bluetooth_desc">To connect to the paired printer</string>
+    <string name="onb_perm_bluetooth_desc">To find and connect to your printer</string>
     <string name="onb_perm_granted">Allowed</string>
     <string name="onb_perm_denied">Denied</string>
     <string name="onb_perm_pending">To allow</string>
@@ -27,7 +27,7 @@
     <string name="onb_perm_settings">Open app settings</string>
 
     <string name="onb_printer_title">Your printer</string>
-    <string name="onb_printer_text">Pair the printer in the Bluetooth settings (the PIN is often 0000 or 1234), then pick it here.</string>
+    <string name="onb_printer_text">Pick it from the paired ones (Bluetooth settings, the PIN is often 0000 or 1234) or from the nearby ones: Bluetooth LE printers like the Phomemo don\'t need pairing.</string>
     <string name="onb_printer_none">No paired devices yet</string>
     <string name="onb_printer_no_permission">Allow “Nearby devices” to see your printers</string>
     <string name="onb_printer_bt_off">Bluetooth is off: turn it on to see your printers</string>
@@ -38,6 +38,38 @@
     <string name="onb_test_page">Print a test page</string>
     <string name="onb_test_ok">Test page printed!</string>
     <string name="onb_printer_later">You can choose or change the printer later, from the settings.</string>
+
+    <!-- Elenchi e ricerca Bluetooth LE -->
+    <string name="onb_printer_paired">PAIRED</string>
+    <string name="onb_printer_nearby">NEARBY (BLE)</string>
+    <string name="onb_device_detail">%1$s · %2$s</string>
+    <string name="onb_scan">Search</string>
+    <string name="onb_scan_running">Searching…</string>
+    <string name="onb_scan_progress">Looking for printers nearby…</string>
+    <string name="onb_scan_hint">Tap Search to find Bluetooth LE printers nearby, like the Phomemo ones.</string>
+    <string name="onb_scan_none">No printer found nearby: turn it on, keep it close and search again</string>
+    <string name="onb_scan_permission_nearby">Allow “Nearby devices” to search for printers</string>
+    <string name="onb_scan_permission_location">On this Android version the Bluetooth search needs the location permission. FotoFlash never uses your position.</string>
+    <string name="onb_scan_location_off">Location is off: on this Android version the Bluetooth search needs it</string>
+    <string name="onb_scan_location_settings">Turn on Location</string>
+
+    <!-- Driver di stampa -->
+    <string name="onb_driver_title">Print driver</string>
+    <string name="onb_driver_for">For %1$s, via %2$s</string>
+    <string name="onb_link_classic">Bluetooth (SPP)</string>
+    <string name="onb_link_ble">Bluetooth LE</string>
+    <string name="onb_driver_auto">Recognized from the name. If the test page comes out wrong, pick another one.</string>
+    <string name="onb_driver_unknown">Name not recognized: using %1$s. If the test page comes out wrong, pick another one.</string>
+    <string name="onb_driver_manual">Chosen by you: the test page tells you if it\'s the right one.</string>
+    <string name="onb_driver_unsupported">The Phomemo M02X speaks a different language and is not supported: prints would come out wrong.</string>
+    <string name="onb_driver_ble_only">This driver works only over Bluetooth LE: pick the printer from the nearby ones.</string>
+    <string name="onb_driver_classic_only">This driver works only with paired printers: pick it from the paired ones.</string>
+    <string name="onb_dither_suggest">This printer gives its best with %1$s dithering</string>
+    <string name="onb_dither_use">Use it</string>
+    <string name="onb_dither_atkinson">Atkinson</string>
+    <string name="onb_dither_floyd">Floyd-Steinberg</string>
+    <string name="onb_dither_bayer">Bayer</string>
+    <string name="onb_dither_threshold">Threshold</string>
 
     <string name="onb_fail_no_printer">Choose a printer from the list first</string>
     <string name="onb_fail_no_permission">FotoFlash is not allowed to use Bluetooth</string>

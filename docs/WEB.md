@@ -10,6 +10,11 @@ su desktop.
 > punto d'incontro di parti scritte in parallelo. Se ne cambi una, aggiorna questo file e tutti i
 > chiamanti nello stesso commit.
 
+> **Driver di stampa**: la PWA usa gli stessi driver dell'app (`escpos-58`, `escpos-80`,
+> `phomemo-m02`, `phomemo-m02pro`), con gli stessi byte. Interfaccia JS, sequenza Phomemo, trasporto
+> e vettori golden condivisi con Kotlin sono in [`docs/DRIVERS.md`](DRIVERS.md), vincolante come
+> questo file.
+
 ## Principi
 
 1. **Stessa carta dell'app.** Il motore (`web/src/core/`) è il porting **fedele** di `:core-thermal`
@@ -47,7 +52,9 @@ web/
     core/                    motore puro (niente DOM, gira anche in Node)
       model.js  gray.js  bitimage.js  tone.js  clahe.js  backlight.js  dither.js
       textmetrics.js  template.js  escpos.js
+      bitmapfont.js          font bitmap per le pagine di prova raster dei driver
     printer/                 ble.js (Web Bluetooth), manager.js (stati, coda, esiti), testpage.js
+      drivers/               index.js (elenco, driverById, guessDriver, encodeCanvas), escpos.js, phomemo.js
     render/                  renderer.js (Canvas 2D → BitImage), bitmap.js, fonts.js
     camera/                  camera.js (getUserMedia), live.js (anteprima termica dal vivo)
     media/                   import.js, export.js (download/condivisione), zip.js (ZIP senza compressione)
@@ -55,6 +62,7 @@ web/
     i18n/                    i18n.js + strings/<area>.js
     ui/                      dom.js, icons.js, components.js, router.js, screens/*.js
   tests/                     *.test.mjs per node --test
+    fixtures/drivers-golden.json   vettori di byte dei driver, generati dai test JS e letti dal test Kotlin
 ```
 
 Nel sito pubblicato la build (`scripts/build-web.mjs`) aggiunge:
@@ -73,7 +81,8 @@ stessi nomi di campo; gli enum sono stringhe uguali ai nomi Kotlin (`'ATKINSON'`
 
 ```js
 // model.js
-export const PaperWidth = { MM58: { mm: 58, dots: 384 }, MM80: { mm: 80, dots: 576 } };
+export const PaperWidth = { MM58: { mm: 58, dots: 384, dpi: 203 }, MM80: { mm: 80, dots: 576, dpi: 203 },
+                           M02PRO: { mm: 53, dots: 576, dpi: 300 } };   // come PaperWidth.kt (oggetti congelati)
 export const DitherAlgorithm = ['ATKINSON', 'FLOYD_STEINBERG', 'ORDERED_BAYER', 'THRESHOLD'];
 export const TemplateKind = ['POLAROID', 'FULL', 'STRIP', 'RECEIPT'];
 export function defaultTone()        // { brightness: 0, contrast: 0.15, gamma: 1.25, autoLevels: true, sharpen: 0.5,
@@ -110,7 +119,7 @@ export function dither(src, algorithm, threshold = 128)  // BitImage
 export const BRAND_TEXT = 'FOTOFLASH';
 export function photoCount(kind, requested);
 export function printNumberText(n);                      // "N. 0042"
-export function layoutTemplate(kind, paper /* 'MM58'|'MM80' */, photoCount, texts)
+export function layoutTemplate(kind, paper /* 'MM58'|'MM80'|'M02PRO' */, photoCount, texts)
   // → { width, height, photos: [{left, top, width, height}], texts: [{role, text, rect, font, sizeDots, align}],
   //     decorations: [{type: 'dashed', y, from, to, dash, gap, thickness} | ...] }
 
@@ -131,41 +140,130 @@ export function totalBytes(packets); export function concatPackets(packets)
 
 Se un valore non coincide, il porting è sbagliato: non si cambia il valore atteso.
 
+Per i **driver** la parità va nell'altro senso. I test JS (`web/tests/driver-*.test.mjs`) generano
+`web/tests/fixtures/drivers-golden.json` con i casi di `docs/DRIVERS.md` (§ Vettori di prova condivisi)
+e controllano che il file committato coincida. `DriversGoldenTest` in `core-thermal` lo rilegge e
+pretende gli stessi byte dai driver Kotlin. Un driver che cambia byte cambia il golden nello stesso
+commit, e la CI Android lo verifica.
+
 ## Contratti `web/src/printer/`
 
 ```js
 // ble.js — porting di RawBT.ble del bridge (nb-camelot/raw-bt-print-bridge, escpos.js ≥ 1.9),
 // già provato sulla "BlueTooth Printer" (profilo 18F0/2AF1). localStorage 'fotoflash.ble'.
 export const Ble = {
-  profiles, optionalServices,
-  supported(), available() /* Promise<boolean|null> */, canRemember(),
-  info() /* {status, name, paired, connected, profile, characteristic, writeMode, chunk, remembered, lastError} */,
+  profiles, optionalServices, filters /* BLE_FILTERS */,
+  supported(), available() /* Promise<boolean|null> */, canRemember(), saved() /* stampante ricordata o null */,
+  info() /* {status, name, paired, connected, profile, characteristic, writeMode, chunk, transfer,
+            remembered, lastError, lastErrorCode}; transfer = piano d'invio in uso, lo stampa la pagina di prova */,
   on(fn) /* → unsubscribe */,
   pair(opts) /* DA CHIAMARE DIRETTAMENTE nel gestore di un tocco */, reconnect() /* null se serve un tocco */,
-  print(bytes, { onProgress }) /* in coda */, disconnect(), forget(), describe(),
+  print(bytes, { onProgress, chunkSize, chunkDelayMs, withoutResponse, finalDelayMs }) /* in coda; gli
+    hint sono le TransportHints del driver per quel lavoro (jobTransport li normalizza): senza hint
+    resta la strategia 'auto' del bridge, o la modalità scelta con setWriteMode */,
+  disconnect(), forget(), describe(),
   useCharacteristic(serviceUuid, charUuid), setWriteMode('auto'|'response-100'|'response-20'|'noresponse-20'),
+  preferProfiles(profiles /* bleProfiles del driver, provati per primi; null = nessuna preferenza */),
+  manualDriver() /* id scelto a mano per la stampante ricordata, o null */, setManualDriver(id),
+  jobTransport(opts) /* → { chunkSize, chunkDelayMs, withoutResponse, finalDelayMs } | null */,
   errorCode(e) /* 'cancelled'|'unsupported'|'cat-printer'|'no-channel'|'timeout'|'location'|'not-found'|'gesture'|'network'|'write'|'unknown' */
 };
 // status: 'idle'|'connecting'|'ready'|'printing'|'disconnected'|'error'
+// Anche esportati: BLE_ALL_PROFILES (profili di tutti i driver), BLE_FILTERS e BLE_OPTIONAL (per requestDevice).
+
+// drivers/index.js — interfaccia comune in docs/DRIVERS.md; in più, compatibili con quel contratto:
+export const DEFAULT_DRIVER_ID = 'escpos-58'; export const DRIVER_IDS;
+export function unsupportedModel(name)     // 'phomemo-m02x' per un modello riconosciuto ma senza driver, altrimenti null
+export function driverForPaper(paper, currentId)  // driver che stampa su quella carta, restando sul corrente se va già bene
+export function allBleProfiles()           // profili di tutti i driver senza doppioni, ESC/POS prima
+export function encodeGray(driver, gray, options, algorithm = driver.defaultDither)
+export { escpos58, escpos80, phomemoM02, phomemoM02Pro, DEFAULT_DRIVER_OPTIONS, normalizeOptions, classifyName };
+// options (DriverOptions JS): { feedLines = 4, cut = false, heatLevel = 0, bandHeight = 24, speed = null,
+//   widthBytes = null /* 72 | 78, solo M02 Pro */, density = null /* 1..15, solo Phomemo */ }
+// Sono densityOverride e widthBytes del DriverOptions Kotlin: stesso significato, nome JS più corto
+// (normalizeOptions accetta anche densityOverride). classifyName(name) → 'unsupported'|'phomemo-m02pro'|
+// 'phomemo-m02'|'escpos'|null: le regole di DriverNames in Drivers.kt.
+// Campi in più del driver, per schermate e pagine di prova: family ('escpos'|'phomemo'), links,
+// rasterShape(options) → { dots, bytesPerRow, bandRows }, technicalLines(options) (le righe tecniche
+// della pagina di prova, come DriverTestPage.technicalLines); Phomemo anche widthOptions e
+// widthBytesFor(options). defaultTransport delle ESC/POS ha in più auto: true: senza valori
+// dell'utente il manager lascia a ble.js la strategia automatica del bridge.
 
 // manager.js — l'unico punto che stampa (come PrinterManager su Android)
 export class PrinterManager {
-  constructor(settings /* store/settings.js */, ble = Ble)
+  constructor(settings /* store/settings.js */, ble = Ble, options = {} /* per i test: idleDisconnectMs,
+              navigator(), setTimeout, clearTimeout, now() */)
   get state()      // { kind: 'unsupported'|'not-paired'|'disconnected'|'connecting'|'ready'|'printing'|'error',
-                   //   name, progress /* 0..1 */, failure, message }
+                   //   name, progress /* 0..1 */, failure, message, action /* 'pair' con NO_PRINTER, altrimenti null */,
+                   //   driver /* id corrente */, unsupported /* 'phomemo-m02x' | null */ }
   subscribe(fn)    // → unsubscribe; chiamata subito con lo stato attuale
   pair()           // gesto utente
   reconnect()
   async print(bitImage, { copies = 1, onProgress } = {})   // → { ok: true, bytes, ms } | { ok: false, failure, message }
-  async printTestPage()                                      // pagina di calibrazione (come TestPage.kt)
+  async printTestPage()                                      // ESC/POS: testpage.js (come TestPage.kt); Phomemo: driver.testPage(), raster
+  currentDriver()                                            // driver delle impostazioni
+  setDriver(driverId, { manual = true } = {})                // allinea la carta e propone il retino del driver;
+                                                             // → driver; id sconosciuto → RangeError
   forget(); disconnect()
+  dispose()        // smette di ascoltare ble.js e le impostazioni, ferma il timer di inattività
 }
 // failure: 'UNSUPPORTED'|'NO_PRINTER'|'BLUETOOTH_OFF'|'CONNECT_FAILED'|'WRITE_FAILED'|'BUSY'|'RENDER_FAILED'|'CAT_PRINTER'|'NO_CHANNEL'
+//   (elenco esportato come FAILURES)
+// Funzioni pure esportate (testabili in Node): driverFor(settings), paperFor(settings),
+// driverOptionsFor(settings), transportFor(settings, driver) /* null = strategia 'auto' */, jobOptionsFor(settings),
+// buildJobBytes(bitImage, settings), failureFor(e, phase, name) → { failure, message, detail }, technicalMessage(e).
+export const PrinterTuning   // come PrinterTuning.kt: limiti (intensità 0..4, avanzamento 0..10, banda 8..255,
+                             // pezzi BLE 20..512, pausa BLE 0..100 ms, densità 1..15, velocità 1..5), clamp*(),
+                             // heatFor(level) (delega alla tabella del driver ESC/POS), drainMillis(bytes)
+
+// testpage.js — pagina di prova testuale ESC/POS, porting di TestPage.kt (solo ASCII sulla carta)
+export function buildTestPage(paper, settings, extra /* { printerName, writeMode, transfer, now } */)  // → Uint8Array
+export function testPagePackets(paper, settings, extra)                                              // → Uint8Array[]
+export function rasterTestPageTexts(driver, settings, extra /* … + options */)
+  // → { subtitle, lines, widthCheck, ditherTitle, ditherLabels, currentDither, footer }: i testi tradotti
+  //   della pagina raster, da passare a driver.testPage({ ...options, ...testi })
 ```
 
-Il lavoro di stampa usa `buildThermalJob` con le impostazioni (`bandHeight`, `feedLines`, `cutPaper`,
-`heatLevel` → stessa tabella di `PrinterTuning.kt`), e `centeredOn(img, paper.dots)` quando la larghezza
-non coincide. I pacchetti vengono concatenati e passati a `Ble.print`.
+Il lavoro di stampa passa dal **driver corrente** (`driverFor(settings)`, cioè
+`driverById(settings.printerDriver)`, contratto in [`docs/DRIVERS.md`](DRIVERS.md)):
+`driver.encode(bitImage, options)` con le opzioni comuni (`bandHeight`, `feedLines`, `cutPaper`,
+`heatLevel` → stessa tabella di `EscPosDriver.heatFor` in `Drivers.kt`, `printerSpeed`) e quelle
+Phomemo (`phomemoDensity`, `phomemoWidthBytes`). Il driver centra o ritaglia sulla propria larghezza.
+`escpos-*` produce gli stessi byte di `buildThermalJob`. I pacchetti vengono concatenati e passati a
+`Ble.print` con le `TransportHints` del driver, sovrascritte da `bleChunkSize`, `bleChunkDelayMs` e
+`bleWithoutResponse` quando non sono `null`. La pagina di prova è `testpage.js` per ESC/POS e
+`driver.testPage()`, tutta raster, per i Phomemo.
+
+Dopo l'abbinamento `guessDriver(device.name)` propone il driver, se l'utente non l'ha scelto a mano
+per quella stampante (`Ble.manualDriver()`). Con `null` (nome che non dice nulla, oppure M02X) vale
+il ripiego di `docs/DRIVERS.md` con l'eccezione dell'app (`docs/ARCHITECTURE.md`, § Note sui
+contratti): resta il driver in uso se è ESC/POS, altrimenti `escpos-58`. Un nome ESC/POS tipico
+mentre è attivo un driver ESC/POS non lo cambia: dal nome non si distingue la 58 mm dalla 80 mm.
+Una **M02X** viene riconosciuta per nome e segnalata come non supportata: il suo protocollo è
+diverso, vedi `issue_plans/phomemo-m02x.md`. Le cat printer (servizio `AE30`) restano rifiutate
+con `errorCode` `'cat-printer'`. `requestDevice` riceve i filtri e gli `optionalServices` di
+**tutti** i driver: se manca un servizio, Chrome nasconde la caratteristica anche dopo l'abbinamento.
+
+### Calibrazione dell'invio BLE: perché 20 byte
+
+Web Bluetooth **non espone l'MTU** negoziato. Con l'MTU minimo dell'ATT (23 byte) il carico utile di
+una scrittura senza conferma è 23 − 3 = **20 byte**. Oltre quel limite alcuni stack, Android in
+testa, possono troncare il pacchetto **senza errore**: la stampa esce a metà o con righe sfasate, e
+nessuno se ne accorge. Per questo i Phomemo partono da **20 byte con 15 ms** di pausa, senza
+conferma (`writeValueWithoutResponse`), con ripiego su `writeValue` se la scrittura senza conferma
+fallisce. I preset più veloci si scelgono nella schermata Stampante e si verificano con la pagina
+di prova:
+
+| Preset (`prn_preset_*`) | Byte per scrittura | Pausa | Scrittura |
+|---|---|---|---|
+| Automatica (`auto`): `bleChunkSize`/`bleChunkDelayMs` a `null` | quelli del driver: 20 | 15 ms | senza conferma |
+| Sicura (`safe`) | 20 | 15 ms | senza conferma |
+| Veloce (`fast`) | 60 | 20 ms | senza conferma |
+| Massima (`max`) | 128 | 20 ms | senza conferma (come phomymo) |
+| Personalizzata (`manual`) | valori che non corrispondono a un preset | | |
+| ESC/POS (`escpos-*`) | 100, poi 20 se rifiutati | — | con conferma: strategia `auto` del bridge, scelta con `setWriteMode` |
+
+L'app Android non ha questo limite: chiede `requestMtu(247)` e spezza in `min(chunkSize, mtu − 3)`.
 
 ## Contratti `web/src/render/`, `camera/`, `media/`
 
@@ -207,7 +305,10 @@ export function makeZip(entries /* [{ name, data: Uint8Array|Blob, date }] */) /
 export const settings = { get(), update(patchOrFn), subscribe(fn), async nextPrintNumber(), reset() }
 // campi: onboardingDone, paper, feedLines, cutPaper, heatLevel, bandHeight, dither, tone, template, eventTitle,
 //        hashtag, showDate, showPrintNumber, printCounter, instantPrint, timerSeconds, stripShots, shutterSound,
-//        livePreview, copies, autoDownloadCaptures (false: sul web il "salva in galleria" è un download)
+//        livePreview, copies, autoDownloadCaptures (false: sul web il "salva in galleria" è un download),
+//        printerDriver ('escpos-58'), bleChunkSize, bleChunkDelayMs, bleWithoutResponse (null = del driver),
+//        phomemoDensity (null = da heatLevel), phomemoWidthBytes (72), printerSpeed (null = non inviata).
+//        paper resta allineata al driver (docs/DRIVERS.md); printerLink non c'è: sul web è sempre BLE.
 // history.js — IndexedDB 'fotoflash' v1, store 'entries' e 'blobs'; massimo 200 voci
 export const history = { async list(), async get(id), async add({ printPng, originals /* Blob[] */, template,
   caption, printNumber, printed }), async markPrinted(id), async remove(id), async printBlob(id),
@@ -222,7 +323,8 @@ export function t(key, ...args)   // %1$s, %1$d come Android; chiave mancante �
 export function lang()            // 'it' | 'en' da navigator.language, forzabile con setLang
 export function setLang(l)
 // strings/<area>.js: export default { en: {...}, it: {...} }, prefisso dell'area, stesse chiavi:
-// common_ cam_ ed_ hist_ set_ prn_ onb_ app_
+// common_ cam_ ed_ hist_ set_ prn_ onb_ app_. Le prn_ stanno in strings/printer.js, non in prn.js:
+// PRN è un nome di dispositivo riservato su Windows e un file con quel nome non si può creare.
 
 // dom.js
 export function h(tag, props, ...children)  // props: class, style, on* (eventi), attrs, ref(el)

@@ -3,6 +3,14 @@
 // provato sulla "BlueTooth Printer" vera (profilo 18F0/2AF1): la logica resta quella. Cambiano solo
 // la chiave di localStorage, gli errori (codici in .code, i testi li mette la UI) e l'accesso al
 // browser, che passa da un ambiente letto solo dentro le funzioni (cosi il modulo si importa in Node).
+//
+// Driver (docs/DRIVERS.md): il chooser dichiara servizi e nomi di TUTTI i driver (Phomemo FF00 e
+// nomi M02 compresi); il canale si sceglie prima tra i profili del driver; print() accetta per
+// lavoro { chunkSize, chunkDelayMs, withoutResponse, finalDelayMs }. Senza questi valori resta la
+// strategia automatica del bridge, identica, per le stampanti ESC/POS.
+
+import { allBleProfiles, guessDriver } from './drivers/index.js';
+import { ESCPOS_BLE_PROFILES, ESCPOS_NAMES, ESCPOS_NAME_PREFIXES } from './drivers/escpos.js';
 
 /** Chiave di localStorage della stampante ricordata e delle scelte manuali. */
 export const BLE_STORE = 'fotoflash.ble';
@@ -18,14 +26,11 @@ export const WRITE_MODES = ['auto', 'response-100', 'response-20', 'noresponse-2
 
 // Profili dei canali seriali BLE delle stampanti termiche ESC/POS, nell'ordine in cui si
 // provano: 18f0/2af1 e quello verificato sulle Netum NT-1809 e sulle "BlueTooth Printer".
-export const BLE_PROFILES = Object.freeze([
-  { name: '18F0', service: '000018f0-0000-1000-8000-00805f9b34fb', write: '00002af1-0000-1000-8000-00805f9b34fb' },
-  { name: 'E7810A71', service: 'e7810a71-73ae-499d-8c15-faa9aef0c3f2', write: 'bef8d6c9-9c21-4c9e-b632-bd58c1009f9f' },
-  { name: 'ISSC', service: '49535343-fe7d-4ae5-8fa9-9fafd205e455', write: '49535343-8841-43f4-a8d4-ecbe34729bb3' },
-  { name: 'FF00', service: '0000ff00-0000-1000-8000-00805f9b34fb', write: '0000ff02-0000-1000-8000-00805f9b34fb' },
-  { name: 'FFE0', service: '0000ffe0-0000-1000-8000-00805f9b34fb', write: '0000ffe1-0000-1000-8000-00805f9b34fb' },
-  { name: 'Nordic UART', service: '6e400001-b5a3-f393-e0a9-e50e24dcca9e', write: '6e400002-b5a3-f393-e0a9-e50e24dcca9e' }
-].map((p) => Object.freeze(p)));
+// Sono quelli del driver ESC/POS (drivers/escpos.js), che li definisce una volta sola.
+export const BLE_PROFILES = ESCPOS_BLE_PROFILES;
+
+/** Profili di tutti i driver (ESC/POS e Phomemo), senza doppioni: l'ultimo ripiego di pick(). */
+export const BLE_ALL_PROFILES = Object.freeze(allBleProfiles());
 
 /** Nome del profilo quando il canale e stato scelto a mano dalla diagnostica. */
 export const MANUAL_PROFILE = 'manual';
@@ -33,19 +38,49 @@ export const MANUAL_PROFILE = 'manual';
 // Le "cat printer" (servizio AE30) stampano solo bitmap con un protocollo proprio, non ESC/POS.
 export const BLE_CAT_SERVICE = '0000ae30-0000-1000-8000-00805f9b34fb';
 
+function uniq(list) {
+  return list.filter((x, i) => list.indexOf(x) === i);
+}
+
 // Tutti i servizi che la pagina potra usare vanno dichiarati alla scelta del dispositivo:
 // quelli non elencati restano invisibili anche alla diagnostica.
-export const BLE_OPTIONAL = Object.freeze(BLE_PROFILES.map((p) => p.service).concat([
+export const BLE_OPTIONAL = Object.freeze(uniq(BLE_ALL_PROFILES.map((p) => p.service).concat([
   '000018f1-0000-1000-8000-00805f9b34fb', '0000fff0-0000-1000-8000-00805f9b34fb',
   '0000ffe6-0000-1000-8000-00805f9b34fb', '0000fee7-0000-1000-8000-00805f9b34fb',
   BLE_CAT_SERVICE
-]));
+])));
 
-// Filtri del chooser: stampanti che annunciano un servizio noto o un nome tipico.
-export const BLE_FILTERS = Object.freeze(BLE_PROFILES.map((p) => ({ services: [p.service] })).concat([
-  { name: 'BlueTooth Printer' }, { namePrefix: 'Printer' }, { namePrefix: 'MPT' },
-  { namePrefix: 'NT-' }, { namePrefix: 'Netum' }, { namePrefix: 'POS' }, { namePrefix: 'MTP' }
-]));
+// Filtri del chooser: stampanti che annunciano un servizio noto o un nome tipico, di tutti i
+// driver (le Phomemo si annunciano come "M02", "M02S", "M02 Pro"…). Un nome come "M02X" compare
+// anche lui: dopo l'abbinamento la UI dice che quel modello non e supportato.
+export const BLE_FILTERS = Object.freeze(uniq(BLE_ALL_PROFILES.map((p) => p.service))
+  .map((service) => ({ services: [service] }))
+  .concat(ESCPOS_NAMES.map((name) => ({ name })))
+  .concat(ESCPOS_NAME_PREFIXES.map((namePrefix) => ({ namePrefix })))
+  .concat([{ namePrefix: 'M02' }]));
+
+function intIn(value, min, max, fallback) {
+  if (value === null || value === undefined || value === '') return fallback;
+  const n = Number(value);
+  return Number.isFinite(n) ? Math.min(max, Math.max(min, Math.trunc(n))) : fallback;
+}
+
+/**
+ * Trasporto chiesto da un lavoro (TransportHints del driver, sovrascritti dalle impostazioni):
+ * { chunkSize, chunkDelayMs, withoutResponse, finalDelayMs } normalizzati, oppure null se non ne
+ * arriva nessuno (= strategia automatica). 512 byte e il massimo di una scrittura Web Bluetooth.
+ */
+export function jobTransport(opts) {
+  if (!opts || typeof opts !== 'object') return null;
+  const given = (k) => opts[k] !== undefined && opts[k] !== null;
+  if (!given('chunkSize') && !given('chunkDelayMs') && !given('withoutResponse')) return null;
+  return {
+    chunkSize: intIn(opts.chunkSize, 1, 512, 20),
+    chunkDelayMs: intIn(opts.chunkDelayMs, 0, 5000, 0),
+    withoutResponse: opts.withoutResponse === true,
+    finalDelayMs: intIn(opts.finalDelayMs, 0, 10000, 300)
+  };
+}
 
 /** Errore del modulo: il codice (.code) e cio che conta, il messaggio e solo tecnico. */
 export function bleError(code, message) {
@@ -96,7 +131,7 @@ export function createBle(env = {}) {
   }
 
   const state = {
-    device: null, server: null, char: null, profile: null,
+    device: null, server: null, char: null, profile: null, preferred: null,
     status: 'idle', lastError: null, listeners: [], queue: Promise.resolve()
   };
 
@@ -216,6 +251,18 @@ export function createBle(env = {}) {
     return !!(c && c.properties && (c.properties.write || c.properties.writeWithoutResponse));
   }
 
+  // Profili nell'ordine in cui si provano: quelli del modello riconosciuto dal nome, poi quelli
+  // del driver scelto (preferProfiles), poi tutti gli altri noti. Senza doppioni.
+  function profileOrder(d) {
+    const guessed = guessDriver(d && d.name);
+    const lists = [guessed ? guessed.bleProfiles : [], state.preferred || [], BLE_ALL_PROFILES];
+    const out = [];
+    lists.forEach((list) => list.forEach((p) => {
+      if (!out.some((q) => q.service === p.service && q.write === p.write)) out.push(p);
+    }));
+    return out;
+  }
+
   // Sceglie il canale di stampa: prima quello scelto a mano dall'utente, poi i profili noti.
   function pick(server) {
     const s = saved() || {};
@@ -229,7 +276,7 @@ export function createBle(env = {}) {
       if (override && byUuid[override.service]) {
         tries.push({ name: MANUAL_PROFILE, service: byUuid[override.service], write: override.char });
       }
-      BLE_PROFILES.forEach((p) => {
+      profileOrder(d).forEach((p) => {
         if (byUuid[p.service]) tries.push({ name: p.name, service: byUuid[p.service], write: p.write });
       });
       function next(i) {
@@ -285,11 +332,89 @@ export function createBle(env = {}) {
     return c.writeValueWithoutResponse ? c.writeValueWithoutResponse(piece) : c.writeValue(piece);
   }
 
+  function report(onProgress, done, total) {
+    if (!onProgress) return;
+    try { onProgress(done, total); } catch (e) { /* callback della pagina */ }
+  }
+
+  // Piano di un lavoro con trasporto esplicito (driver o impostazioni). Le proprieta della
+  // caratteristica si rispettano: niente scritture senza conferma dove non sono ammesse, e
+  // viceversa. Stessa forma di plan(), con la pausa finale in piu.
+  function customPlan(c, t) {
+    const props = c.properties || {};
+    let withResponse = !t.withoutResponse;
+    if (withResponse && props.writeWithoutResponse && !props.write) withResponse = false;
+    if (!withResponse && props.write && !props.writeWithoutResponse) withResponse = true;
+    if (!withResponse && typeof c.writeValueWithoutResponse !== 'function') withResponse = true;
+    return { mode: 'custom', withResponse, chunk: t.chunkSize, pause: t.chunkDelayMs, final: t.finalDelayMs };
+  }
+
+  // Scrittura con conferma; dopo un ripiego si usa writeValue (conferma se la caratteristica la
+  // prevede), come chiede il protocollo Phomemo quando la scrittura senza conferma fallisce.
+  function writeConfirmed(c, piece, fallback) {
+    if (fallback && typeof c.writeValue === 'function') return c.writeValue(piece);
+    return typeof c.writeValueWithResponse === 'function' ? c.writeValueWithResponse(piece) : c.writeValue(piece);
+  }
+
+  // Scrive a pezzi con il trasporto del lavoro, alla lettera: pezzi di chunk byte, pausa dopo ogni
+  // pezzo tranne l'ultimo (anche l'ultimo pezzo resta senza conferma, se cosi chiede il driver),
+  // attesa finale. Se una scrittura senza conferma viene rifiutata con la stampante ancora
+  // collegata (dopo i tentativi per gli errori transitori), si ripiega su writeValue per il resto
+  // del lavoro ripartendo dallo stesso pezzo: una scrittura rifiutata non e partita. Niente
+  // salvataggi: il trasporto lo decidono il driver e le impostazioni.
+  function writeCustom(c, data, onProgress, t) {
+    const p = customPlan(c, t);
+    let withResp = p.withResponse;
+    let fellBack = false;
+    const t0 = now();
+    let off = 0;
+    let retries = 0;
+    function step() {
+      if (off >= data.length) {
+        return delay(p.final).then(() => ({
+          ok: true, bytes: data.length, ms: now() - t0, chunk: p.chunk, withResponse: withResp, mode: p.mode, fallback: fellBack
+        }));
+      }
+      const piece = data.slice(off, off + p.chunk);
+      const last = off + piece.length >= data.length;
+      let pending;
+      try {
+        pending = withResp ? writeConfirmed(c, piece, fellBack) : c.writeValueWithoutResponse(piece);
+      } catch (e) {
+        pending = Promise.reject(e);
+      }
+      return Promise.resolve(pending).then(() => {
+        off += piece.length;
+        retries = 0;
+        report(onProgress, off, data.length);
+        return p.pause && !last ? delay(p.pause).then(step) : step();
+      }, (e) => {
+        const name = (e && e.name) || '';
+        const msg = (e && e.message) || '';
+        const transient = /operation failed for unknown reason|already in progress/i.test(msg);
+        if (transient && retries < 3) {
+          retries++;
+          return delay(80 * retries).then(step);
+        }
+        const connected = !!(state.device && state.device.gatt.connected);
+        if (!withResp && !fellBack && connected && name !== 'NetworkError') {
+          fellBack = true;
+          withResp = true;
+          retries = 0;
+          return step();
+        }
+        throw e;
+      });
+    }
+    return step();
+  }
+
   // Scrive a pezzi, una scrittura alla volta. Automatico: con conferma da 100 byte se la
   // caratteristica lo permette (se la stampante li rifiuta si scende a 20), altrimenti senza
   // conferma da 20 byte con 20 ms di pausa e l'ultimo pezzo con conferma quando possibile.
   // Le modalita scelte a mano si applicano alla lettera, anche all'ultimo pezzo.
-  function write(bytes, onProgress) {
+  // [transport] (jobTransport) sostituisce tutto questo con il trasporto del lavoro.
+  function write(bytes, onProgress, transport) {
     const c = state.char;
     if (!c) {
       // Collegamento caduto tra la connessione e il primo pezzo: come una scrittura rifiutata.
@@ -297,6 +422,7 @@ export function createBle(env = {}) {
       e.name = 'NetworkError';
       return Promise.reject(e);
     }
+    if (transport) return writeCustom(c, bytes instanceof Uint8Array ? bytes : new Uint8Array(bytes), onProgress, transport);
     const props = c.properties || {};
     const p = plan();
     const mode = p.mode;
@@ -439,14 +565,17 @@ export function createBle(env = {}) {
         return waitAdvertisement(d, ADVERTISEMENT_WAIT_MS).then(ensure).then(info);
       });
     },
-    // Stampa i byte ESC/POS. opts.onProgress(inviati, totali). Le stampe vanno in coda.
+    // Stampa i byte del driver. opts.onProgress(inviati, totali). Le stampe vanno in coda.
+    // opts.chunkSize / chunkDelayMs / withoutResponse / finalDelayMs: trasporto di questo lavoro
+    // (vedi jobTransport); senza, la strategia automatica (o la modalita scelta con setWriteMode).
     print(bytes, opts) {
       const o = opts || {};
+      const transport = jobTransport(o);
       function job() {
         if (!state.device) return Promise.reject(bleError('no-device', 'no printer paired'));
         return ensure().then(() => {
           setStatus('printing');
-          return write(bytes, o.onProgress);
+          return write(bytes, o.onProgress, transport);
         }).then((r) => {
           setStatus('ready');
           return r;
@@ -518,6 +647,21 @@ export function createBle(env = {}) {
       save({ writeMode: WRITE_MODES.indexOf(mode) >= 0 ? mode : 'auto', chunk: null });
       setStatus(state.status, state.lastError);
     },
+    // Profili del driver scelto, provati per primi alla prossima scelta del canale (dopo quelli
+    // del modello riconosciuto dal nome). null = nessuna preferenza.
+    preferProfiles(profiles) {
+      state.preferred = Array.isArray(profiles) && profiles.length > 0 ? profiles.slice() : null;
+    },
+    // Driver scelto a mano per la stampante ricordata: come le altre scelte manuali si perde
+    // dimenticandola o abbinandone un'altra, cosi il riconoscimento dal nome torna a decidere.
+    manualDriver() {
+      const s = saved() || {};
+      return typeof s.driver === 'string' ? s.driver : null;
+    },
+    setManualDriver(id) {
+      save({ driver: typeof id === 'string' && id !== '' ? id : null });
+    },
+    jobTransport,
     errorCode
   };
   return api;

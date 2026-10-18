@@ -10,7 +10,10 @@
     <!-- Stampante e carta -->
     <string name="set_section_printer">Printer and paper</string>
     <string name="set_printer_none">No printer selected</string>
-    <string name="set_printer_hint_none">Tap to choose a paired Bluetooth printer</string>
+    <string name="set_printer_hint_none">Tap to choose a Bluetooth printer</string>
+    <string name="set_printer_driver_link">%1$s · %2$s</string>
+    <string name="set_printer_link_classic">Bluetooth (SPP)</string>
+    <string name="set_printer_link_ble">Bluetooth LE</string>
     <string name="set_printer_paper">%1$d mm paper · tap for paper and calibration</string>
     <string name="set_printer_open_cd">Open printer settings</string>
 

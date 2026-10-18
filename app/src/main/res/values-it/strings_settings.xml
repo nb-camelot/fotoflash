@@ -10,7 +10,10 @@
     <!-- Stampante e carta -->
     <string name="set_section_printer">Stampante e carta</string>
     <string name="set_printer_none">Nessuna stampante scelta</string>
-    <string name="set_printer_hint_none">Tocca per scegliere una stampante Bluetooth accoppiata</string>
+    <string name="set_printer_hint_none">Tocca per scegliere una stampante Bluetooth</string>
+    <string name="set_printer_driver_link">%1$s · %2$s</string>
+    <string name="set_printer_link_classic">Bluetooth (SPP)</string>
+    <string name="set_printer_link_ble">Bluetooth LE</string>
     <string name="set_printer_paper">Carta da %1$d mm · tocca per carta e calibrazione</string>
     <string name="set_printer_open_cd">Apri le impostazioni della stampante</string>
 

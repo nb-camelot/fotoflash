@@ -45,6 +45,13 @@ test('i default coincidono con AppSettings.kt (+ autoDownloadCaptures)', () => {
   assert.deepEqual(defaultSettings(), {
     onboardingDone: false,
     paper: 'MM58',
+    printerDriver: 'escpos-58',
+    bleChunkSize: null,
+    bleChunkDelayMs: null,
+    bleWithoutResponse: null,
+    phomemoDensity: null,
+    phomemoWidthBytes: 72,
+    printerSpeed: null,
     feedLines: 4,
     cutPaper: false,
     heatLevel: 0,

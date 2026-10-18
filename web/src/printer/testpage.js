@@ -25,8 +25,13 @@ const DITHER_KEYS = Object.freeze({
   THRESHOLD: 'prn_dither_threshold'
 });
 
-// Etichetta della modalita di invio BLE (stesse chiavi della schermata stampante).
+// Etichetta della modalita di invio BLE (stesse chiavi della schermata stampante). Un trasporto
+// del driver o delle impostazioni ('custom') si descrive con il tipo di scrittura: pezzo e pausa
+// li dice gia la riga prn_test_transfer.
 function modeLabel(writeMode, transfer) {
+  if ((transfer && transfer.mode === 'custom') || writeMode === 'custom') {
+    return transfer && transfer.withResponse === false ? t('prn_diag_prop_write_nr') : t('prn_diag_prop_write');
+  }
   switch (writeMode) {
     case 'response-100': return t('prn_mode_response_100');
     case 'response-20': return t('prn_mode_response_20');
@@ -214,4 +219,47 @@ export function testPagePackets(paper, settings = {}, extra = {}) {
  */
 export function buildTestPage(paper, settings = {}, extra = {}) {
   return concatPackets(testPagePackets(paper, settings, extra));
+}
+
+/**
+ * Testi tradotti (e ridotti ad ASCII: il font bitmap non ha altro) della pagina di prova raster
+ * dei driver, da passare a driver.testPage({ ...opzioni, ...questi }). Stesse informazioni della
+ * pagina ESC/POS: motto, stampante, data, carta, intensita, invio, controllo larghezza, retini,
+ * consigli. I parametri del protocollo (punti, dpi, densita, velocita, byte per riga, avanzamento)
+ * li aggiunge il driver con le sue righe tecniche (driver.technicalLines).
+ * extra: { printerName, writeMode, transfer, now, options (DriverOptions del lavoro) }
+ * → { subtitle, lines, widthCheck, ditherTitle, ditherLabels, currentDither, footer }
+ */
+export function rasterTestPageTexts(driver, settings = {}, extra = {}) {
+  const s = settings || {};
+  const shape = driver.rasterShape(extra.options || {});
+  const paper = Object.prototype.hasOwnProperty.call(PaperWidth, driver.paper) ? PaperWidth[driver.paper] : PaperWidth.MM58;
+  const heatLevel = PrinterTuning.clampHeatLevel(s.heatLevel);
+  const now = extra.now instanceof Date ? extra.now : new Date();
+  const transfer = extra.transfer || null;
+  const lines = [
+    t('prn_test_printer', extra.printerName || '-'),
+    t('prn_test_date', formatDate(now)),
+    t('prn_test_paper', paper.mm, shape.dots)
+  ];
+  // Con una densita scelta a mano il livello d'intensita non conta: la riga tecnica DENSITY la mostra.
+  if (s.phomemoDensity === null || s.phomemoDensity === undefined || driver.family !== 'phomemo') {
+    lines.push(t('prn_test_heat', t(PrinterTuning.HEAT_LEVEL_KEYS[heatLevel]), heatLevel));
+  }
+  if (transfer) lines.push(t('prn_test_transfer', shape.bandRows, transfer.chunk, transfer.pause));
+  lines.push(t('prn_test_mode', modeLabel(extra.writeMode || 'auto', transfer)));
+  const ditherLabels = {};
+  for (const algorithm of DitherAlgorithm) {
+    const name = t(DITHER_KEYS[algorithm]);
+    ditherLabels[algorithm] = asciiOnly(algorithm === s.dither ? t('prn_test_dither_current', name) : name);
+  }
+  return {
+    subtitle: asciiOnly(t('prn_test_payoff')),
+    lines: lines.map(asciiOnly),
+    widthCheck: asciiOnly(t('prn_test_width')),
+    ditherTitle: asciiOnly(t('prn_test_dither')),
+    ditherLabels,
+    currentDither: DitherAlgorithm.includes(s.dither) ? s.dither : driver.defaultDither,
+    footer: ['prn_test_tip_pale', 'prn_test_tip_broken', 'prn_test_tip_blank', 'prn_test_end'].map((key) => asciiOnly(t(key)))
+  };
 }

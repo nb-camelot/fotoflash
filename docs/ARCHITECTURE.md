@@ -8,12 +8,17 @@ cambiato, si cambia qui e in tutti i chiamanti nello stesso commit.
 > [`docs/WEB.md`](WEB.md), vincolanti allo stesso modo. Qui sotto c'è solo l'app Android; il motore
 > web (`web/src/core/`) è il porting di `:core-thermal` e deve restare allineato ai suoi test.
 
+> **Driver di stampa**: l'interfaccia `PrinterDriver`, i quattro driver (`escpos-58`, `escpos-80`,
+> `phomemo-m02`, `phomemo-m02pro`), la sequenza esatta dei byte Phomemo, il trasporto BLE GATT e le
+> aggiunte a `PrinterManager` sono in [`docs/DRIVERS.md`](DRIVERS.md), vincolante come questo
+> documento e comune ad app e PWA. Qui sotto ci sono solo i punti in cui i driver toccano l'app.
+
 ## Moduli
 
 | Modulo | Tipo | Contenuto |
 |---|---|---|
-| `:core-thermal` | Kotlin/JVM puro (nessuna dipendenza Android) | immagini in scala di grigi e a 1 bit, regolazioni tonali, retinatura, impaginazione dei modelli, comandi ESC/POS. **Tutto testato con JUnit.** |
-| `:app` | Android, Jetpack Compose | fotocamera (CameraX), rendering Android dei modelli (Canvas + font), Bluetooth SPP, storico, impostazioni, UI |
+| `:core-thermal` | Kotlin/JVM puro (nessuna dipendenza Android) | immagini in scala di grigi e a 1 bit, regolazioni tonali, retinatura, impaginazione dei modelli, comandi ESC/POS, **driver di stampa** (ESC/POS e Phomemo) con le loro pagine di prova raster. **Tutto testato con JUnit**, driver compresi: byte esatti e parità con la PWA. |
+| `:app` | Android, Jetpack Compose | fotocamera (CameraX), rendering Android dei modelli (Canvas + font), Bluetooth classico SPP **e Bluetooth LE GATT** (con la ricerca dei dispositivi vicini), storico, impostazioni, UI |
 
 Package radice: `io.github.nik2208.fotoflash`; il core sta in `io.github.nik2208.fotoflash.thermal`.
 `applicationId` è `io.github.nik2208.fotoflash`. La build di debug ha il suffisso `.debug`, così convive con la release.
@@ -50,16 +55,24 @@ CameraX / Photo Picker ──► Bitmap orientate ──► CaptureSession ─�
                               RenderedPrint(bitImage, preview) ──► anteprima WYSIWYG
                                    │
                                    ▼ PrintCoordinator.printAndRecord()
-                 PrinterManager ── ThermalJob.build() (core) ── BtSppTransport (blocchi + pause)
-                                   │
+                 PrinterManager ── PrinterDrivers.byId(settings.printerDriver) (core)
+                                   │  driver.encode(bitImage, DriverOptions) → pacchetti
+                                   │  (escpos-*: ThermalJob.build · phomemo-*: PhomemoEncoder)
+                                   ├─ printerLink = CLASSIC ─► BtSppTransport (blocchi + pause delle impostazioni)
+                                   ├─ printerLink = BLE ─────► BleGattTransport (TransportHints del driver,
+                                   │                           sovrascritte dalla calibrazione BLE)
                                    ▼
                       HistoryRepository (PNG 1 bit + JPEG originali + JSON)
 ```
 
+La carta (`AppSettings.paper`) **discende dal driver**: `escpos-58` → `MM58`, `escpos-80` → `MM80`,
+`phomemo-m02` → `MM58`, `phomemo-m02pro` → `M02PRO`. L'impaginazione lavora in punti, quindi
+`TemplateGeometry` e `PrintRenderer` non sanno quale stampante c'è dall'altra parte.
+
 ## Contratti `:core-thermal`
 
 Due file sono già presenti e congelati:
-- `Model.kt`, con i tipi condivisi: `PaperWidth`, `DitherAlgorithm`, `ToneAdjustments`, `TemplateKind`, `TemplateTexts`, `Rect`, `TextAlign`, `FontRole`, `TextRole`, `TextBlock`, `Decoration`, `TemplateLayout`, `PrintJobOptions`, `HeatSettings`;
+- `Model.kt`, con i tipi condivisi: `PaperWidth` (`MM58`, `MM80` e `M02PRO(53, 576, 300)`, con il campo `dpi`), `PrinterLink` (`CLASSIC`, `BLE`), `DitherAlgorithm`, `ToneAdjustments`, `TemplateKind`, `TemplateTexts`, `Rect`, `TextAlign`, `FontRole`, `TextRole`, `TextBlock`, `Decoration`, `TemplateLayout`, `PrintJobOptions`, `HeatSettings`;
 - `BitImage.kt`: si possono aggiungere estensioni in altri file, ma non cambiare l'API esistente.
 
 ```kotlin
@@ -116,14 +129,41 @@ object EscPosRaster { fun band(image: BitImage, fromRow: Int, rows: Int): ByteAr
 // ThermalJob.kt — pacchetti in ordine di invio: [ESC @ (+ ESC 7)], una banda per pacchetto, [avanzamento (+ taglio)]
 object ThermalJob { fun build(image: BitImage, options: PrintJobOptions): List<ByteArray> }
 
-// TemplateGeometry.kt — tutto in punti; si adatta alla larghezza della carta (384 o 576)
+// TemplateGeometry.kt — tutto in punti; si adatta alla larghezza della carta (384 punti, oppure 576 per MM80 e M02PRO)
 object TemplateGeometry {
     fun layout(kind: TemplateKind, paper: PaperWidth, photoCount: Int, texts: TemplateTexts): TemplateLayout
     fun photoCount(kind: TemplateKind, requested: Int): Int   // foto usate davvero: STRIP 1..4, gli altri 1
     fun printNumberText(number: Int): String                  // "N. 0042" (l app lo sostituisce con il testo localizzato)
     const val BRAND_TEXT = "FOTOFLASH"
 }
+
+// Drivers.kt — interfaccia e driver di stampa: firme complete in docs/DRIVERS.md (§ Interfaccia comune)
+interface PrinterDriver { /* id, paper, dpi, links, bleProfiles, defaultDither, defaultTransport, encode(), testPage() */ }
+object PrinterDrivers { val all: List<PrinterDriver>; fun byId(id: String?): PrinterDriver; fun guess(name: String?): PrinterDriver? }
 ```
+
+Aggiunta compatibile al contratto di `docs/DRIVERS.md`: `DriverOptions` ha anche `densityOverride: Int?`
+(densità Phomemo 1..15, vince su `heatLevel`) e `widthBytes: Int?` (72 o 78 per la M02 Pro). Le riempie
+`PrinterTuning.driverOptions(settings)`, che `PrinterManager` usa per ogni lavoro e per la pagina di
+prova, da `phomemoDensity` e `phomemoWidthBytes`. Entrambi valgono `null` per default, e ogni driver
+ignora le opzioni che non usa. Sul web gli stessi due campi si chiamano `density` e `widthBytes`
+(`docs/WEB.md`).
+
+Altre aggiunte compatibili in `Drivers.kt`, elencate anche nel suo commento di testa:
+- `PrinterDrivers.DEFAULT_ID`, `ids`, `bleServices` (i servizi di tutti i profili, per i filtri della
+  ricerca BLE) e `isUnsupported(name)`, vero per la M02X: riconosciuta, ma senza driver;
+- `EscPosDriver.heatFor(level)`, la tabella `ESC 7` dell'intensità: è la fonte unica, e
+  `PrinterTuning.heatFor` dell'app vi delega;
+- `BleProfiles` (profili GATT noti) e `PhomemoEncoder`, il protocollo Phomemo scritto una volta sola;
+- `PrinterDriver.rasterWidth(options)`, `testPageImage(options, labels)`, `encodeTestPage(options, labels)`
+  e `TestPageLabels`: la pagina di prova raster, con testi che l'app può localizzare;
+- `BitmapFont.kt` (`object BitmapFont`): font bitmap 5×7 per l'ASCII stampabile, con cui la pagina di
+  prova raster disegna i testi punto per punto. Accenti e caratteri fuori dall'ASCII vengono ricondotti
+  (`normalize`). Il gemello sul web è `web/src/core/bitmapfont.js`.
+
+I byte dei driver sono verificati due volte: dai test JVM (`DriversTest`) e dal confronto con i
+vettori della PWA (`DriversGoldenTest` legge `web/tests/fixtures/drivers-golden.json`). Se un byte
+non coincide, è sbagliato un porting: il file golden non si ritocca a mano.
 
 ## Contratti `:app`
 
@@ -133,8 +173,8 @@ I ViewModel si creano con `viewModel { XViewModel(graph) }` e si osservano con
 `collectAsStateWithLifecycle()`.
 
 I tipi condivisi sono già scritti e non vanno modificati senza aggiornare tutti i chiamanti:
-- `model/AppSettings.kt`;
-- `model/Printing.kt`: `PrinterDevice`, `PrinterState`, `PrintFailure`, `PrintOutcome`, `PrintRequest`, `RenderedPrint`, `CaptureSource`, `HistoryEntry`;
+- `model/AppSettings.kt`, con i campi dei driver: `printerDriver`, `printerLink`, `bleChunkSize`, `bleChunkDelayMs`, `bleWithoutResponse`, `phomemoDensity`, `phomemoWidthBytes`, `printerSpeed` (significato in `docs/DRIVERS.md`, § Impostazioni nuove);
+- `model/Printing.kt`: `PrinterDevice(name, address, link = CLASSIC)`, `PrinterState`, `PrintFailure`, `PrintOutcome`, `PrintRequest`, `RenderedPrint`, `CaptureSource`, `HistoryEntry`;
 - `model/CaptureSession.kt`.
 
 ```kotlin
@@ -167,20 +207,46 @@ class PrinterManager(context: Context, settings: SettingsRepository, scope: Coro
     fun hasBluetoothPermission(): Boolean
     fun isBluetoothAvailable(): Boolean
     fun isBluetoothEnabled(): Boolean
-    fun bondedPrinters(): List<PrinterDevice>   // vuota senza permesso
-    suspend fun select(device: PrinterDevice)
+    fun bondedPrinters(): List<PrinterDevice>   // accoppiate in SPP (link = CLASSIC); vuota senza permesso
+    suspend fun select(device: PrinterDevice, driverId: String? = null)  // null → guess(name); vedi § Note sui contratti
     suspend fun forget()
     suspend fun print(image: BitImage, copies: Int = 1): PrintOutcome
-    suspend fun printTestPage(): PrintOutcome
+    suspend fun printTestPage(): PrintOutcome   // escpos-*: TestPage testuale; phomemo-*: driver.encodeTestPage(options, labels)
+                                                // raster, con testi localizzati
     suspend fun disconnect()
+    // Aggiunte dei driver (firme e commenti in docs/DRIVERS.md, § Contratti aggiuntivi dell'app Android):
+    // discovered, scanning, scanPermissions(), isLocationNeededForScan(), startBleScan(), stopBleScan(),
+    // currentDriver(), setDriver(driverId)
+    // Aggiunte compatibili, per le schermate:
+    val selectedDriver: StateFlow<PrinterDriver>    // il driver corrente, osservabile (currentDriver() ne è la lettura)
+    val scanIssue: StateFlow<BleScanIssue?>         // perché la ricerca BLE non parte o si è fermata; null = nessun problema
+    fun hasScanPermission(): Boolean
+    fun isLocationEnabled(): Boolean                // conta solo dove isLocationNeededForScan()
 }
-// printer/PrinterTransport.kt
+// printer/BleScanner.kt
+enum class BleScanIssue { UNAVAILABLE, NO_PERMISSION, BLUETOOTH_OFF, LOCATION_OFF, FAILED }
+
+// printer/PrinterTuning.kt — limiti e conversioni impostazioni → driver, condivisi da schermate e PrinterManager
+object PrinterTuning {
+    fun driverOptions(s: AppSettings): DriverOptions                      // opzioni del lavoro, nei limiti della schermata
+    fun bleHints(driver: PrinterDriver, s: AppSettings): TransportHints   // TransportHints del driver + bleChunkSize/…
+    enum class BlePreset(val chunkSize: Int?, val chunkDelayMs: Int?, val withoutResponse: Boolean?) {
+        DRIVER /* null, null, null */, SAFE /* 20, 15, true */, FAST /* 60, 20, true */,
+        MAX /* 128, 20, true */, CONFIRMED /* 100, 0, false */
+    }                                                                     // preset di invio BLE della schermata
+    fun blePresetOf(s: AppSettings): BlePreset?                           // null = valori personalizzati
+}
+// printer/PrinterTransport.kt — due implementazioni: BtSppTransport (SPP) e BleGattTransport (BLE GATT)
 interface PrinterTransport {
     val isConnected: Boolean
     suspend fun connect(address: String, timeoutMs: Long)
     suspend fun write(bytes: ByteArray)
+    // aggiunta compatibile, con implementazione predefinita: onProgress riceve i byte di ogni pezzo accettato
+    suspend fun write(bytes: ByteArray, onProgress: ((Int) -> Unit)?)
     suspend fun close()
 }
+// errori: PrinterTransportException (sealed) e sottoclassi, tra cui BleNoChannelException(address, services)
+// quando la stampante BLE non espone un canale di scrittura noto
 
 // print/BitmapBridge.kt — conversioni condivise (le usa anche la fotocamera)
 fun Bitmap.toGrayImage(): GrayImage
@@ -285,6 +351,7 @@ Risorse del brand:
 - Icone: `androidx.compose.material.icons.Icons.Rounded.*` (material-icons-extended); per le
   frecce, `Icons.AutoMirrored.Rounded.ArrowBack`.
 - Il lavoro pesante (rendering, I/O, Bluetooth) non va mai sul main thread: usare `withContext(Dispatchers.Default/IO)`.
+- **Bluetooth LE**: su API 33+ `writeCharacteristic(characteristic, value, writeType)`, che restituisce un codice di stato; sotto, `setValue` + `writeType` + `writeCharacteristic(characteristic)`, annotati `@Suppress("DEPRECATION")`. Una scrittura GATT alla volta: la successiva parte dopo `onCharacteristicWrite`. Le chiamate che richiedono `BLUETOOTH_CONNECT`/`BLUETOOTH_SCAN` gestiscono `SecurityException`.
 - Nessun testo visibile all'utente scritto nel codice: sempre `stringResource(R.string.…)`.
 - Gli errori non si inghiottono: si gestiscono, oppure risalgono come `PrintOutcome.Failure` con un messaggio utile.
 - Commenti in italiano, brevi, sul *perché*.
@@ -297,3 +364,12 @@ Risorse del brand:
 - **Ristampa dallo storico.** Passa da `PrinterManager.print` + `HistoryRepository.markPrinted` senza `PrintCoordinator`, perché il `BitImage` è già pronto: non si ricompone né si consuma un nuovo numero.
 - **Componenti in più, non elencati sopra.** `HalftoneBurst(color, modifier, spacing)` in `ui/components/Motifs.kt`, motivo decorativo a puntini. `ThermalImage` applica `fillMaxWidth().aspectRatio(...)` dopo il modifier del chiamante: per ritagliare una miniatura, avvolgerla in un contenitore.
 - **Aggiunte compatibili nel core.** `GrayImage.histogram()/mean()`, `BitImage.copy()/countBlack()`, `EscPosBuilder.append(ByteArray)`, `ThermalJob.totalBytes(packets)`.
+- **576 punti non vuol dire sempre 80 mm.** Con `PaperWidth.M02PRO` anche la carta da 53 mm della Phomemo M02 Pro ha 576 punti, a 300 dpi. Ogni conversione punti → millimetri (messaggi «carta troppo stretta», storico, ristampa) parte dal driver corrente (`PrinterManager.currentDriver().paper`), non dalla sola larghezza in punti.
+- **Driver proposto dal nome.** `select(device, driverId = null)` usa `PrinterDrivers.guess(name)`.
+  Quando `guess` dà `null` (nome che non dice nulla, oppure M02X) resta il driver in uso se è ESC/POS,
+  così chi aveva scelto la 80 mm la ritrova; altrimenti si passa a `escpos-58`. È il ripiego di
+  `docs/DRIVERS.md` (`guess(name) ?: escpos-58`) con questa sola eccezione. Riscegliere la stessa
+  stampante (stesso indirizzo e collegamento) non tocca il driver, così una scelta fatta a mano resta.
+  Ogni cambio di driver riporta ai predefiniti `bleChunkSize`, `bleChunkDelayMs` e `bleWithoutResponse`,
+  perché erano tarati sul driver precedente.
+- **Due trasporti, una sola logica.** Mutex, chiusura per inattività, riconnessione automatica e stati di `PrinterManager` valgono per SPP e per BLE. Cambia solo come si spezzano i byte: in SPP blocchi e pause delle impostazioni (`chunkSize`, `chunkDelayMs`), in BLE le `TransportHints` del driver, sovrascritte da `bleChunkSize`, `bleChunkDelayMs` e `bleWithoutResponse` quando non sono `null`.

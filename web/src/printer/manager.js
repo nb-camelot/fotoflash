@@ -3,12 +3,23 @@
 // tenuto aperto tra stampe vicine e chiuso dopo 45 s di inattivita, errori tradotti in failure
 // con un messaggio per l'utente (message) e la causa tecnica (detail).
 // La stampante ricordata non viene mai dimenticata da sola: solo forget() la toglie.
+//
+// Driver (docs/DRIVERS.md): il lavoro lo codifica il driver di settings.printerDriver (encode) e
+// lo spedisce Ble.print con il trasporto del driver, sovrascritto da bleChunkSize/bleChunkDelayMs/
+// bleWithoutResponse; per l'ESC/POS senza valori dell'utente resta la strategia automatica del
+// bridge. Dopo un abbinamento guessDriver(nome) sceglie il driver, se l'utente non l'ha scelto a mano.
+//
+// Gesto utente: Chrome apre il chooser di Web Bluetooth solo dentro la finestra di un tocco.
+// Quando serve un abbinamento, print/printTestPage/reconnect chiamano ble.pair() SUBITO, prima di
+// qualsiasi await; il percorso silenzioso (reconnect di ble.js, che puo attendere l'annuncio per
+// 8 s) non apre mai il chooser dopo: se fallisce, lo stato dice NO_PRINTER con action 'pair'.
 
 import { Ble, errorCode, CONNECT_TIMEOUT_MS } from './ble.js';
-import { buildTestPage } from './testpage.js';
+import { buildTestPage, rasterTestPageTexts } from './testpage.js';
 import { PaperWidth } from '../core/model.js';
-import { centeredOn } from '../core/bitimage.js';
-import { buildThermalJob, concatPackets, resync } from '../core/escpos.js';
+import { concatPackets, resync } from '../core/escpos.js';
+import { DRIVER_IDS, driverById, guessDriver, unsupportedModel } from './drivers/index.js';
+import { heatFor as escposHeatFor } from './drivers/escpos.js';
 import { t } from '../i18n/i18n.js';
 
 // ------------------------------------------------------------------ taratura (PrinterTuning.kt)
@@ -47,11 +58,26 @@ export const PrinterTuning = Object.freeze({
   DRAIN_MAX_MS: 4000,
   /** Chiavi i18n dei livelli di intensita 0..4 (impostazioni e pagina di prova). */
   HEAT_LEVEL_KEYS: Object.freeze(['prn_heat_level_0', 'prn_heat_level_1', 'prn_heat_level_2', 'prn_heat_level_3', 'prn_heat_level_4']),
+  /** Invio BLE: 20 byte = carico utile con l'MTU minimo, 512 = massimo di una scrittura GATT. */
+  BLE_CHUNK_MIN: 20,
+  BLE_CHUNK_MAX: 512,
+  BLE_DELAY_MIN: 0,
+  BLE_DELAY_MAX: 100,
+  /** Phomemo: densita del comando 1F 11 02 dd. */
+  PHOMEMO_DENSITY_MIN: 1,
+  PHOMEMO_DENSITY_MAX: 15,
+  /** Velocita sperimentale (1B 4E 0D ss, comando delle M110 non verificato sulla M02 Pro). */
+  SPEED_MIN: 1,
+  SPEED_MAX: 5,
 
   clampHeatLevel(value) { return clamp(value, 0, 4, 0); },
   clampFeedLines(value) { return clamp(value, 0, 10, 4); },
   clampBandHeight(value) { return clamp(value, 8, 255, 24); },
   clampCopies(value) { return clamp(value, 1, 10, 1); },
+  clampBleChunk(value) { return clamp(value, 20, 512, 20); },
+  clampBleDelay(value) { return clamp(value, 0, 100, 15); },
+  clampPhomemoDensity(value) { return clamp(value, 1, 15, 4); },
+  clampSpeed(value) { return clamp(value, 1, 5, 3); },
 
   /**
    * Livello di intensita (0..4) → ESC 7. 0 = non inviare nulla e lasciare il default della
@@ -59,13 +85,8 @@ export const PrinterTuning = Object.freeze({
    * riscaldamento, che e cio che scurisce i punti.
    */
   heatFor(level) {
-    switch (clamp(level, 0, 4, 0)) {
-      case 1: return { maxDots: 7, heatTime: 60, heatInterval: 2 };
-      case 2: return { maxDots: 8, heatTime: 80, heatInterval: 2 };
-      case 3: return { maxDots: 10, heatTime: 110, heatInterval: 2 };
-      case 4: return { maxDots: 11, heatTime: 140, heatInterval: 2 };
-      default: return null;
-    }
+    // Una tabella sola, quella del driver ESC/POS.
+    return escposHeatFor(clamp(level, 0, 4, 0));
   },
 
   /** Attesa prima di chiudere dopo un lavoro di [bytes] byte: chiudere subito puo troncare la coda. */
@@ -90,10 +111,73 @@ export const PrinterTuning = Object.freeze({
   }
 });
 
-/** Carta delle impostazioni ('MM58' | 'MM80'), con 58 mm se il valore non e valido. */
+/**
+ * Driver delle impostazioni (settings.printerDriver). Impostazioni senza driver (salvate prima dei
+ * driver) → quello della carta: MM80 → escpos-80, M02PRO → phomemo-m02pro, altrimenti escpos-58.
+ */
+export function driverFor(settings) {
+  const s = settings || {};
+  if (DRIVER_IDS.includes(s.printerDriver)) return driverById(s.printerDriver);
+  if (s.paper === 'MM80') return driverById('escpos-80');
+  if (s.paper === 'M02PRO') return driverById('phomemo-m02pro');
+  return driverById('escpos-58');
+}
+
+/** Carta del driver delle impostazioni ({ mm, dots, dpi }), con 58 mm se non e valida. */
 export function paperFor(settings) {
-  const key = settings && settings.paper;
-  return typeof key === 'string' && Object.prototype.hasOwnProperty.call(PaperWidth, key) ? PaperWidth[key] : PaperWidth.MM58;
+  const key = driverFor(settings).paper;
+  return Object.prototype.hasOwnProperty.call(PaperWidth, key) ? PaperWidth[key] : PaperWidth.MM58;
+}
+
+/** Calibrazione BLE ai predefiniti del driver (null = TransportHints del driver o strategia automatica). */
+const BLE_TUNING_DEFAULTS = Object.freeze({ bleChunkSize: null, bleChunkDelayMs: null, bleWithoutResponse: null });
+
+function nullableInt(value) {
+  if (value === null || value === undefined || value === '') return null;
+  const n = Number(value);
+  return Number.isFinite(n) ? Math.trunc(n) : null;
+}
+
+/**
+ * DriverOptions dalle impostazioni, con i limiti di PrinterTuning (come PrinterTuning.driverOptions
+ * più densità e larghezza Phomemo). null = predefinito del driver (densità da heatLevel, 72 byte,
+ * velocità non inviata).
+ */
+export function driverOptionsFor(settings) {
+  const s = settings || {};
+  const speed = nullableInt(s.printerSpeed);
+  const density = nullableInt(s.phomemoDensity);
+  return {
+    feedLines: PrinterTuning.clampFeedLines(s.feedLines),
+    cut: s.cutPaper === true,
+    heatLevel: PrinterTuning.clampHeatLevel(s.heatLevel),
+    bandHeight: PrinterTuning.clampBandHeight(s.bandHeight),
+    speed: speed === null ? null : PrinterTuning.clampSpeed(speed),
+    widthBytes: nullableInt(s.phomemoWidthBytes),
+    density: density === null ? null : PrinterTuning.clampPhomemoDensity(density)
+  };
+}
+
+/**
+ * Trasporto BLE del lavoro per Ble.print, come PrinterTuning.bleHints: TransportHints del driver
+ * sovrascritti da bleChunkSize, bleChunkDelayMs e bleWithoutResponse (nei limiti BLE di
+ * PrinterTuning). null = strategia automatica di ble.js, che resta quella del driver ESC/POS
+ * (provata sulla stampante vera) finché l'utente non sceglie valori suoi.
+ * → { chunkSize, chunkDelayMs, withoutResponse, finalDelayMs } | null
+ */
+export function transportFor(settings, driver = driverFor(settings)) {
+  const s = settings || {};
+  const base = driver.defaultTransport;
+  const chunk = nullableInt(s.bleChunkSize);
+  const pause = nullableInt(s.bleChunkDelayMs);
+  const noResponse = typeof s.bleWithoutResponse === 'boolean' ? s.bleWithoutResponse : null;
+  if (base.auto && chunk === null && pause === null && noResponse === null) return null;
+  return {
+    chunkSize: PrinterTuning.clampBleChunk(chunk === null ? base.chunkSize : chunk),
+    chunkDelayMs: PrinterTuning.clampBleDelay(pause === null ? base.chunkDelayMs : pause),
+    withoutResponse: noResponse === null ? base.withoutResponse : noResponse,
+    finalDelayMs: base.finalDelayMs
+  };
 }
 
 /** Opzioni di buildThermalJob dalle impostazioni, con i limiti di PrinterTuning. */
@@ -107,12 +191,13 @@ export function jobOptionsFor(settings) {
   };
 }
 
-/** Byte di una copia del lavoro: ESC @ (+ ESC 7), bande GS v 0, avanzamento (+ taglio). */
+/**
+ * Byte di una copia del lavoro, codificati dal driver delle impostazioni (ESC/POS: ESC @ (+ ESC 7),
+ * bande GS v 0, avanzamento (+ taglio); Phomemo: vedi drivers/phomemo.js). Un'immagine composta
+ * per carta piu stretta viene centrata dal driver.
+ */
 export function buildJobBytes(bitImage, settings) {
-  const dots = paperFor(settings).dots;
-  // Composta per carta piu stretta: la si centra invece di lasciarla attaccata a sinistra.
-  const fitted = bitImage.width < dots ? centeredOn(bitImage, dots) : bitImage;
-  return concatPackets(buildThermalJob(fitted, jobOptionsFor(settings)));
+  return concatPackets(driverFor(settings).encode(bitImage, driverOptionsFor(settings)));
 }
 
 // ------------------------------------------------------------------ errori → failure
@@ -132,6 +217,11 @@ export function technicalMessage(e) {
 
 function printerName(name) {
   return name || t('prn_unknown_printer');
+}
+
+// Cosa puo fare l'utente per uscire da un errore: con NO_PRINTER serve un abbinamento (un tocco).
+function actionFor(failure) {
+  return failure === 'NO_PRINTER' ? 'pair' : null;
 }
 
 function result(failure, message, detail) {
@@ -227,11 +317,18 @@ function sameState(a, b) {
  * Stato (get state, subscribe):
  * { kind: 'unsupported'|'not-paired'|'disconnected'|'connecting'|'ready'|'printing'|'error',
  *   name, progress (0..1), failure, message (per l'utente), detail (causa tecnica),
+ *   action ('pair' con NO_PRINTER: serve un tocco su «Abbina», altrimenti null),
  *   paired (dispositivo usabile in questa pagina), remembered (stampante salvata),
- *   connected, profile, writeMode, chunk }
+ *   connected, profile, writeMode, chunk,
+ *   driver (id del driver corrente), unsupported ('phomemo-m02x' se la stampante e un modello
+ *   riconosciuto ma non supportato, altrimenti null) }
  * 'not-paired' con remembered = stampante salvata, ma serve un tocco (pair) per riaverla;
  * 'disconnected' = la stampa si ricollega da sola. Durante un lavoro: 'connecting' finche non
  * parte il primo pezzo, poi 'printing' con progress.
+ *
+ * Driver (come PrinterManager.kt): currentDriver(), setDriver(id) (allinea la carta e, se il
+ * retino era il predefinito del driver precedente, passa a quello del nuovo; cambiando famiglia,
+ * ESC/POS ↔ Phomemo, la calibrazione BLE torna ai predefiniti del driver).
  *
  * options (per i test): { idleDisconnectMs, navigator(), setTimeout, clearTimeout, now() }.
  */
@@ -263,6 +360,32 @@ export class PrinterManager {
     this._bleStatus = null;
 
     this._offBle = ble.on((info) => this._onBle(info));
+    // Il driver puo cambiare anche dalle impostazioni: canale preferito e stato lo seguono.
+    this._offSettings = typeof settings.subscribe === 'function'
+      ? settings.subscribe(() => { this._preferDriverProfiles(); this._emit(); })
+      : null;
+    this._preferDriverProfiles();
+  }
+
+  /** Driver corrente (dalle impostazioni). */
+  currentDriver() {
+    return driverFor(this.settings.get());
+  }
+
+  /**
+   * Cambia driver: id di drivers/index.js. Allinea la carta al driver e, se il retino corrente e
+   * il predefinito del driver precedente, propone quello del nuovo (Floyd-Steinberg per le
+   * Phomemo). Cambiando famiglia (ESC/POS ↔ Phomemo) bleChunkSize, bleChunkDelayMs e
+   * bleWithoutResponse tornano a null: erano tarati sull'altra stampante.
+   * opts.manual (default true): scelta dell'utente, che il riconoscimento dal nome dopo
+   * un abbinamento non tocca piu (finche non si abbina un'altra stampante). → driver
+   */
+  setDriver(driverId, { manual = true } = {}) {
+    if (!DRIVER_IDS.includes(driverId)) throw new RangeError(`unknown printer driver: ${String(driverId)}`);
+    if (manual && typeof this.ble.setManualDriver === 'function') {
+      try { this.ble.setManualDriver(driverId); } catch (e) { /* senza localStorage la scelta vale per questa pagina */ }
+    }
+    return this._applyDriver(driverId);
   }
 
   /** Stato attuale (oggetto nuovo, da non modificare). */
@@ -297,6 +420,7 @@ export class PrinterManager {
     this._emit();
     return Promise.resolve(pending).then(() => {
       this._silentFailed = false;
+      this._afterPair();
       this._scheduleIdle();
       this._emit();
       return this.state;
@@ -308,8 +432,10 @@ export class PrinterManager {
   }
 
   /**
-   * Ricollega senza chooser quando si puo (stampante della pagina o getDevices); chiamata dentro
-   * un tocco riapre il chooser filtrato sulla stampante ricordata. Non rifiuta mai.
+   * Ricollega senza chooser quando si puo (stampante della pagina o getDevices). Chiamata dentro
+   * un tocco quando il percorso silenzioso non c'e (o e gia fallito), apre SUBITO il chooser
+   * filtrato sulla stampante ricordata; se il percorso silenzioso fallisce dentro un tocco, lo
+   * stato dice NO_PRINTER (action 'pair') invece di aprire il chooser fuori tempo. Non rifiuta mai.
    * → Promise<boolean> (true = pronta)
    */
   reconnect() {
@@ -334,11 +460,26 @@ export class PrinterManager {
     return this._runJob((s) => this._tooWide(bitImage, s) || buildJobBytes(bitImage, s), { copies, onProgress });
   }
 
-  /** Pagina di calibrazione (come TestPage.kt) con le impostazioni correnti. Stesso esito di print(). */
+  /**
+   * Pagina di calibrazione con le impostazioni correnti: ESC/POS → quella testuale di testpage.js
+   * (come TestPage.kt); Phomemo → driver.testPage, a raster. Stesso esito di print().
+   */
   async printTestPage({ onProgress } = {}) {
     return this._runJob((s) => {
       const info = this.ble.info();
-      return buildTestPage(paperFor(s), s, { printerName: info.name, writeMode: info.writeMode, transfer: info.transfer });
+      const driver = driverFor(s);
+      const hints = transportFor(s, driver);
+      // Con il trasporto del driver o dell'utente la pagina dice quello, non il piano automatico.
+      const transfer = hints
+        ? { mode: 'custom', withResponse: !hints.withoutResponse, chunk: hints.chunkSize, pause: hints.chunkDelayMs }
+        : info.transfer;
+      const writeMode = hints ? 'custom' : info.writeMode;
+      if (driver.family === 'escpos') {
+        return buildTestPage(paperFor(s), s, { printerName: info.name, writeMode, transfer });
+      }
+      const options = driverOptionsFor(s);
+      const texts = rasterTestPageTexts(driver, s, { printerName: info.name, writeMode, transfer, options });
+      return concatPackets(driver.testPage({ ...options, ...texts }));
     }, { copies: 1, onProgress, connectFirst: true });
   }
 
@@ -381,23 +522,105 @@ export class PrinterManager {
     this._cancelIdle();
     if (this._offBle) this._offBle();
     this._offBle = null;
+    if (this._offSettings) this._offSettings();
+    this._offSettings = null;
     this._listeners.clear();
+  }
+
+  // ---------------------------------------------------------------- driver
+
+  _patchSettings(patch) {
+    const s = this.settings;
+    if (typeof s.update === 'function') s.update(patch);
+    else if (typeof s.set === 'function') s.set(patch);
+  }
+
+  _preferDriverProfiles() {
+    if (typeof this.ble.preferProfiles !== 'function') return;
+    try { this.ble.preferProfiles(this.currentDriver().bleProfiles); } catch (e) { /* ble.js finto o vecchio */ }
+  }
+
+  _applyDriver(driverId) {
+    const before = this.settings.get() || {};
+    const previous = driverFor(before);
+    const next = driverById(driverId);
+    const patch = { printerDriver: next.id, paper: next.paper };
+    if (previous.id !== next.id) {
+      // Retino: si propone quello del driver solo se l'utente non ne aveva scelto uno diverso.
+      if (before.dither === previous.defaultDither) patch.dither = next.defaultDither;
+      // Invio BLE tarato sull'altra famiglia: torna ai predefiniti del driver (stessa regola di
+      // selectDriver nella UI). Serve anche qui perche il driver cambia pure dopo un abbinamento
+      // dentro print/printTestPage, senza passare dalla UI: un preset Phomemo da 128 byte senza
+      // conferma toglierebbe all'ESC/POS la strategia automatica del bridge.
+      if (previous.family !== next.family) Object.assign(patch, BLE_TUNING_DEFAULTS);
+    }
+    this._patchSettings(patch);
+    this._preferDriverProfiles();
+    this._emit();
+    return next;
+  }
+
+  // Dopo un abbinamento: il driver si riconosce dal nome, se l'utente non l'ha scelto a mano per
+  // questa stampante. Un nome sconosciuto (o la M02X, non supportata) lascia il driver com'e.
+  _afterPair() {
+    const ble = this.ble;
+    let manual = null;
+    try { manual = typeof ble.manualDriver === 'function' ? ble.manualDriver() : null; } catch (e) { manual = null; }
+    if (manual && DRIVER_IDS.includes(manual)) {
+      if (manual !== this.currentDriver().id) this._applyDriver(manual);
+      return;
+    }
+    const guessed = guessDriver(ble.info().name);
+    const current = this.currentDriver();
+    // Stessa regola di PrinterManager.select su Android: il nome non distingue una ESC/POS da 58 mm da
+    // una da 80, quindi tra ESC/POS resta la scelta dell'utente; un nome sconosciuto (o la M02X) lascia
+    // una ESC/POS com'è e riporta un Phomemo alla 58 mm.
+    if (!guessed) {
+      if (current.family !== 'escpos') this._applyDriver('escpos-58');
+      return;
+    }
+    if (guessed.id === current.id) return;
+    if (guessed.family === 'escpos' && current.family === 'escpos') return;
+    this._applyDriver(guessed.id);
   }
 
   // ---------------------------------------------------------------- lavori
 
   _tooWide(bitImage, s) {
-    const paper = paperFor(s);
-    if (!bitImage || !(bitImage.width > paper.dots)) return null;
-    // Il messaggio dice per quale carta era stata composta.
-    const fits = Object.values(PaperWidth).filter((p) => p.dots >= bitImage.width).sort((a, b) => a.dots - b.dots)[0];
-    const widest = Object.values(PaperWidth).sort((a, b) => b.dots - a.dots)[0];
+    const driver = driverFor(s);
+    const dots = driver.rasterShape(driverOptionsFor(s)).dots;
+    if (!bitImage || !(bitImage.width > dots)) return null;
+    // Il messaggio dice per quale carta era stata composta. 576 punti possono essere la 80 mm o
+    // la M02 Pro: tra le due si nomina la 80 mm, l'unica piu larga di una stampante da 384 punti.
+    const papers = [PaperWidth.MM58, PaperWidth.MM80];
+    const fits = papers.filter((p) => p.dots >= bitImage.width).sort((a, b) => a.dots - b.dots)[0];
     return {
       ok: false,
       failure: 'RENDER_FAILED',
-      message: t('prn_err_too_wide', (fits || widest).mm),
-      detail: `image ${bitImage.width} dots, paper ${paper.dots} dots`
+      message: t('prn_err_too_wide', (fits || PaperWidth.MM80).mm),
+      detail: `image ${bitImage.width} dots, ${driver.id} ${dots} dots`
     };
+  }
+
+  /**
+   * Abbinamento dentro il gesto: se la stampante ricordata non e in questa pagina e il percorso
+   * silenzioso non c'e (o e gia fallito), apre ORA il chooser filtrato sul suo nome. Va chiamata
+   * prima di qualsiasi await. → Promise (da attendere) oppure null se non serve o non si puo.
+   */
+  _pairInGesture() {
+    const ble = this.ble;
+    const info = ble.info();
+    if (info.paired || !info.remembered || !this._userActive()) return null;
+    if (ble.canRemember() && !this._silentFailed) return null;
+    let pending;
+    try {
+      pending = Promise.resolve(ble.pair({ sameName: true }));
+    } catch (e) {
+      pending = Promise.reject(e);
+    }
+    // Rifiuto gestito da chi la attende; questo evita l'avviso di promessa non gestita nel frattempo.
+    pending.catch(() => {});
+    return pending;
   }
 
   async _runJob(build, { copies = 1, onProgress, connectFirst = false } = {}) {
@@ -407,6 +630,8 @@ export class PrinterManager {
     }
     // Lo stato non cambia: sta gia mostrando il lavoro in corso.
     if (this._busy) return { ok: false, failure: 'BUSY', message: t('prn_err_busy'), detail: '' };
+    // Prima di qualsiasi await: il chooser richiede la finestra del gesto.
+    const pairing = this._pairInGesture();
     this._busy = true;
     let release;
     this._job = new Promise((resolve) => { release = resolve; });
@@ -424,6 +649,12 @@ export class PrinterManager {
     });
     this._emit();
     try {
+      if (pairing) {
+        // Chooser gia aperto nel gesto: un rifiuto (anche l'annullamento) e l'esito del lavoro.
+        await pairing;
+        this._silentFailed = false;
+        this._afterPair();
+      }
       // Una chiusura in corso (svuotamento del buffer) finisce prima di riaprire.
       if (this._closing) await this._closing;
 
@@ -448,6 +679,8 @@ export class PrinterManager {
       // Dopo un invio interrotto la stampante puo essere dentro un GS v 0 aperto: i NUL lo chiudono.
       const bytes = prepend(this._resync, repeatBytes(one, PrinterTuning.clampCopies(copies)));
       const total = bytes.length;
+      // Trasporto del driver (o dell'utente); null = strategia automatica di ble.js.
+      const transport = transportFor(s);
       const t0 = this._now();
       let shownPercent = -1;
       let retried = false;
@@ -455,6 +688,7 @@ export class PrinterManager {
         sent = 0;
         try {
           await ble.print(bytes, {
+            ...(transport || {}),
             onProgress: (done, all) => {
               sent = done;
               const fraction = all > 0 ? Math.min(1, done / all) : 1;
@@ -491,8 +725,9 @@ export class PrinterManager {
     } catch (e) {
       console.warn('[fotoflash] stampa fallita', e);
       if (phase === 'write' && sent > 0) {
-        const bpr = Math.ceil(paperFor(s).dots / 8);
-        this._resync = resync(bpr, PrinterTuning.clampBandHeight(s.bandHeight));
+        // NUL quanti ne servono a chiudere la banda (o il blocco Phomemo da 255 righe) piu lunga.
+        const shape = driverFor(s).rasterShape(driverOptionsFor(s));
+        this._resync = resync(shape.bytesPerRow, shape.bandRows);
       }
       return this._fail(await this._failureAfter(e, phase));
     } finally {
@@ -507,7 +742,12 @@ export class PrinterManager {
     }
   }
 
-  // Stampante usabile in questa pagina: null se c'e, altrimenti { failure, message, detail }.
+  /**
+   * Stampante usabile in questa pagina, solo per la via silenziosa (getDevices + annuncio): null se
+   * c'e, altrimenti NO_PRINTER. Mai il chooser qui: dopo un'attesa il gesto e scaduto, e
+   * l'abbinamento l'ha gia chiesto _pairInGesture() quando serviva. Il prossimo tocco, con
+   * _silentFailed, apre il chooser subito.
+   */
   async _ensureDevice() {
     const ble = this.ble;
     let info = ble.info();
@@ -517,12 +757,6 @@ export class PrinterManager {
       this._silentFailed = true;
     }
     info = ble.info();
-    if (info.remembered && this._userActive()) {
-      // Dentro un tocco: un solo passo nel chooser, filtrato sulla stampante ricordata.
-      await ble.pair({ sameName: true });
-      this._silentFailed = false;
-      return null;
-    }
     return info.remembered
       ? result('NO_PRINTER', t('prn_err_not_bonded', printerName(info.name)), 'printer not paired in this page')
       : result('NO_PRINTER', t('prn_err_no_printer'), 'no printer paired');
@@ -544,10 +778,18 @@ export class PrinterManager {
       this._emit();
       return true;
     }
+    // Prima di qualsiasi await: dentro un tocco, se serve, il chooser si apre adesso.
+    const inGesture = this._userActive();
+    const pairing = this._pairInGesture();
     this._cancelIdle();
     try {
       let done = null;
-      if (info.paired || (info.remembered && ble.canRemember())) {
+      if (pairing) {
+        this._emit();
+        done = await pairing;
+        this._silentFailed = false;
+        this._afterPair();
+      } else if (info.paired || (info.remembered && ble.canRemember())) {
         this._silentReconnect = true;
         this._emit();
         try {
@@ -555,12 +797,13 @@ export class PrinterManager {
         } finally {
           this._silentReconnect = false;
         }
-        if (!done && !ble.info().paired) this._silentFailed = true;
-      }
-      const now = ble.info();
-      if (!done && !now.paired && now.remembered && this._userActive()) {
-        done = await ble.pair({ sameName: true });
-        this._silentFailed = false;
+        if (!done && !ble.info().paired) {
+          this._silentFailed = true;
+          // Toccato «Ricollega» ma il browser non ha restituito la stampante: serve «Abbina».
+          if (inGesture) {
+            this._error = result('NO_PRINTER', t('prn_err_not_bonded', printerName(ble.info().name)), 'printer not returned by getDevices');
+          }
+        }
       }
       if (done) this._scheduleIdle();
       this._emit();
@@ -586,7 +829,7 @@ export class PrinterManager {
 
   _fail(f) {
     this._error = result(f.failure, f.message, f.detail);
-    return { ok: false, failure: f.failure, message: f.message, detail: f.detail || '' };
+    return { ok: false, failure: f.failure, message: f.message, detail: f.detail || '', action: actionFor(f.failure) };
   }
 
   _userActive() {
@@ -633,17 +876,21 @@ export class PrinterManager {
 
   _compute() {
     const ble = this.ble;
+    let driver = 'escpos-58';
+    try { driver = this.currentDriver().id; } catch (e) { /* impostazioni illeggibili: il predefinito */ }
     if (!ble.supported()) {
       return {
         kind: 'unsupported', name: null, progress: 0, failure: 'UNSUPPORTED', message: t('prn_err_unsupported'), detail: '',
-        paired: false, remembered: false, connected: false, profile: null, writeMode: 'auto', chunk: null
+        action: null, paired: false, remembered: false, connected: false, profile: null, writeMode: 'auto', chunk: null,
+        driver, unsupported: null
       };
     }
     const info = ble.info();
     const base = {
-      kind: 'not-paired', name: info.name, progress: 0, failure: null, message: null, detail: null,
+      kind: 'not-paired', name: info.name, progress: 0, failure: null, message: null, detail: null, action: null,
       paired: info.paired, remembered: info.remembered, connected: info.connected,
-      profile: info.profile, writeMode: info.writeMode, chunk: info.chunk
+      profile: info.profile, writeMode: info.writeMode, chunk: info.chunk,
+      driver, unsupported: unsupportedModel(info.name)
     };
     if (this._busy) {
       // Prima del primo pezzo il lavoro si sta collegando (stampante ricordata, annuncio, chooser):
@@ -663,6 +910,7 @@ export class PrinterManager {
       base.failure = error.failure;
       base.message = error.message;
       base.detail = error.detail;
+      base.action = actionFor(error.failure);
       return base;
     }
     if (info.status === 'connecting' || info.status === 'printing') {

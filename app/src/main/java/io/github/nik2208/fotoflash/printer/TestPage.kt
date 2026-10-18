@@ -9,7 +9,9 @@ import io.github.nik2208.fotoflash.thermal.Ditherer
 import io.github.nik2208.fotoflash.thermal.EscPosBuilder
 import io.github.nik2208.fotoflash.thermal.GrayImage
 import io.github.nik2208.fotoflash.thermal.PaperWidth
+import io.github.nik2208.fotoflash.thermal.PrinterDrivers
 import io.github.nik2208.fotoflash.thermal.TextAlign
+import io.github.nik2208.fotoflash.thermal.TransportHints
 import java.text.DateFormat
 import java.text.Normalizer
 import java.util.Date
@@ -30,8 +32,18 @@ object TestPage {
     /** Altezza in punti del riquadro di controllo larghezza. */
     private const val FRAME_ROWS = 32
 
-    /** Pacchetti in ordine di invio: intestazione, controllo larghezza, un retino per pacchetto, piede. */
-    fun build(context: Context, settings: AppSettings, printerName: String, now: Date = Date()): List<ByteArray> {
+    /**
+     * Pacchetti in ordine di invio: intestazione, controllo larghezza, un retino per pacchetto, piede.
+     * [bleHints] non null = stampante ESC/POS collegata in BLE: la riga di trasferimento riporta i
+     * parametri di invio BLE invece dei blocchi SPP.
+     */
+    fun build(
+        context: Context,
+        settings: AppSettings,
+        printerName: String,
+        now: Date = Date(),
+        bleHints: TransportHints? = null,
+    ): List<ByteArray> {
         val paper = settings.paper
         val dots = paper.dots
         // Una colonna in meno del massimo: alcune stampanti a riga piena vanno a capo da sole
@@ -60,13 +72,26 @@ object TestPage {
             context.getString(R.string.prn_test_printer, printerName),
             context.getString(R.string.prn_test_date, dateText),
             context.getString(R.string.prn_test_paper, paper.mm, dots),
+            PrinterDrivers.byId(settings.printerDriver).let { driver ->
+                context.getString(R.string.prn_test_driver, driver.displayName, driver.dpi)
+            },
             context.getString(R.string.prn_test_heat, context.getString(PrinterTuning.heatLevelLabel(heatLevel)), heatLevel),
-            context.getString(
-                R.string.prn_test_transfer,
-                bandHeight,
-                PrinterTuning.clampChunkSize(settings.chunkSize),
-                PrinterTuning.clampChunkDelay(settings.chunkDelayMs),
-            ),
+            if (bleHints != null) {
+                context.getString(
+                    R.string.prn_test_transfer_ble,
+                    bandHeight,
+                    bleHints.chunkSize,
+                    bleHints.chunkDelayMs,
+                    context.getString(if (bleHints.withoutResponse) R.string.prn_ble_no_response else R.string.prn_ble_with_response),
+                )
+            } else {
+                context.getString(
+                    R.string.prn_test_transfer,
+                    bandHeight,
+                    PrinterTuning.clampChunkSize(settings.chunkSize),
+                    PrinterTuning.clampChunkDelay(settings.chunkDelayMs),
+                )
+            },
         )
         info.forEach { text -> wrap(asciiOnly(text), columns).forEach { header.line(it) } }
         header.line(rule)
@@ -111,7 +136,8 @@ object TestPage {
         return packets
     }
 
-    private fun ditherName(algorithm: DitherAlgorithm): Int = when (algorithm) {
+    /** Nome localizzato del retino (lo usa anche la pagina di prova raster dei driver non ESC/POS). */
+    internal fun ditherName(algorithm: DitherAlgorithm): Int = when (algorithm) {
         DitherAlgorithm.ATKINSON -> R.string.prn_dither_atkinson
         DitherAlgorithm.FLOYD_STEINBERG -> R.string.prn_dither_floyd_steinberg
         DitherAlgorithm.ORDERED_BAYER -> R.string.prn_dither_bayer

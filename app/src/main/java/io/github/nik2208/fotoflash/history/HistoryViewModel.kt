@@ -14,6 +14,7 @@ import io.github.nik2208.fotoflash.model.PrintFailure
 import io.github.nik2208.fotoflash.model.PrintOutcome
 import io.github.nik2208.fotoflash.model.PrinterState
 import io.github.nik2208.fotoflash.thermal.PaperWidth
+import io.github.nik2208.fotoflash.thermal.PrinterDrivers
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.async
 import kotlinx.coroutines.channels.Channel
@@ -115,7 +116,9 @@ sealed interface HistoryDetailEvent {
 /** Esito interno della ristampa: non tutto e un PrintFailure (file rovinato, carta piu stretta della stampa). */
 private sealed interface ReprintResult {
     data object LoadFailed : ReprintResult
-    data class PaperTooNarrow(val mm: Int?) : ReprintResult
+
+    /** [papers]: le carte larghe quanto la stampa (vuota se la larghezza non e di nessuna carta nota). */
+    data class PaperTooNarrow(val papers: List<PaperWidth>) : ReprintResult
     data class Done(val outcome: PrintOutcome) : ReprintResult
 }
 
@@ -171,9 +174,12 @@ class HistoryDetailViewModel(private val graph: AppGraph, private val entryId: S
             val image = history.loadBitImage(entry) ?: return@async ReprintResult.LoadFailed
             // GS v 0 usa la larghezza dell'immagine: una stampa da 80 mm su una testina da 58 esce a
             // righe spezzate ma risulterebbe "stampata". Una stampa piu stretta della carta invece va bene.
-            val paper = graph.settings.current().paper
+            // Il limite e la testina del driver in uso: con le stampanti intercambiabili e lui a dirla.
+            // Letto dalle impostazioni salvate, come fa PrinterManager.print: subito dopo l'avvio il
+            // driver osservato di PrinterManager puo essere ancora quello di ripiego (escpos-58).
+            val paper = PrinterDrivers.byId(graph.settings.current().printerDriver).paper
             if (image.width > paper.dots) {
-                return@async ReprintResult.PaperTooNarrow(PaperWidth.entries.firstOrNull { it.dots == image.width }?.mm)
+                return@async ReprintResult.PaperTooNarrow(PaperWidth.entries.filter { it.dots == image.width })
             }
             val outcome = graph.printer.print(image, 1)
             if (outcome is PrintOutcome.Success) history.markPrinted(entry.id)
@@ -183,9 +189,7 @@ class HistoryDetailViewModel(private val graph: AppGraph, private val entryId: S
             try {
                 val message = when (val result = job.await()) {
                     ReprintResult.LoadFailed -> HistoryDetailEvent.Message(R.string.hist_msg_load_failed)
-                    is ReprintResult.PaperTooNarrow -> result.mm?.let { mm ->
-                        HistoryDetailEvent.Message(R.string.hist_msg_paper_mismatch, listOf(mm), ReprintFix.PRINTER)
-                    } ?: HistoryDetailEvent.Message(R.string.hist_msg_paper_mismatch_generic, fix = ReprintFix.PRINTER)
+                    is ReprintResult.PaperTooNarrow -> paperMismatchMessage(result.papers)
                     is ReprintResult.Done -> when (val outcome = result.outcome) {
                         is PrintOutcome.Success -> HistoryDetailEvent.Message(R.string.hist_msg_printed)
                         is PrintOutcome.Failure -> HistoryDetailEvent.Message(
@@ -325,6 +329,25 @@ class HistoryDetailViewModel(private val graph: AppGraph, private val entryId: S
         const val TAG = "HistoryDetailViewModel"
 
         fun displayName(entry: HistoryEntry): String = "FotoFlash_${entry.id}"
+
+        /**
+         * Carta per cui e stata composta una stampa troppo larga. 576 punti sono sia la 80 mm (203 dpi)
+         * sia la M02 Pro (53 mm a 300 dpi): l'immagine non dice quale delle due, quindi si nominano entrambe
+         * invece di indovinare.
+         */
+        fun paperMismatchMessage(papers: List<PaperWidth>): HistoryDetailEvent.Message = when {
+            papers.size == 1 -> HistoryDetailEvent.Message(
+                R.string.hist_msg_paper_mismatch,
+                listOf(papers.single().mm),
+                ReprintFix.PRINTER,
+            )
+            papers.containsAll(listOf(PaperWidth.MM80, PaperWidth.M02PRO)) -> HistoryDetailEvent.Message(
+                R.string.hist_msg_paper_mismatch_wide,
+                listOf(PaperWidth.MM80.mm),
+                ReprintFix.PRINTER,
+            )
+            else -> HistoryDetailEvent.Message(R.string.hist_msg_paper_mismatch_generic, fix = ReprintFix.PRINTER)
+        }
 
         @StringRes
         fun failureMessage(failure: PrintFailure): Int = when (failure) {

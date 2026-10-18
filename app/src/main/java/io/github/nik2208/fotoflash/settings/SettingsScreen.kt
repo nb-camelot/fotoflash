@@ -95,6 +95,8 @@ import io.github.nik2208.fotoflash.di.appGraph
 import io.github.nik2208.fotoflash.model.AppSettings
 import io.github.nik2208.fotoflash.model.PrinterState
 import io.github.nik2208.fotoflash.thermal.DitherAlgorithm
+import io.github.nik2208.fotoflash.thermal.PrinterDrivers
+import io.github.nik2208.fotoflash.thermal.PrinterLink
 import io.github.nik2208.fotoflash.thermal.TemplateKind
 import io.github.nik2208.fotoflash.ui.components.BrandWordmark
 import io.github.nik2208.fotoflash.ui.components.ChoiceChipsRow
@@ -527,6 +529,7 @@ private fun CardDivider() {
 @Composable
 private fun PrinterRow(settings: AppSettings, printerState: PrinterState, onOpenPrinter: () -> Unit) {
     val name = settings.printerName ?: settings.printerAddress
+    val driver = remember(settings.printerDriver) { PrinterDrivers.byId(settings.printerDriver) }
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -548,11 +551,22 @@ private fun PrinterRow(settings: AppSettings, printerState: PrinterState, onOpen
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
+            if (name != null) {
+                // Driver e collegamento: con piu stampanti intercambiabili si deve vedere quale si usa e come.
+                Text(
+                    text = stringResource(R.string.set_printer_driver_link, driver.displayName, linkLabel(settings.printerLink)),
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontFamily = FfFonts.Mono,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
             Text(
                 text = if (name == null) {
                     stringResource(R.string.set_printer_hint_none)
                 } else {
-                    stringResource(R.string.set_printer_paper, settings.paper.mm)
+                    // La carta discende dal driver: 576 punti sono 80 mm o, sulla M02 Pro, 53 mm.
+                    stringResource(R.string.set_printer_paper, driver.paper.mm)
                 },
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -863,6 +877,14 @@ private fun ditherDescription(algorithm: DitherAlgorithm): String = stringResour
         DitherAlgorithm.FLOYD_STEINBERG -> R.string.set_dither_desc_floyd
         DitherAlgorithm.ORDERED_BAYER -> R.string.set_dither_desc_bayer
         DitherAlgorithm.THRESHOLD -> R.string.set_dither_desc_threshold
+    },
+)
+
+@Composable
+private fun linkLabel(link: PrinterLink): String = stringResource(
+    when (link) {
+        PrinterLink.CLASSIC -> R.string.set_printer_link_classic
+        PrinterLink.BLE -> R.string.set_printer_link_ble
     },
 )
 

@@ -2,10 +2,16 @@
 // Gli enum Kotlin diventano stringhe con lo stesso nome; i data class diventano oggetti semplici
 // con gli stessi campi, e le funzioni default*() ne danno i valori di fabbrica.
 
-/** Larghezza della carta e punti stampabili per riga (testina a 203 dpi, 8 punti/mm). */
+/**
+ * Larghezza della carta, punti stampabili per riga e risoluzione della testina, come l'enum
+ * PaperWidth di Model.kt. M02PRO (Phomemo M02 Pro / M02S) ha 576 punti a 300 dpi = 48,8 mm, quasi
+ * quanto i 384 punti a 203 dpi della 58 mm: l'impaginazione in punti esce fisicamente uguale
+ * (docs/DRIVERS.md). L'ordine conta: a parità di punti paperOf() sceglie la prima (MM80).
+ */
 export const PaperWidth = Object.freeze({
-  MM58: Object.freeze({ mm: 58, dots: 384 }),
-  MM80: Object.freeze({ mm: 80, dots: 576 }),
+  MM58: Object.freeze({ mm: 58, dots: 384, dpi: 203 }),
+  MM80: Object.freeze({ mm: 80, dots: 576, dpi: 203 }),
+  M02PRO: Object.freeze({ mm: 53, dots: 576, dpi: 300 }),
 });
 
 /** Algoritmi di retinatura, nell'ordine dell'enum Kotlin (il primo è il default). */
@@ -86,7 +92,7 @@ export function textsWithDefaults(texts) {
 }
 
 /**
- * Carta da 'MM58' | 'MM80' (o da un oggetto PaperWidth): restituisce { name, mm, dots }.
+ * Carta da 'MM58' | 'MM80' | 'M02PRO' (o da un oggetto PaperWidth): restituisce { name, mm, dots, dpi }.
  * Una carta sconosciuta è un errore di programmazione e va segnalata subito.
  */
 export function paperOf(paper) {

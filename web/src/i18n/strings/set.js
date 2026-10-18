@@ -10,7 +10,7 @@ export default {
     set_section_printer: 'Printer and paper',
     set_printer_none: 'No printer paired',
     set_printer_hint_none: 'Tap to pair a Bluetooth printer',
-    set_printer_paper: '%1$d mm paper · tap for paper and calibration',
+    set_printer_driver: '%1$s · %2$d dpi · tap for model, paper and calibration',
     set_printer_open_cd: 'Open printer settings',
 
     // Immagine
@@ -120,7 +120,7 @@ export default {
     set_section_printer: 'Stampante e carta',
     set_printer_none: 'Nessuna stampante abbinata',
     set_printer_hint_none: 'Tocca per abbinare una stampante Bluetooth',
-    set_printer_paper: 'Carta da %1$d mm · tocca per carta e calibrazione',
+    set_printer_driver: '%1$s · %2$d dpi · tocca per modello, carta e calibrazione',
     set_printer_open_cd: 'Apri le impostazioni della stampante',
 
     set_section_image: 'Immagine',

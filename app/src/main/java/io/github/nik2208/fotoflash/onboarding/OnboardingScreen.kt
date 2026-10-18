@@ -43,11 +43,17 @@ import androidx.compose.material.icons.rounded.Bluetooth
 import androidx.compose.material.icons.rounded.BluetoothDisabled
 import androidx.compose.material.icons.rounded.CheckCircle
 import androidx.compose.material.icons.rounded.ErrorOutline
+import androidx.compose.material.icons.rounded.Grain
+import androidx.compose.material.icons.rounded.LocationOn
 import androidx.compose.material.icons.rounded.PhotoCamera
 import androidx.compose.material.icons.rounded.Print
 import androidx.compose.material.icons.rounded.RadioButtonUnchecked
 import androidx.compose.material.icons.rounded.Refresh
+import androidx.compose.material.icons.rounded.Search
 import androidx.compose.material.icons.rounded.Settings
+import androidx.compose.material.icons.rounded.SettingsBluetooth
+import androidx.compose.material.icons.rounded.Warning
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -87,10 +93,15 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import io.github.nik2208.fotoflash.R
 import io.github.nik2208.fotoflash.di.appGraph
+import io.github.nik2208.fotoflash.model.AppSettings
 import io.github.nik2208.fotoflash.model.PrintFailure
 import io.github.nik2208.fotoflash.model.PrinterDevice
 import io.github.nik2208.fotoflash.model.PrinterState
+import io.github.nik2208.fotoflash.thermal.DitherAlgorithm
+import io.github.nik2208.fotoflash.thermal.PrinterDrivers
+import io.github.nik2208.fotoflash.thermal.PrinterLink
 import io.github.nik2208.fotoflash.ui.components.BrandWordmark
+import io.github.nik2208.fotoflash.ui.components.ChoiceChipsRow
 import io.github.nik2208.fotoflash.ui.components.FlashButton
 import io.github.nik2208.fotoflash.ui.components.GhostButton
 import io.github.nik2208.fotoflash.ui.components.PrinterStatusChip
@@ -129,11 +140,14 @@ private fun OnboardingContent(onFinished: () -> Unit) {
 
     val activity = remember(context) { context.findActivity() }
     val bluetoothPermissions = remember { vm.bluetoothPermissions() }
+    val scanPermissions = remember { vm.scanPermissions() }
+    val scanNeedsLocation = remember { vm.scanNeedsLocationPermission() }
     // Contatore che forza la rilettura dei permessi (dopo la richiesta o al ritorno dalle impostazioni).
     var permissionTick by remember { mutableIntStateOf(0) }
     // Separati: chiedere il Bluetooth dalla pagina stampante non deve far risultare "negata" la fotocamera.
     var cameraAsked by rememberSaveable { mutableStateOf(false) }
     var bluetoothAsked by rememberSaveable { mutableStateOf(false) }
+    var scanAsked by rememberSaveable { mutableStateOf(false) }
     val cameraGranted = remember(permissionTick) { isGranted(context, Manifest.permission.CAMERA) }
     val bluetoothGranted = remember(permissionTick) { bluetoothPermissions.all { isGranted(context, it) } }
     val allGranted = cameraGranted && bluetoothGranted
@@ -145,6 +159,11 @@ private fun OnboardingContent(onFinished: () -> Unit) {
     }
     val bluetoothBlocked = remember(permissionTick, bluetoothAsked) {
         bluetoothAsked && bluetoothPermissions.any { !isGranted(context, it) && isBlocked(activity, it) }
+    }
+    // Da Android 12 i permessi della ricerca sono gli stessi della pagina dei permessi: gia chiesti li.
+    val scanEverAsked = scanAsked || (bluetoothAsked && scanPermissions.any { it in bluetoothPermissions })
+    val scanBlocked = remember(permissionTick, scanEverAsked) {
+        scanEverAsked && scanPermissions.any { !isGranted(context, it) && isBlocked(activity, it) }
     }
     val permanentlyDenied = cameraBlocked || bluetoothBlocked
     // Dopo un solo rifiuto Android mostra di nuovo la richiesta: quei permessi si richiedono ancora.
@@ -170,22 +189,44 @@ private fun OnboardingContent(onFinished: () -> Unit) {
         if (granted) goTo(PAGE_PRINTER)
     }
 
+    // Permessi della sola ricerca (la posizione fino ad Android 11): appena concessi si cerca davvero.
+    val scanPermissionLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestMultiplePermissions(),
+    ) { result ->
+        if (scanPermissions.any { it in result }) scanAsked = true
+        permissionTick++
+        vm.refresh()
+        if (scanPermissions.all { isGranted(context, it) }) vm.startScan()
+    }
+
     var resumed by remember { mutableStateOf(false) }
     LifecycleEventEffect(Lifecycle.Event.ON_RESUME) {
         resumed = true
         permissionTick++
         vm.refresh()
     }
-    LifecycleEventEffect(Lifecycle.Event.ON_PAUSE) { resumed = false }
+    LifecycleEventEffect(Lifecycle.Event.ON_PAUSE) {
+        resumed = false
+        // In background la ricerca consumerebbe batteria senza che nessuno guardi i risultati.
+        vm.stopScan()
+    }
+    val onPrinterPage = pagerState.currentPage == PAGE_PRINTER
     // Sulla pagina stampante si ricontrolla ogni pochi secondi: il Bluetooth acceso dalla tendina
     // o una stampante appena accoppiata compaiono senza dover toccare "Aggiorna".
-    LaunchedEffect(pagerState.currentPage, resumed) {
-        if (pagerState.currentPage == PAGE_PRINTER && resumed) {
+    LaunchedEffect(onPrinterPage, resumed) {
+        if (onPrinterPage && resumed) {
             while (true) {
                 vm.refresh()
                 delay(PRINTER_POLL_MS)
             }
         }
+    }
+    // La prima ricerca BLE parte da sola appena e possibile; lasciando la pagina si ferma.
+    val canScan = state.checked && state.bluetoothAvailable && state.bluetoothEnabled &&
+        state.hasScanPermission && !state.locationOff
+    LaunchedEffect(onPrinterPage, resumed, canScan) {
+        if (onPrinterPage && resumed && canScan) vm.autoScan()
+        if (!onPrinterPage) vm.stopScan()
     }
 
     val finish: () -> Unit = { vm.finish(onFinished) }
@@ -196,6 +237,18 @@ private fun OnboardingContent(onFinished: () -> Unit) {
             openAppSettings(context)
         } else {
             permissionLauncher.launch(bluetoothPermissions.toTypedArray())
+        }
+    }
+    // "Cerca": prima i permessi, poi la Localizzazione (fino ad Android 11), poi la ricerca vera.
+    val search: () -> Unit = {
+        when {
+            !scanPermissions.all { isGranted(context, it) } -> if (scanBlocked) {
+                openAppSettings(context)
+            } else {
+                scanPermissionLauncher.launch(scanPermissions.toTypedArray())
+            }
+            state.locationOff -> openLocationSettings(context)
+            else -> vm.startScan()
         }
     }
 
@@ -249,11 +302,19 @@ private fun OnboardingContent(onFinished: () -> Unit) {
                         state = state,
                         printerState = printerState,
                         bluetoothBlocked = bluetoothBlocked,
-                        onSelect = vm::select,
-                        onGrantBluetooth = grantBluetooth,
-                        onOpenBluetoothSettings = { openBluetoothSettings(context) },
-                        onRefresh = vm::refresh,
-                        onTestPage = vm::printTestPage,
+                        scanBlocked = scanBlocked,
+                        scanNeedsLocation = scanNeedsLocation,
+                        actions = PrinterPageActions(
+                            onSelect = vm::select,
+                            onGrantBluetooth = grantBluetooth,
+                            onOpenBluetoothSettings = { openBluetoothSettings(context) },
+                            onRefresh = vm::refresh,
+                            onSearch = search,
+                            onOpenLocationSettings = { openLocationSettings(context) },
+                            onDriver = vm::setDriver,
+                            onUseDither = vm::useDither,
+                            onTestPage = vm::printTestPage,
+                        ),
                     )
                 }
             }
@@ -293,6 +354,19 @@ private fun OnboardingContent(onFinished: () -> Unit) {
         }
     }
 }
+
+/** Azioni della pagina stampante: raccolte qui per non avere una firma con dieci lambda. */
+private class PrinterPageActions(
+    val onSelect: (PrinterDevice) -> Unit,
+    val onGrantBluetooth: () -> Unit,
+    val onOpenBluetoothSettings: () -> Unit,
+    val onRefresh: () -> Unit,
+    val onSearch: () -> Unit,
+    val onOpenLocationSettings: () -> Unit,
+    val onDriver: (String) -> Unit,
+    val onUseDither: (DitherAlgorithm) -> Unit,
+    val onTestPage: () -> Unit,
+)
 
 // --- Pagine ---------------------------------------------------------------------------------
 
@@ -394,11 +468,9 @@ private fun PrinterPage(
     state: OnboardingUiState,
     printerState: PrinterState,
     bluetoothBlocked: Boolean,
-    onSelect: (PrinterDevice) -> Unit,
-    onGrantBluetooth: () -> Unit,
-    onOpenBluetoothSettings: () -> Unit,
-    onRefresh: () -> Unit,
-    onTestPage: () -> Unit,
+    scanBlocked: Boolean,
+    scanNeedsLocation: Boolean,
+    actions: PrinterPageActions,
 ) {
     Column(
         modifier = Modifier
@@ -408,7 +480,7 @@ private fun PrinterPage(
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             StepTitle(text = stringResource(R.string.onb_printer_title), modifier = Modifier.weight(1f))
-            IconButton(onClick = onRefresh) {
+            IconButton(onClick = actions.onRefresh) {
                 Icon(
                     imageVector = Icons.Rounded.Refresh,
                     contentDescription = stringResource(R.string.onb_refresh),
@@ -443,49 +515,53 @@ private fun PrinterPage(
                 Spacer(modifier = Modifier.height(12.dp))
                 GhostButton(
                     text = stringResource(if (bluetoothBlocked) R.string.onb_perm_settings else R.string.onb_perm_allow),
-                    onClick = onGrantBluetooth,
+                    onClick = actions.onGrantBluetooth,
                     icon = if (bluetoothBlocked) Icons.Rounded.Settings else Icons.Rounded.Bluetooth,
                 )
             }
 
-            !state.bluetoothEnabled -> Notice(
-                icon = Icons.Rounded.BluetoothDisabled,
-                text = stringResource(R.string.onb_printer_bt_off),
-            )
+            !state.bluetoothEnabled -> Column {
+                Notice(
+                    icon = Icons.Rounded.BluetoothDisabled,
+                    text = stringResource(R.string.onb_printer_bt_off),
+                )
+                Spacer(modifier = Modifier.height(12.dp))
+                GhostButton(
+                    text = stringResource(R.string.onb_open_bt_settings),
+                    onClick = actions.onOpenBluetoothSettings,
+                    icon = Icons.Rounded.Settings,
+                )
+            }
 
-            state.printers.isEmpty() -> Notice(
-                icon = Icons.AutoMirrored.Rounded.BluetoothSearching,
-                text = stringResource(R.string.onb_printer_none),
-            )
-
-            else -> Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                state.printers.forEach { device ->
-                    PrinterOption(
-                        device = device,
-                        selected = device.address == state.selectedAddress,
-                        onClick = { onSelect(device) },
-                    )
-                }
+            else -> Column {
+                PairedSection(state = state, actions = actions)
+                Spacer(modifier = Modifier.height(28.dp))
+                NearbySection(
+                    state = state,
+                    scanBlocked = scanBlocked,
+                    scanNeedsLocation = scanNeedsLocation,
+                    actions = actions,
+                )
             }
         }
 
-        if (state.bluetoothAvailable) {
-            Spacer(modifier = Modifier.height(16.dp))
-            GhostButton(
-                text = stringResource(R.string.onb_open_bt_settings),
-                onClick = onOpenBluetoothSettings,
-                icon = Icons.Rounded.Settings,
+        val selected = state.selected
+        if (selected != null && state.bluetoothAvailable) {
+            Spacer(modifier = Modifier.height(28.dp))
+            DriverCard(
+                choice = selected,
+                driverId = state.driverId,
+                dither = state.dither,
+                onDriver = actions.onDriver,
+                onUseDither = actions.onUseDither,
             )
-        }
-
-        if (state.selectedAddress != null && state.bluetoothAvailable) {
-            Spacer(modifier = Modifier.height(24.dp))
-            PrinterStatusChip(state = printerState, onClick = onRefresh)
+            Spacer(modifier = Modifier.height(20.dp))
+            PrinterStatusChip(state = printerState, onClick = actions.onRefresh)
             Spacer(modifier = Modifier.height(12.dp))
             Row(verticalAlignment = Alignment.CenterVertically) {
                 GhostButton(
                     text = stringResource(R.string.onb_test_page),
-                    onClick = onTestPage,
+                    onClick = actions.onTestPage,
                     icon = Icons.Rounded.Print,
                     enabled = !state.testing,
                 )
@@ -513,6 +589,229 @@ private fun PrinterPage(
     }
 }
 
+/** Stampanti accoppiate nelle impostazioni Bluetooth: si usano in SPP. */
+@Composable
+private fun PairedSection(state: OnboardingUiState, actions: PrinterPageActions) {
+    ListTitle(text = stringResource(R.string.onb_printer_paired))
+    Spacer(modifier = Modifier.height(10.dp))
+    if (state.bonded.isEmpty()) {
+        Notice(
+            icon = Icons.AutoMirrored.Rounded.BluetoothSearching,
+            text = stringResource(R.string.onb_printer_none),
+        )
+    } else {
+        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            state.bonded.forEach { device ->
+                PrinterOption(
+                    device = device,
+                    selected = state.selected?.matches(device) == true,
+                    onClick = { actions.onSelect(device) },
+                )
+            }
+        }
+    }
+    Spacer(modifier = Modifier.height(12.dp))
+    GhostButton(
+        text = stringResource(R.string.onb_open_bt_settings),
+        onClick = actions.onOpenBluetoothSettings,
+        icon = Icons.Rounded.SettingsBluetooth,
+    )
+}
+
+/** Stampanti Bluetooth LE trovate con la ricerca (Phomemo e simili): non serve accoppiarle. */
+@Composable
+private fun NearbySection(
+    state: OnboardingUiState,
+    scanBlocked: Boolean,
+    scanNeedsLocation: Boolean,
+    actions: PrinterPageActions,
+) {
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        ListTitle(text = stringResource(R.string.onb_printer_nearby), modifier = Modifier.weight(1f))
+        TextButton(
+            onClick = actions.onSearch,
+            enabled = !state.scanning,
+            colors = ButtonDefaults.textButtonColors(contentColor = FfColors.Ink),
+        ) {
+            if (state.scanning) {
+                CircularProgressIndicator(modifier = Modifier.size(16.dp), color = FfColors.Ink, strokeWidth = 2.dp)
+            } else {
+                Icon(imageVector = Icons.Rounded.Search, contentDescription = null, modifier = Modifier.size(18.dp))
+            }
+            Spacer(modifier = Modifier.width(6.dp))
+            Text(text = stringResource(if (state.scanning) R.string.onb_scan_running else R.string.onb_scan))
+        }
+    }
+    Spacer(modifier = Modifier.height(10.dp))
+    when {
+        !state.hasScanPermission -> {
+            Notice(
+                icon = if (scanNeedsLocation) Icons.Rounded.LocationOn else Icons.Rounded.Bluetooth,
+                text = stringResource(
+                    if (scanNeedsLocation) R.string.onb_scan_permission_location else R.string.onb_scan_permission_nearby,
+                ),
+            )
+            Spacer(modifier = Modifier.height(12.dp))
+            GhostButton(
+                text = stringResource(if (scanBlocked) R.string.onb_perm_settings else R.string.onb_perm_allow),
+                onClick = actions.onSearch,
+                icon = if (scanBlocked) Icons.Rounded.Settings else Icons.Rounded.Search,
+            )
+        }
+
+        state.locationOff -> {
+            Notice(icon = Icons.Rounded.LocationOn, text = stringResource(R.string.onb_scan_location_off))
+            Spacer(modifier = Modifier.height(12.dp))
+            GhostButton(
+                text = stringResource(R.string.onb_scan_location_settings),
+                onClick = actions.onOpenLocationSettings,
+                icon = Icons.Rounded.LocationOn,
+            )
+        }
+
+        state.nearby.isNotEmpty() -> Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            state.nearby.forEach { device ->
+                PrinterOption(
+                    device = device,
+                    selected = state.selected?.matches(device) == true,
+                    onClick = { actions.onSelect(device) },
+                )
+            }
+        }
+
+        state.scanning -> Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(16.dp))
+                .background(FfColors.Fog)
+                .padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            CircularProgressIndicator(modifier = Modifier.size(20.dp), color = FfColors.Ink, strokeWidth = 2.dp)
+            Spacer(modifier = Modifier.width(12.dp))
+            Text(
+                text = stringResource(R.string.onb_scan_progress),
+                style = MaterialTheme.typography.bodyMedium,
+                color = FfColors.Ink,
+            )
+        }
+
+        state.scanned -> Notice(
+            icon = Icons.AutoMirrored.Rounded.BluetoothSearching,
+            text = stringResource(R.string.onb_scan_none),
+        )
+
+        else -> Text(
+            text = stringResource(R.string.onb_scan_hint),
+            style = MaterialTheme.typography.bodyMedium,
+            color = FfColors.Graphite,
+        )
+    }
+}
+
+/**
+ * Driver della stampante scelta: riconosciuto dal nome, ma modificabile, perche molti cloni
+ * annunciano nomi generici. Avvisa se il collegamento scelto non va bene per quel driver.
+ */
+@Composable
+private fun DriverCard(
+    choice: PrinterChoice,
+    driverId: String,
+    dither: DitherAlgorithm,
+    onDriver: (String) -> Unit,
+    onUseDither: (DitherAlgorithm) -> Unit,
+) {
+    val driver = remember(driverId) { PrinterDrivers.byId(driverId) }
+    val guessed = remember(choice.name) { PrinterDrivers.guess(choice.name) }
+    // Per id: le stringhe si confrontano per valore, qualunque cosa restituisca byId.
+    val driverIds = remember { PrinterDrivers.all.map { it.id } }
+    val driverNames = remember { PrinterDrivers.all.associate { it.id to it.displayName } }
+    // La M02X parla un protocollo diverso (docs/DRIVERS.md): stesse regole di guess(), nel core.
+    val unsupported = remember(choice.name) { PrinterDrivers.isUnsupported(choice.name) }
+
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(20.dp))
+            .background(FfColors.Fog)
+            .padding(16.dp),
+    ) {
+        Text(
+            text = stringResource(R.string.onb_driver_title),
+            style = MaterialTheme.typography.titleMedium,
+            color = FfColors.Ink,
+        )
+        Text(
+            text = stringResource(R.string.onb_driver_for, choice.name, linkLabel(choice.link)),
+            style = MaterialTheme.typography.bodySmall,
+            color = FfColors.Graphite,
+            maxLines = 2,
+            overflow = TextOverflow.Ellipsis,
+        )
+        Spacer(modifier = Modifier.height(12.dp))
+        ChoiceChipsRow(
+            options = driverIds,
+            selected = driver.id,
+            label = { id -> driverNames[id] ?: id },
+            onSelect = onDriver,
+        )
+        // Con un modello incompatibile parla solo l'avviso: "riconosciuto" o "scelto da te" sarebbero fuorvianti.
+        if (!unsupported) {
+            Spacer(modifier = Modifier.height(8.dp))
+            Text(
+                text = when {
+                    guessed != null && guessed.id == driver.id -> stringResource(R.string.onb_driver_auto)
+                    // Nome muto: si e tenuto l'ESC/POS in uso o si e ripiegato su escpos-58.
+                    guessed == null && isEscPosDriverId(driver.id) ->
+                        stringResource(R.string.onb_driver_unknown, driver.displayName)
+                    else -> stringResource(R.string.onb_driver_manual)
+                },
+                style = MaterialTheme.typography.bodySmall,
+                color = FfColors.Graphite,
+            )
+        }
+        if (unsupported) {
+            Spacer(modifier = Modifier.height(12.dp))
+            WarningNote(text = stringResource(R.string.onb_driver_unsupported))
+        }
+        if (choice.link !in driver.links) {
+            Spacer(modifier = Modifier.height(12.dp))
+            WarningNote(
+                text = stringResource(
+                    if (PrinterLink.BLE in driver.links) R.string.onb_driver_ble_only else R.string.onb_driver_classic_only,
+                ),
+            )
+        }
+        // Si propone solo un retino diverso da quello di serie dell'app (Floyd-Steinberg per le Phomemo):
+        // chi ha scelto apposta un altro retino non viene disturbato da ogni driver ESC/POS.
+        val suggested = driver.defaultDither
+        if (suggested != dither && suggested != AppSettings().dither) {
+            Spacer(modifier = Modifier.height(8.dp))
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(
+                    imageVector = Icons.Rounded.Grain,
+                    contentDescription = null,
+                    tint = FfColors.Ink,
+                    modifier = Modifier.size(20.dp),
+                )
+                Spacer(modifier = Modifier.width(10.dp))
+                Text(
+                    text = stringResource(R.string.onb_dither_suggest, ditherLabel(suggested)),
+                    modifier = Modifier.weight(1f),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = FfColors.Ink,
+                )
+                TextButton(
+                    onClick = { onUseDither(suggested) },
+                    colors = ButtonDefaults.textButtonColors(contentColor = FfColors.Ink),
+                ) {
+                    Text(text = stringResource(R.string.onb_dither_use), fontWeight = FontWeight.Bold)
+                }
+            }
+        }
+    }
+}
+
 // --- Elementi -------------------------------------------------------------------------------
 
 @Composable
@@ -524,6 +823,18 @@ private fun StepTitle(text: String, modifier: Modifier = Modifier) {
         fontSize = 34.sp,
         lineHeight = 38.sp,
         color = FfColors.Ink,
+    )
+}
+
+@Composable
+private fun ListTitle(text: String, modifier: Modifier = Modifier) {
+    Text(
+        text = text,
+        modifier = modifier,
+        fontFamily = FfFonts.Mono,
+        fontWeight = FontWeight.Bold,
+        fontSize = 13.sp,
+        color = FfColors.Graphite,
     )
 }
 
@@ -599,9 +910,33 @@ private fun Notice(icon: ImageVector, text: String) {
     }
 }
 
+/** Avviso da non ignorare (driver incompatibile): Coral tinto, testo Ink per la leggibilita. */
+@Composable
+private fun WarningNote(text: String) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(12.dp))
+            .background(FfColors.Coral.copy(alpha = 0.16f))
+            .padding(12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Icon(
+            imageVector = Icons.Rounded.Warning,
+            contentDescription = null,
+            tint = FfColors.Coral,
+            modifier = Modifier.size(20.dp),
+        )
+        Spacer(modifier = Modifier.width(10.dp))
+        Text(text = text, style = MaterialTheme.typography.bodySmall, color = FfColors.Ink)
+    }
+}
+
 @Composable
 private fun PrinterOption(device: PrinterDevice, selected: Boolean, onClick: () -> Unit) {
     val shape = RoundedCornerShape(16.dp)
+    // Il modello riconosciuto dal nome aiuta a distinguere stampanti dal nome criptico.
+    val model = remember(device.name) { PrinterDrivers.guess(device.name)?.displayName }
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -612,7 +947,11 @@ private fun PrinterOption(device: PrinterDevice, selected: Boolean, onClick: () 
             .padding(horizontal = 16.dp, vertical = 14.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Icon(imageVector = Icons.Rounded.Print, contentDescription = null, tint = FfColors.Ink)
+        Icon(
+            imageVector = if (device.link == PrinterLink.BLE) Icons.Rounded.Bluetooth else Icons.Rounded.Print,
+            contentDescription = null,
+            tint = FfColors.Ink,
+        )
         Spacer(modifier = Modifier.width(14.dp))
         Column(modifier = Modifier.weight(1f)) {
             Text(
@@ -623,10 +962,12 @@ private fun PrinterOption(device: PrinterDevice, selected: Boolean, onClick: () 
                 overflow = TextOverflow.Ellipsis,
             )
             Text(
-                text = device.address,
+                text = if (model != null) stringResource(R.string.onb_device_detail, device.address, model) else device.address,
                 fontFamily = FfFonts.Mono,
                 fontSize = 12.sp,
                 color = FfColors.Graphite,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
             )
         }
         Icon(
@@ -685,6 +1026,24 @@ private fun failureText(failure: PrintFailure): String = stringResource(
     },
 )
 
+@Composable
+private fun linkLabel(link: PrinterLink): String = stringResource(
+    when (link) {
+        PrinterLink.CLASSIC -> R.string.onb_link_classic
+        PrinterLink.BLE -> R.string.onb_link_ble
+    },
+)
+
+@Composable
+private fun ditherLabel(algorithm: DitherAlgorithm): String = stringResource(
+    when (algorithm) {
+        DitherAlgorithm.ATKINSON -> R.string.onb_dither_atkinson
+        DitherAlgorithm.FLOYD_STEINBERG -> R.string.onb_dither_floyd
+        DitherAlgorithm.ORDERED_BAYER -> R.string.onb_dither_bayer
+        DitherAlgorithm.THRESHOLD -> R.string.onb_dither_threshold
+    },
+)
+
 // --- Intent di sistema ----------------------------------------------------------------------
 
 private fun isGranted(context: Context, permission: String): Boolean =
@@ -707,11 +1066,24 @@ private fun openBluetoothSettings(context: Context) {
         context.startActivity(Intent(android.provider.Settings.ACTION_BLUETOOTH_SETTINGS))
     } catch (e: ActivityNotFoundException) {
         // Alcune ROM non espongono la pagina Bluetooth: ripieghiamo sulle impostazioni generali.
-        try {
-            context.startActivity(Intent(android.provider.Settings.ACTION_SETTINGS))
-        } catch (ignored: ActivityNotFoundException) {
-            // Nessuna app impostazioni: non c'e altro da fare.
-        }
+        openSystemSettings(context)
+    }
+}
+
+/** Fino ad Android 11 la ricerca BLE richiede la Localizzazione attiva. */
+private fun openLocationSettings(context: Context) {
+    try {
+        context.startActivity(Intent(android.provider.Settings.ACTION_LOCATION_SOURCE_SETTINGS))
+    } catch (e: ActivityNotFoundException) {
+        openSystemSettings(context)
+    }
+}
+
+private fun openSystemSettings(context: Context) {
+    try {
+        context.startActivity(Intent(android.provider.Settings.ACTION_SETTINGS))
+    } catch (ignored: ActivityNotFoundException) {
+        // Nessuna app impostazioni: non c'e altro da fare.
     }
 }
 

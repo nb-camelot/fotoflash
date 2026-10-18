@@ -16,7 +16,8 @@
 
 FotoFlash trasforma il telefono in una **fotocamera istantanea a carta termica**: come le fotocamere
 per bambini che stampano lo scatto su uno scontrino, ma con il tuo telefono e una stampante termica
-Bluetooth da 58 mm. Due tocchi, scatta e stampa: una foto ricordo in bianco e nero, retinata con
+Bluetooth: una classica mini stampante ESC/POS da 58 mm, una da 80 mm o una Phomemo M02 / M02 Pro.
+Due tocchi, scatta e stampa: una foto ricordo in bianco e nero, retinata con
 cura, pronta da strappare e regalare. Per feste, matrimoni, gite, giochi con i bambini, banchetti e
 fotocabine fai da te.
 
@@ -61,25 +62,70 @@ fotocabine fai da te.
 **Storico e impostazioni**
 - Ogni stampa entra nello storico: dettaglio, **ristampa**, condividi, salva la stampa, **salva le foto
   originali**, elimina; **Esporta tutte le foto** salva in galleria gli originali di tutto lo storico.
-- Impostazioni per stampante, carta (58/80 mm), intensità, taglio, parametri avanzati di trasmissione,
-  retino e regolazioni predefinite, evento, scatto.
+- **Stampanti intercambiabili**: driver ESC/POS (58/80 mm) e Phomemo (M02, M02 Pro a 300 dpi), su
+  Bluetooth classico o Bluetooth LE, riconosciuti dal nome della stampante e modificabili a mano.
+- Impostazioni per stampante e driver, carta (58/80 mm), intensità o densità, taglio, invio Bluetooth
+  LE e parametri avanzati di trasmissione, retino e regolazioni predefinite, evento, scatto.
 - Inglese e italiano, tema chiaro e scuro (il mirino è sempre scuro).
 
 ## Stampanti compatibili
 
-FotoFlash parla **ESC/POS** (immagini raster `GS v 0`) su **Bluetooth classico SPP**, con stampanti
-già **accoppiate** nelle impostazioni di Android.
+FotoFlash parla con le stampanti attraverso **driver**. Ogni driver conosce la larghezza della
+testina, i comandi della sua famiglia di stampanti e il modo giusto di spedirli via Bluetooth.
+Modelli, retini, anteprima e storico sono gli stessi per tutte. Byte esatti, contratti e fonti sono
+in [`docs/DRIVERS.md`](docs/DRIVERS.md).
+
+| Driver | Stampanti | Punti per riga | App Android | Versione web | Retino predefinito |
+|---|---|---|---|---|---|
+| **ESC/POS 58 mm** (`escpos-58`) | Mini stampanti portatili da 58 mm, come la "BlueTooth Printer" o le Netum: le classiche "stampanti per scontrini" che si accoppiano con PIN `0000` o `1234` | 384 a 203 dpi | Bluetooth classico (SPP) o BLE | BLE | Atkinson |
+| **ESC/POS 80 mm** (`escpos-80`) | Stampanti ESC/POS da 80 mm | 576 a 203 dpi | SPP o BLE | BLE | Atkinson |
+| **Phomemo M02** (`phomemo-m02`) | Phomemo M02 | 384 a 203 dpi | BLE | BLE | Floyd-Steinberg |
+| **Phomemo M02 Pro** (`phomemo-m02pro`) | Phomemo M02 Pro | 576 a 300 dpi | BLE | BLE | Floyd-Steinberg |
+
+La M02 Pro ha una testina più fitta, ma la foto esce grande come sulla 58 mm: 576 punti a 300 dpi
+sono 48,8 mm, 384 punti a 203 dpi sono 48 mm. Modelli e margini restano quelli che conosci.
 
 | Stampante | Supporto |
 |---|---|
-| Stampanti portatili ESC/POS da **58 mm** (384 punti) via Bluetooth classico — le classiche "mini stampanti per scontrini" che si accoppiano con PIN `0000` o `1234` | Sì: è il caso principale |
-| Stampanti ESC/POS da **80 mm** (576 punti) via Bluetooth classico | Sì, scegliendo 80 mm in Impostazioni → Stampante e carta → Carta |
-| "**Cat printer**" e mini stampanti **BLE** a protocollo proprietario (GB01, GB02, GB03, MX05, MX06, MX10 e simili, quelle che si usano solo dalla loro app) | Non ancora: in [roadmap](docs/ROADMAP.md), piano pronto in [`issue_plans/ble-cat-printer.md`](issue_plans/ble-cat-printer.md) |
+| Phomemo **M02S** | Riconosciuta e servita dal driver M02 Pro, **ancora da verificare**: le fonti non concordano sulla larghezza della testina, 576 o 512 punti ([theacodes](https://github.com/theacodes/phomemo_m02s) le cita entrambe, [sgrankin](https://github.com/sgrankin/phomemo/blob/main/PROTOCOL.md) dice 512). Stampa la pagina di prova e controlla i bordi |
+| Phomemo **M02X** | No: usa un protocollo diverso e incompatibile. FotoFlash la riconosce dal nome e te lo dice. Piano: [`issue_plans/phomemo-m02x.md`](issue_plans/phomemo-m02x.md) |
+| "**Cat printer**" BLE a protocollo proprietario (GB01, GB02, GB03, MX05, MX06, MX10 e simili, servizio `AE30`) | Non ancora: vengono riconosciute e rifiutate con un messaggio chiaro. In [roadmap](docs/ROADMAP.md), piano in [`issue_plans/ble-cat-printer.md`](issue_plans/ble-cat-printer.md) |
 | Stampanti di etichette a protocollo proprietario, stampanti USB o Wi-Fi | No |
 
-Come capire se la tua va bene: se compare tra i **dispositivi accoppiati** di Android e il produttore
-dichiara ESC/POS, quasi certamente sì. Se invece non si accoppia dalle impostazioni e funziona solo
-dalla sua app, è una stampante BLE proprietaria.
+Come capire se la tua va bene:
+- compare tra i **dispositivi accoppiati** di Android e il produttore dichiara ESC/POS: quasi
+  certamente sì, con il driver ESC/POS in Bluetooth classico;
+- non si accoppia dalle impostazioni ma la trovi con **«Cerca»** nella schermata Stampante, o nel
+  selettore di Chrome sul web: è una stampante **BLE**. Funziona se è una Phomemo M02/M02 Pro o una
+  ESC/POS con un canale seriale BLE; le cat printer non ancora.
+
+### Scegliere il driver
+
+1. Scegli la stampante: tra le **Accoppiate** (Bluetooth classico) oppure tra le **Vicine (BLE)**
+   dopo «Cerca». Sul web la scegli dal selettore di Chrome.
+2. FotoFlash propone il driver in base al **nome** che la stampante annuncia: `M02 Pro`, `M02PRO`,
+   `M02S` → Phomemo M02 Pro; `M02` da solo → Phomemo M02; i nomi tipici delle stampanti per scontrini
+   → ESC/POS 58 mm. `M02X` non riceve un driver e compare l'avviso. Se il nome non dice nulla, resta
+   il driver ESC/POS che usavi (anche la 80 mm), altrimenti si parte da ESC/POS 58 mm. Riscegliere la
+   stessa stampante non cambia un driver scelto a mano.
+3. Il driver si vede nella schermata Stampante e **si cambia a mano**: serve per le stampanti con
+   nomi generici e per le ESC/POS da 80 mm.
+4. **La carta segue il driver.** Per le ESC/POS scegli 58 o 80 mm; per le Phomemo la larghezza la
+   decide il driver. Quando passi a una Phomemo, FotoFlash propone il retino **Floyd-Steinberg**,
+   che rende meglio le sfumature su queste testine.
+5. Stampa la **pagina di prova**. Sulle Phomemo è tutta disegnata a punti: la scritta FOTOFLASH, una
+   banda di gradiente per ogni retino, una scala di grigi e i parametri correnti.
+
+### Da dove vengono i protocolli
+
+ESC/POS è uno standard pubblico. Il protocollo Phomemo **non ha documentazione ufficiale**: il
+driver nasce dal confronto di più progetti di reverse engineering, e ogni byte è citato con la sua
+fonte in [`docs/DRIVERS.md`](docs/DRIVERS.md).
+- [ryo-endo/phomemo-printer](https://github.com/ryo-endo/phomemo-printer): M02 Pro via BLE, 576 punti, caratteristica `FF02`;
+- [vivier/phomemo-tools](https://github.com/vivier/phomemo-tools): M02, blocchi raster da 255 righe, coda `1F 11`;
+- [theacodes/phomemo_m02s](https://github.com/theacodes/phomemo_m02s): M02S, comandi di stato `1F 11`;
+- [transcriptionstream/phomymo](https://github.com/transcriptionstream/phomymo): Web Bluetooth, `FF00/FF02/FF03`, densità, invio senza conferma;
+- [sgrankin/phomemo](https://github.com/sgrankin/phomemo): la M02X e le sue differenze dalla famiglia M02.
 
 ## Installazione
 
@@ -98,11 +144,14 @@ dalla sua app, è una stampante BLE proprietaria.
 
 ## Primo utilizzo
 
-1. Accendi la stampante e **accoppiala** dalle impostazioni Bluetooth di Android (PIN tipico `0000` o `1234`).
-2. Apri FotoFlash: tre schede di benvenuto, poi i permessi (fotocamera; su Android 12+ «Dispositivi
-   nelle vicinanze» per il Bluetooth).
-3. Scegli la stampante tra quelle accoppiate e stampa la **pagina di prova**. Puoi anche saltare e
-   sceglierla dopo.
+1. Accendi la stampante. Se è una ESC/POS a Bluetooth classico, **accoppiala** dalle impostazioni
+   Bluetooth di Android (PIN tipico `0000` o `1234`). Le stampanti BLE, come le Phomemo, non si
+   accoppiano: le trova FotoFlash.
+2. Apri FotoFlash: tre schede di benvenuto, poi i permessi. Serve la fotocamera e, su Android 12+,
+   «Dispositivi nelle vicinanze» per il Bluetooth. Fino ad Android 11 la ricerca BLE chiede anche la
+   posizione, con la Localizzazione attiva: lo impone Android, FotoFlash non la usa.
+3. Scegli la stampante tra le **Accoppiate** o tra le **Vicine (BLE)** con «Cerca», controlla il
+   driver proposto e stampa la **pagina di prova**. Puoi anche saltare e sceglierla dopo.
 4. Scatta, guarda l'anteprima, premi **Stampa**. Fatto.
 
 Consiglio per le feste: attiva **Stampa istantanea** e imposta titolo e hashtag dell'evento in
@@ -113,8 +162,17 @@ Impostazioni → Evento; ogni scatto esce già impaginato e numerato.
 Le stampanti economiche non hanno controllo di flusso e hanno buffer piccoli: una foto pesa circa
 dieci volte uno scontrino. FotoFlash invia l'immagine **a bande** e **a blocchi** con una **pausa**
 tra un blocco e l'altro. I valori predefiniti vanno bene per la maggior parte delle stampanti; se la
-tua fa i capricci, stampa la pagina di prova e regola qui (Impostazioni → Stampante e carta: sezioni
-Carta, Intensità di stampa e Calibrazione avanzata, quest'ultima da aprire con un tocco).
+tua fa i capricci, stampa la pagina di prova e regola qui (Impostazioni → Stampante e carta). La
+schermata mostra solo ciò che vale per il driver scelto: modello di stampante, carta, intensità di
+stampa (sulle Phomemo al suo posto ci sono densità e velocità di stampa), in BLE la velocità di
+invio e, per le ESC/POS, la calibrazione avanzata, da aprire con un tocco.
+
+### Parametri comuni e Bluetooth classico (SPP)
+
+L'avanzamento vale per ogni driver. Intensità, taglio (solo dove c'è la taglierina) e altezza banda
+sono delle ESC/POS: sulle Phomemo l'intensità lascia il posto alla densità, che finché non la tocchi
+ne segue il valore (tabella *Parametri Phomemo* più sotto). Dimensione blocco e pausa riguardano solo
+il Bluetooth classico: in BLE l'invio ha i suoi preset, nella sezione successiva.
 
 | Parametro | Predefinito | Intervallo | A cosa serve |
 |---|---|---|---|
@@ -134,6 +192,55 @@ Carta, Intensità di stampa e Calibrazione avanzata, quest'ultima da aprire con 
 | Stampa lenta ma pulita | Prova blocco più grande o pausa più corta, un passo alla volta |
 | Margine destro tagliato | Controlla la larghezza della carta (58 o 80 mm) |
 | «Stampante occupata» | Il Bluetooth classico accetta una connessione sola: chiudi le altre app che la usano |
+
+### Bluetooth LE (Phomemo e ESC/POS BLE)
+
+In BLE i byte del driver partono a **pezzi**. Ogni pezzo è una scrittura GATT, con una pausa tra
+l'una e l'altra. Le Phomemo vogliono scritture **senza conferma**, le ESC/POS con conferma. Nella
+schermata Stampante scegli la velocità di invio e verificala con la pagina di prova:
+
+| Velocità di invio | Byte per scrittura | Pausa | Quando |
+|---|---|---|---|
+| **Automatica** (consigliata) | quelli del driver: 20 | 15 ms | Sempre: è il valore che non può troncare |
+| **Sicura** | 20 | 15 ms | Come l'automatica, ma fissata a mano |
+| **Veloce** | 60 | 20 ms | Se la pagina di prova esce pulita con *Sicura* |
+| **Massima** | 128 | 20 ms | Se anche *Veloce* va bene: è il valore di [phomymo](https://github.com/transcriptionstream/phomymo) |
+| **Personalizzata** | a scelta | a scelta | Compare quando byte e pausa non corrispondono a un preset |
+
+Le ESC/POS in BLE usano invece la strategia provata sulla "BlueTooth Printer": scritture con conferma
+da 100 byte, che sul web scendono a 20 se la stampante le rifiuta.
+
+Nell'app Android la sezione si chiama *Invio Bluetooth LE* e la prima voce è **Predefinita del
+driver**: per le Phomemo vale come l'*Automatica* (20 byte ogni 15 ms, senza conferma), per le ESC/POS
+sono 100 byte con conferma. In più c'è la voce **Con conferma**: 100 byte alla volta, ognuno
+confermato dalla stampante. È più lenta, ma non perde nulla. Quando cambi driver, la scelta torna
+alla prima voce, perché era tarata sulla stampante di prima.
+
+**Perché 20 byte sono il default sicuro.** Ogni scrittura BLE porta al massimo *MTU − 3* byte, e
+l'MTU minimo garantito è 23: quindi **20 byte**. Il browser (Web Bluetooth) **non dice** quale MTU ha
+negoziato. Oltre i 20 byte una scrittura senza conferma può essere **troncata in silenzio** da alcuni
+stack, Android compreso: la stampa si ferma a metà o esce con righe sfasate, senza nessun errore.
+Per questo la versione web parte sempre da 20 byte. L'app Android invece chiede un MTU di 247 byte e
+non supera mai *MTU − 3*: lì i preset più grandi sono sicuri per la dimensione. La pausa serve
+comunque, perché il buffer della stampante è piccolo.
+
+**Parametri Phomemo** (stessa schermata):
+
+| Parametro | Predefinito | Intervallo | A cosa serve |
+|---|---|---|---|
+| Densità | dall'intensità (0→4, 1→2, 2→4, 3→6, 4→8) | 1-15 | Calore della testina: più alta = più scuro |
+| Larghezza di stampa (solo M02 Pro) | 72 byte (576 punti) | 72 o 78 | 78 byte per le unità che stampano 624 punti |
+| Velocità di stampa | spenta | 1-5 | Sperimentale: il comando viene dalle M110 e non è verificato sulla M02 Pro |
+
+| Sintomo (BLE) | Rimedio |
+|---|---|
+| La stampa si ferma a metà, esce troncata o con righe sfasate | Torna a *Sicura*; se succede anche lì, allunga la pausa |
+| Stampa pulita ma lenta | *Veloce*, poi *Massima*, un passo alla volta con la pagina di prova |
+| Phomemo: foto chiare e slavate | Densità più alta (6-10) |
+| Phomemo: foto scure e impastate | Densità più bassa (2-3); nell'editor più luminosità o retino Atkinson |
+| M02 Pro: stampa spostata verso un lato | Prova la larghezza di stampa a 78 byte |
+| La stampante non compare in «Cerca» | Accendila e scollegala da altre app; fino ad Android 11 serve la Localizzazione attiva |
+| La Phomemo M02X compare come «non supportata» | Ha un protocollo diverso: vedi [Stampanti compatibili](#stampanti-compatibili) |
 
 ## Versione web (PWA)
 
@@ -155,13 +262,20 @@ Web Bluetooth (BLE)**. Si installa come un'app e, dopo il primo avvio, si apre a
 | iPhone e iPad (ogni browser) | Sì | No: vedi *Limiti su iOS* |
 
 **Stampanti.** Il browser parla con la stampante via **Bluetooth LE**, non con il Bluetooth classico
-(SPP) dell'app Android. Vanno le stampanti termiche ESC/POS da 58 e 80 mm che espongono un canale
-seriale BLE: il profilo `18F0/2AF1` delle comuni "BlueTooth Printer" e Netum (quello verificato), e i
-canali `FF00`, `FFE0`, ISSC, `E7810A71` e Nordic UART. Molte mini stampanti hanno sia il classico sia
-il BLE: col browser non serve accoppiarle nelle impostazioni del telefono, si sceglie la stampante dal
-selettore che apre Chrome. Le "cat printer" (servizio `AE30`) vengono riconosciute e rifiutate con un
-messaggio chiaro: hanno un protocollo proprio. Se la tua stampante funziona solo in Bluetooth classico,
-usa l'app Android.
+(SPP) dell'app Android. Usa gli **stessi driver dell'app, con gli stessi byte** (vedi
+[Stampanti compatibili](#stampanti-compatibili)):
+- ESC/POS da 58 e 80 mm che espongono un canale seriale BLE: il profilo `18F0/2AF1` delle comuni
+  "BlueTooth Printer" e Netum (quello verificato), e i canali `FF00`, `FFE0`, ISSC, `E7810A71` e
+  Nordic UART;
+- Phomemo M02 e M02 Pro, servizio `FF00` con scrittura su `FF02`, inviate a pezzi da 20 byte senza
+  conferma finché non scegli un preset più veloce (vedi [Calibrazione](#bluetooth-le-phomemo-e-escpos-ble)).
+
+Molte mini stampanti hanno sia il classico sia il BLE: col browser non serve accoppiarle nelle
+impostazioni del telefono, si sceglie la stampante dal selettore che apre Chrome. Dopo la scelta
+FotoFlash propone il driver dal nome, e lo puoi cambiare nella schermata Stampante. Le "cat printer"
+(servizio `AE30`) vengono riconosciute e rifiutate con un messaggio chiaro, perché hanno un protocollo
+proprio; la Phomemo M02X viene segnalata come non supportata. Se la tua stampante funziona solo in
+Bluetooth classico, usa l'app Android.
 
 **Installarla**
 - **Android, Chrome**: FotoFlash propone *Installa* da sola; altrimenti menu ⋮ → *Installa app* (o
@@ -185,7 +299,7 @@ nessuna dipendenza. Le regole e i contratti dei moduli sono in [`docs/WEB.md`](d
 
 ```bash
 node web/dev-server.mjs              # http://127.0.0.1:5173/ (PORT=8080 per un'altra porta)
-node --test web/tests/*.test.mjs     # test: motore (parità con Kotlin), store, stampante, import e testi
+node --test web/tests/*.test.mjs     # test: motore (parità con Kotlin), driver e golden, store, stampante, import e testi
 node scripts/build-web.mjs dist      # il sito come su Pages; le icone PNG solo se c'è rsvg-convert
 ```
 
@@ -211,13 +325,20 @@ giusto): per allinearlo, *Run workflow* di `pages.yml` su `main` dopo la release
 
 | Modulo | Contenuto |
 |---|---|
-| `:core-thermal` | Kotlin/JVM puro, senza Android: immagini in grigio e a 1 bit, regolazioni tonali, retinatura, impaginazione dei modelli, comandi ESC/POS. Tutto testato con JUnit. |
-| `:app` | Android con Jetpack Compose: fotocamera (CameraX), rendering dei modelli (Canvas e font), Bluetooth SPP, storico, impostazioni, UI. |
+| `:core-thermal` | Kotlin/JVM puro, senza Android: immagini in grigio e a 1 bit, regolazioni tonali, retinatura, impaginazione dei modelli, comandi ESC/POS, driver di stampa (ESC/POS e Phomemo). Tutto testato con JUnit. |
+| `:app` | Android con Jetpack Compose: fotocamera (CameraX), rendering dei modelli (Canvas e font), Bluetooth classico SPP e Bluetooth LE GATT, storico, impostazioni, UI. |
 
 Documenti da leggere prima di scrivere codice:
 [`docs/SPEC.md`](docs/SPEC.md) (prodotto), [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md)
-(architettura e **contratti vincolanti**), [`docs/brand/BRAND.md`](docs/brand/BRAND.md) (brand),
+(architettura e **contratti vincolanti**), [`docs/DRIVERS.md`](docs/DRIVERS.md) (driver di stampa,
+byte e trasporti, comuni ad app e PWA), [`docs/brand/BRAND.md`](docs/brand/BRAND.md) (brand),
 [`AGENTS.md`](AGENTS.md) (regole operative), [`CONTRIBUTING.md`](CONTRIBUTING.md).
+
+**Driver di stampa.** Ogni driver esiste due volte, in Kotlin (`core-thermal`) e in JavaScript
+(`web/src/printer/drivers/`), e le due versioni devono produrre **gli stessi byte**. I test JS
+generano `web/tests/fixtures/drivers-golden.json`, e il test Kotlin `DriversGoldenTest` lo rilegge e
+lo confronta. Un driver nuovo è quindi Kotlin + JS + casi golden nello stesso lavoro: regole in
+[`AGENTS.md`](AGENTS.md), § 3 ter.
 
 **La build si fa in CI.** Versioni bloccate e verificate dalla CI: Gradle 8.10.2, AGP 8.7.2,
 Kotlin 2.0.21, JDK 17, compileSdk/targetSdk 35, minSdk 26, Compose BOM 2024.12.01. Il repository non
@@ -250,7 +371,7 @@ fotoflash/
 ├── core-thermal/           motore di stampa termica, JVM puro
 ├── web/                    versione web (PWA): moduli ES senza dipendenze, test node --test
 ├── scripts/                build-web.mjs, la build del sito di GitHub Pages
-├── docs/                   SPEC, ARCHITECTURE, WEB, brand, licenze, ROADMAP
+├── docs/                   SPEC, ARCHITECTURE, WEB, DRIVERS, brand, licenze, ROADMAP
 ├── issue_plans/            piani pronti per l'agente
 ├── signing/                keystore di debug condiviso (la chiave di release non sta mai qui)
 ├── .github/workflows/      ci, bump-version, release, pages, opencode
@@ -449,4 +570,9 @@ Caratteri inclusi nell'app, non modificati, sotto **SIL Open Font License 1.1**:
 
 Il flusso agentico deriva da quello di
 [Raw BT Print Bridge](https://github.com/nb-camelot/raw-bt-print-bridge), con le correzioni di
-sicurezza e di rilascio emerse dalla sua analisi.
+sicurezza e di rilascio emerse dalla sua analisi. Dallo stesso bridge viene la strategia di invio
+Web Bluetooth per le ESC/POS.
+
+Il driver Phomemo è un'implementazione originale, scritta confrontando i progetti di reverse
+engineering elencati in [Da dove vengono i protocolli](#da-dove-vengono-i-protocolli), senza
+copiarne il codice.

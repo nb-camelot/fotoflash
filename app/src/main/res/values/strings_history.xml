@@ -56,6 +56,7 @@
     <string name="hist_fail_busy">The printer is busy with another print</string>
     <string name="hist_fail_render">Could not prepare this print: try again</string>
     <string name="hist_msg_paper_mismatch">This print is for %1$d mm paper: change the paper in the printer settings</string>
+    <string name="hist_msg_paper_mismatch_wide">This print is for %1$d mm paper or for the Phomemo M02 Pro: choose one of them in the printer settings</string>
     <string name="hist_msg_paper_mismatch_generic">This print is wider than the paper set for the printer: change the paper in the printer settings</string>
 
     <!-- Azioni della snackbar dopo una ristampa non riuscita -->

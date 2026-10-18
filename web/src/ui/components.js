@@ -391,6 +391,7 @@ const FAILURE_LABELS = {
   RENDER_FAILED: 'common_printer_err_render',
   CAT_PRINTER: 'common_printer_err_cat',
   NO_CHANNEL: 'common_printer_err_no_channel',
+  UNSUPPORTED_MODEL: 'common_printer_err_unsupported_model',
 };
 
 /** Etichetta breve di un esito di stampa ('BLUETOOTH_OFF' → "Bluetooth spento"). */

@@ -123,7 +123,7 @@ Sequenza del lavoro (`encode`):
 | 4 | `1B 4E 0D ss` | **solo se** `speed != null`: velocità, comando delle M110, **non verificato** sulla M02 Pro, quindi spento di default |
 | 5 | `1D 76 30 00 48 00 hh 00` + `hh × 72` byte | un blocco raster per ogni gruppo di ≤ 255 righe; righe MSB-first, 1 = nero |
 | 6 | `1B 64 nn` | avanzamento di `feedLines` righe (predefinito 4, poi `1B 64 02`) |
-| 7 | `1F 11 08` `1F 11 0E` `1F 11 07` `1F 11 09` | chiusura come l'app ufficiale (interrogazioni di stato: energia, timer, firmware, batteria) |
+| 7 | `1F 11 08` `1F 11 0E` `1F 11 07` `1F 11 09` | chiusura come l'app ufficiale (interrogazioni di stato: energia, timer, firmware, stato; il significato di 09 non è confermato) |
 
 - **Larghezza**: 576 punti. Le immagini più strette vengono centrate, quelle più larghe ritagliate al centro. Un'opzione avanzata `phomemoWidthBytes` (72 o 78) copre le unità che stampano 624 punti, come dice phomymo.
 - **Retino**: Floyd-Steinberg come predefinito di questo driver. Quando si sceglie la M02 Pro l'app propone di passare a FS. I testi restano neri pieni, mai retinati, come per tutti i driver.
@@ -176,8 +176,7 @@ fun isLocationNeededForScan(): Boolean          // API ≤ 30: la Localizzazione
 fun startBleScan(timeoutMs: Long = 10_000)      // silenziosa se mancano i permessi (lo stato lo dice)
 fun stopBleScan()
 fun currentDriver(): PrinterDriver
-suspend fun select(device: PrinterDevice, driverId: String? = null)  // driverId null → PrinterDrivers.guess(name) ?: escpos-58;
-                                                                    // allinea paper (e propone il retino del driver)
+suspend fun select(device: PrinterDevice, driverId: String? = null)  // vedi «Scelta del driver» qui sotto; allinea paper e retino
 suspend fun setDriver(driverId: String)
 ```
 
@@ -204,3 +203,17 @@ Pattern, nell'immagine `width × height`:
 - `empty`: tutto bianco.
 
 Casi minimi: ogni driver con `checker8` 100×300, che per i Phomemo copre più blocchi da 255 righe e la centratura; `phomemo-m02pro` anche con `widthBytes` 78 e con `heatLevel` 3; `escpos-58` con `cut = true`.
+
+## Scelta del driver dopo l'abbinamento (stessa regola su Android e PWA)
+
+1. C'è un driver scelto a mano: si usa quello. Su Android è `driverId`; sulla PWA è la scelta salvata per quella stampante.
+2. La stampante è la stessa (stesso indirizzo e stesso collegamento): il driver non cambia.
+3. `guess(nome)` riconosce un driver:
+   - se è ESC/POS e anche quello attuale è ESC/POS, resta quello attuale, perché il nome non distingue la 58 mm dalla 80 mm;
+   - altrimenti si passa a quello riconosciuto.
+4. Nome sconosciuto (compresa la M02X, non supportata): un driver ESC/POS resta com'è, un Phomemo torna a `escpos-58`.
+
+**Al cambio di driver:**
+- la carta si allinea al driver;
+- il retino passa a quello del nuovo driver, ma solo se era ancora il predefinito del driver precedente;
+- la taratura BLE (`bleChunkSize`, `bleChunkDelayMs`, `bleWithoutResponse`) si azzera **solo cambiando famiglia** (ESC/POS ↔ Phomemo).

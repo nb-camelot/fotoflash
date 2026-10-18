@@ -12,6 +12,7 @@ import { Ble } from '../printer/ble.js';
 import { downloadBlob, exportFileName } from '../media/export.js';
 import { makeZip } from '../media/zip.js';
 import { lang } from '../i18n/i18n.js';
+import { adoptDetectedDriver, currentDriver, unsupportedPrinter } from './screens/printer.js';
 
 /** Ink e Paper del brand: l'anteprima mostra i punti della stampa come inchiostro su carta. */
 const INK = [0x16, 0x13, 0x0f, 255];
@@ -128,11 +129,15 @@ export async function printAndRecord(ctx, prepared, { copies = 1, onProgress } =
   const alreadyNumbered = !!lastNumbered && lastNumbered.deref() === rendered;
   let outcome;
   try {
-    outcome = await ctx.printer.print(rendered.bitImage, { copies: Math.max(1, copies | 0), onProgress });
+    // Modello riconosciuto ma non supportato (M02X): si avvisa invece di stampare spazzatura. La
+    // voce va comunque nello storico, da ristampare su un'altra stampante.
+    outcome = unsupportedModelOutcome(ctx.printer.state) ||
+      await ctx.printer.print(rendered.bitImage, { copies: Math.max(1, copies | 0), onProgress });
   } catch (e) {
-    outcome = { ok: false, failure: 'WRITE_FAILED', message: errorText(e) };
+    // Il manager non dovrebbe mai lanciare: se succede, la causa resta leggibile nei dettagli.
+    outcome = { ok: false, failure: 'WRITE_FAILED', message: '', detail: errorText(e) };
   }
-  if (!outcome || typeof outcome !== 'object') outcome = { ok: false, failure: null, message: '' };
+  if (!outcome || typeof outcome !== 'object') outcome = { ok: false, failure: null, message: '', detail: '' };
   const printed = outcome.ok === true;
   if (printed && request.texts.printNumber != null && !alreadyNumbered) {
     try {
@@ -312,11 +317,24 @@ const FAILURES = {
   RENDER_FAILED: { key: 'render', primary: 'retry', secondary: null },
   CAT_PRINTER: { key: 'cat_printer', primary: 'printer', secondary: 'close' },
   NO_CHANNEL: { key: 'no_channel', primary: 'retry', secondary: 'printer' },
+  // Esito della sola UI, non del manager: modello riconosciuto dal nome ma non supportato (M02X).
+  // Riprovare non serve: si abbina un'altra stampante.
+  UNSUPPORTED_MODEL: { key: 'unsupported_model', primary: 'pair', secondary: 'printer' },
 };
 const GENERIC_FAILURE = { key: 'generic', primary: 'retry', secondary: 'printer' };
 
 export function failureInfo(failure) {
   return FAILURES[failure] || GENERIC_FAILURE;
+}
+
+/**
+ * Esito UNSUPPORTED_MODEL se la stampante è un modello riconosciuto ma non supportato (stato del
+ * manager con unsupported, oggi solo 'phomemo-m02x'), altrimenti null.
+ */
+export function unsupportedModelOutcome(state) {
+  if (!unsupportedPrinter(state)) return null;
+  const model = state.unsupported || 'phomemo-m02x';
+  return { ok: false, failure: 'UNSUPPORTED_MODEL', message: '', detail: `${state.name || '?'}: ${model} not supported` };
 }
 
 // ------------------------------------------------------------------ foglio di stampa
@@ -390,6 +408,11 @@ export function openPrintSheet(ctx, { run, copies = 1, onReprint = null, onNewPh
       showResult({ ok: false, failure: 'UNSUPPORTED', message: '' }, job);
       return;
     }
+    const model = unsupportedModelOutcome(printer.state || printerState);
+    if (model) {
+      showResult(model, job);
+      return;
+    }
     if (needsPair()) {
       const s = printer.state || printerState;
       pairThen(job, s && s.remembered && s.name ? { sameName: true } : undefined);
@@ -399,19 +422,38 @@ export function openPrintSheet(ctx, { run, copies = 1, onReprint = null, onNewPh
   }
 
   function pairThen(job, opts) {
-    showPairing();
+    // Nome e driver di prima si leggono senza attese: pair() deve restare dentro il gesto.
+    const before = (printer.state || printerState || {}).name || null;
+    let beforeDriver = null;
+    try {
+      beforeDriver = currentDriver(ctx.settings).id;
+    } catch {
+      beforeDriver = null;
+    }
     let pending;
     try {
+      // Nel gesto, prima di tutto il resto: il chooser del browser lo richiede.
       pending = printer.pair(opts);
     } catch (e) {
       showPair(job, e);
       return;
     }
+    showPairing();
     Promise.resolve(pending).then(
       () => {
+        // Stampante nuova: il nome dice il modello (M02 Pro, BlueTooth Printer…), prima di comporre.
+        const after = (printer.state || {}).name || null;
+        try {
+          adoptDetectedDriver(ctx, before, after, beforeDriver);
+        } catch (e) {
+          console.warn('[fotoflash] modello della stampante non aggiornato', e);
+        }
         if (closed) return;
+        const model = unsupportedModelOutcome(printer.state || printerState);
         if (isUnsupported()) {
           showResult({ ok: false, failure: 'UNSUPPORTED', message: '' }, job);
+        } else if (model) {
+          showResult(model, job);
         } else if (needsPair()) {
           showPair(job, null);
         } else {
@@ -438,9 +480,9 @@ export function openPrintSheet(ctx, { run, copies = 1, onReprint = null, onNewPh
         },
       });
     } catch (e) {
-      outcome = { ok: false, failure: null, message: errorText(e) };
+      outcome = { ok: false, failure: null, message: '', detail: errorText(e) };
     }
-    if (!outcome || typeof outcome !== 'object') outcome = { ok: false, failure: null, message: '' };
+    if (!outcome || typeof outcome !== 'object') outcome = { ok: false, failure: null, message: '', detail: '' };
     if (onDone) {
       try {
         onDone(outcome);
@@ -473,20 +515,27 @@ export function openPrintSheet(ctx, { run, copies = 1, onReprint = null, onNewPh
     );
   }
 
-  /** Abbinamento non riuscito: chooser chiuso senza scegliere (niente errore) o errore vero. */
+  /**
+   * Abbinamento non riuscito: chooser chiuso senza scegliere (niente errore) o errore vero. Il
+   * messaggio del manager dice all'utente cosa fare; «Dettagli» porta solo la causa tecnica.
+   */
   function showPair(job, error) {
     phase = 'pair';
     const failed = !!error && safeCode(error) !== 'cancelled';
     const state = printer.state || printerState;
+    const stateError = state && state.kind === 'error' ? state : null;
+    const note = failed
+      ? String((stateError && stateError.message) || t('ed_sheet_pair_failed'))
+      : t('ed_sheet_pair_cancelled');
     const detail = failed
-      ? errorText(error)
-      : (state && state.kind === 'error' && state.message ? String(state.message) : '');
+      ? String((stateError && stateError.detail) || errorText(error))
+      : String((stateError && stateError.detail) || '');
     setView(
       illustration({ paper: 0.06, led: 'idle' }),
       h('h3', { class: 'ffps-title' }, t('ed_sheet_pair_title')),
       h('p', { class: 'ffps-hint' }, t('ed_sheet_pair_hint')),
-      h('p', { class: 'ffps-note' }, t(failed ? 'ed_sheet_pair_failed' : 'ed_sheet_pair_cancelled')),
-      detail ? h('p', { class: 'ffps-detail' }, t('ed_sheet_detail', detail)) : null,
+      h('p', { class: 'ffps-note' }, note),
+      detail && detail !== note ? h('p', { class: 'ffps-detail' }, t('ed_sheet_detail', detail)) : null,
       actions([
         flashButton(t('ed_sheet_pair_action'), { icon: 'bluetooth', onClick: () => pairThen(job) }),
         ghostButton(t('ed_sheet_printer'), { icon: 'print', onClick: openPrinter }),
@@ -591,14 +640,17 @@ export function openPrintSheet(ctx, { run, copies = 1, onReprint = null, onNewPh
       const opts = { icon: ic, onClick: handlers[action] };
       return primary ? flashButton(t(key), opts) : ghostButton(t(key), opts);
     };
+    // Il messaggio del manager è già il testo per l'utente, più preciso del suggerimento generico
+    // (Posizione da attivare, carta da cambiare…); in «Dettagli» va solo la causa tecnica.
     const message = String(outcome.message || '').trim();
+    const detail = String(outcome.detail || '').trim();
     setView(
       // Composizione fallita: la stampantina resta serena, il problema non è suo.
       illustration({ paper: 0.18, led: outcome.failure === 'RENDER_FAILED' ? 'busy' : 'error', badge: 'error' }),
       h('h3', { class: 'ffps-title' }, t(`ed_fail_${info.key}_title`)),
-      h('p', { class: 'ffps-hint' }, t(`ed_fail_${info.key}_hint`)),
+      h('p', { class: 'ffps-hint' }, message || t(`ed_fail_${info.key}_hint`)),
       // Il dettaglio tecnico resta visibile, in piccolo: serve a chi aiuta a capire il problema.
-      message ? h('p', { class: 'ffps-detail' }, t('ed_sheet_detail', message)) : null,
+      detail && detail !== message ? h('p', { class: 'ffps-detail' }, t('ed_sheet_detail', detail)) : null,
       actions([make(info.primary, true), make(info.secondary, false)]),
     );
   }

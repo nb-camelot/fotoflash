@@ -8,12 +8,12 @@
     <string name="prn_status_no_bluetooth_title">No Bluetooth here</string>
     <string name="prn_status_no_bluetooth_body">FotoFlash talks to the printer over Bluetooth, and this device doesn\'t have it.</string>
     <string name="prn_status_permission_title">Allow Bluetooth access</string>
-    <string name="prn_status_permission_body">FotoFlash needs the “Nearby devices” permission to see your paired printer and send it photos. It doesn\'t scan around or use your location.</string>
+    <string name="prn_status_permission_body">FotoFlash needs the “Nearby devices” permission to talk to your printer and send it photos. It never uses your location.</string>
     <string name="prn_status_bt_off_title">Bluetooth is off</string>
     <string name="prn_status_bt_off_body">Turn Bluetooth on to print. It only takes a tap.</string>
     <string name="prn_status_none_title">No printer chosen</string>
-    <string name="prn_status_none_body_pick">Pick your thermal printer from the list below.</string>
-    <string name="prn_status_none_body_pair">Switch the printer on and pair it in Android\'s Bluetooth settings, then come back here to pick it.</string>
+    <string name="prn_status_none_body_pick">Pick your thermal printer from the lists below.</string>
+    <string name="prn_status_none_body_pair">Switch the printer on and pair it in Android\'s Bluetooth settings, then come back here to pick it. Phomemo and other Bluetooth LE printers don\'t pair: find them below under Nearby (BLE).</string>
     <string name="prn_status_ready_title">Ready to print</string>
     <string name="prn_status_ready_body">FotoFlash connects by itself when you print. Print a test page to check paper and intensity.</string>
     <string name="prn_status_connecting_title">Connecting…</string>
@@ -43,8 +43,8 @@
     <string name="prn_action_disconnect">Disconnect</string>
     <string name="prn_action_forget">Forget this printer</string>
 
-    <!-- Dispositivi accoppiati -->
-    <string name="prn_section_printers">Paired devices</string>
+    <!-- Dispositivi accoppiati (Bluetooth classico) -->
+    <string name="prn_section_printers">Paired (classic Bluetooth)</string>
     <string name="prn_printers_hint">Only devices already paired with this phone show up here. Pocket printers are often called MTP-II, PT-210 or BlueTooth Printer; the pairing PIN is usually 0000 or 1234.</string>
     <string name="prn_printers_permission">Allow Bluetooth access to see your paired devices.</string>
     <string name="prn_printers_bt_off">Turn on Bluetooth to see your paired devices.</string>
@@ -58,6 +58,49 @@
     <string name="prn_forget_confirm">Forget</string>
     <string name="prn_cancel">Cancel</string>
     <string name="prn_settings_unavailable">This phone can\'t open that settings screen.</string>
+    <string name="prn_device_driver">Driver: %1$s</string>
+    <string name="prn_tag_unsupported">NOT SUPPORTED</string>
+    <string name="prn_unsupported_m02x">The Phomemo M02X speaks a different language from the M02 and M02 Pro: FotoFlash can\'t print on it yet.</string>
+
+    <!-- Stampanti vicine (Bluetooth LE) -->
+    <string name="prn_section_nearby">Nearby (BLE)</string>
+    <string name="prn_nearby_hint">Phomemo and other Bluetooth LE printers don\'t pair in Android\'s settings: search for them here, with the printer on and close by.</string>
+    <string name="prn_action_scan">Search</string>
+    <string name="prn_action_scan_stop">Stop searching</string>
+    <string name="prn_nearby_scanning">Searching…</string>
+    <string name="prn_nearby_idle">Tap Search to find the Bluetooth LE printers that are switched on nearby.</string>
+    <string name="prn_nearby_empty">No Bluetooth LE printer found. Switch it on, keep it close to the phone and try again. If it\'s connected to another phone or app, disconnect it there first.</string>
+    <string name="prn_nearby_permission">Searching for nearby printers needs the “Nearby devices” permission. FotoFlash doesn\'t use it to know where you are.</string>
+    <string name="prn_nearby_permission_location">On this Android version, searching for Bluetooth LE printers needs the location permission. FotoFlash never uses or stores your location.</string>
+    <string name="prn_action_scan_permission">Allow searching</string>
+    <string name="prn_nearby_location_off">On this Android version a Bluetooth LE search finds nothing unless Location is on. You can turn it off again once the printer is chosen.</string>
+    <string name="prn_action_location_settings">Turn on Location</string>
+    <string name="prn_nearby_bt_off">Turn on Bluetooth to search for nearby printers.</string>
+    <string name="prn_nearby_failed">The search didn\'t start. Try again in a few seconds; if it keeps happening, switch Bluetooth off and on again.</string>
+
+    <!-- Driver -->
+    <string name="prn_section_driver">Printer model</string>
+    <string name="prn_driver_title">Printer driver</string>
+    <string name="prn_driver_hint">FotoFlash recognises the printer from its name; if it gets it wrong, pick the right one here.</string>
+    <string name="prn_driver_escpos_58">ESC/POS 58 mm</string>
+    <string name="prn_driver_escpos_58_desc">BlueTooth Printer, Netum and most pocket printers</string>
+    <string name="prn_driver_escpos_80">ESC/POS 80 mm</string>
+    <string name="prn_driver_escpos_80_desc">Receipt printers with 80 mm rolls</string>
+    <string name="prn_driver_phomemo_m02">Phomemo M02</string>
+    <string name="prn_driver_phomemo_m02_desc">The classic M02 (not Pro, not S)</string>
+    <string name="prn_driver_phomemo_m02pro">Phomemo M02 Pro / M02S</string>
+    <string name="prn_driver_phomemo_m02pro_desc">300 dpi print head: sharper photos</string>
+    <string name="prn_driver_specs">%1$d dots · %2$d dpi · %3$s</string>
+    <string name="prn_link_classic_or_ble">classic Bluetooth or BLE</string>
+    <string name="prn_link_ble_only">Bluetooth LE only</string>
+    <string name="prn_link_classic_only">classic Bluetooth only</string>
+    <string name="prn_tag_auto">AUTO</string>
+    <string name="prn_driver_suggest">From its name this looks like a “%1$s”.</string>
+    <string name="prn_action_use_suggested">Use this driver</string>
+    <string name="prn_driver_link_mismatch_ble">This driver usually talks over Bluetooth LE. If nothing prints, pick the printer under Nearby (BLE) instead.</string>
+    <string name="prn_driver_link_mismatch_classic">This driver talks over classic Bluetooth. If nothing prints, pair the printer in Bluetooth settings and pick it under Paired.</string>
+    <string name="prn_driver_dither_hint">The recommended halftone for this printer is %1$s.</string>
+    <string name="prn_action_use_dither">Use %1$s</string>
 
     <!-- Carta -->
     <string name="prn_section_paper">Paper</string>
@@ -65,6 +108,11 @@
     <string name="prn_paper_width_hint">%1$d dots per line. Most pocket printers use 58 mm rolls.</string>
     <string name="prn_paper_58">58 mm</string>
     <string name="prn_paper_80">80 mm</string>
+    <string name="prn_paper_driver">%1$d dots per line at %2$d dpi: about %3$d mm of print.</string>
+    <string name="prn_paper_driver_hint">The paper width comes with the printer model. Prints keep the same proportions as on 58 mm paper.</string>
+    <string name="prn_phomemo_width">Print width</string>
+    <string name="prn_phomemo_width_value">%1$d bytes · %2$d dots</string>
+    <string name="prn_phomemo_width_hint">576 dots suit almost every M02 Pro. Some units print 624 dots per line: if the frame on the test page stays well inside the paper edges, try 624 and print the test page again.</string>
     <string name="prn_feed_lines">Paper feed after printing</string>
     <string name="prn_feed_lines_value">%1$d lines</string>
     <string name="prn_feed_lines_hint">Blank paper after the photo, so you can tear it off without cutting into it.</string>
@@ -80,10 +128,39 @@
     <string name="prn_heat_level_3">Dark</string>
     <string name="prn_heat_level_4">Maximum</string>
     <string name="prn_heat_hint">More heat gives deeper blacks and richer grays, but prints slower and drains the battery faster. “Printer default” sends no setting at all: choose it if your printer acts strangely with the others. Some printers keep the last intensity until you switch them off and on again.</string>
+    <string name="prn_density_title">Print density</string>
+    <string name="prn_density_value">%1$d/%2$d</string>
+    <string name="prn_density_value_default">%1$d/%2$d (automatic)</string>
+    <string name="prn_density_hint">Higher density gives fuller blacks and richer grays, but prints slower and drains the battery faster. Automatic follows the intensity level: %1$d if you never changed it.</string>
+    <string name="prn_density_reset">Back to automatic</string>
+    <string name="prn_speed_title">Print speed (experimental)</string>
+    <string name="prn_speed_hint">Sends the speed command of the Phomemo label printers, never verified on the M02 family. Leave it off unless prints come out pale or streaky, and check every value on the test page.</string>
+    <string name="prn_speed_value">%1$d of %2$d</string>
+
+    <!-- Invio BLE -->
+    <string name="prn_section_ble">Bluetooth LE sending</string>
+    <string name="prn_ble_title">How fast to send</string>
+    <string name="prn_ble_hint">Bluetooth LE sends the photo in small pieces. Smaller pieces and longer pauses are slower but safer: if the print stops or comes out streaky, pick a more careful option and print a test page.</string>
+    <string name="prn_ble_preset_driver">Driver default</string>
+    <string name="prn_ble_preset_driver_desc">%1$d bytes every %2$d ms, %3$s</string>
+    <string name="prn_ble_preset_safe">Safe</string>
+    <string name="prn_ble_preset_safe_desc">20 bytes every 15 ms, unconfirmed: works on every phone</string>
+    <string name="prn_ble_preset_fast">Fast</string>
+    <string name="prn_ble_preset_fast_desc">60 bytes every 20 ms, unconfirmed</string>
+    <string name="prn_ble_preset_max">Maximum</string>
+    <string name="prn_ble_preset_max_desc">128 bytes every 20 ms, unconfirmed: only if the test page comes out perfect</string>
+    <string name="prn_ble_preset_confirmed">Confirmed</string>
+    <string name="prn_ble_preset_confirmed_desc">100 bytes at a time, each one confirmed by the printer: slower but nothing gets lost</string>
+    <string name="prn_ble_no_response">unconfirmed</string>
+    <string name="prn_ble_with_response">confirmed</string>
+    <string name="prn_ble_current">In use: %1$d-byte pieces, %2$d ms pause, %3$s. The phone sends smaller pieces if the link can\'t take them.</string>
+    <string name="prn_ble_custom">Custom values, set elsewhere: pick an option to replace them.</string>
 
     <!-- Calibrazione avanzata -->
     <string name="prn_section_advanced">Advanced calibration</string>
     <string name="prn_advanced_summary">Block size, pause and band height</string>
+    <string name="prn_advanced_summary_spp">Block size and pause</string>
+    <string name="prn_advanced_summary_band">Band height</string>
     <string name="prn_advanced_expand">Show advanced calibration</string>
     <string name="prn_advanced_collapse">Hide advanced calibration</string>
     <string name="prn_advanced_hint">A photo is about ten times bigger than a receipt, and cheap printers have tiny memories. If prints break up, stop halfway or turn into random characters, send smaller blocks more slowly, then print a test page.</string>
@@ -106,14 +183,16 @@
     <string name="prn_tip_number">%1$d. %2$s</string>
     <string name="prn_tip_blank_title">The paper comes out blank</string>
     <string name="prn_tip_blank_body">The roll is in upside down: the coated side must face the print head. Scratch the paper with a fingernail: the side that turns dark is the one to print on.</string>
+    <string name="prn_tip_garbled_title">It prints random characters or black stripes</string>
+    <string name="prn_tip_garbled_body">The printer model is wrong: a Phomemo receiving ESC/POS, or the other way round, prints garbage. Choose the right one in Printer model and print a test page.</string>
     <string name="prn_tip_pale_title">Prints are pale or patchy</string>
     <string name="prn_tip_pale_body">Raise the intensity and charge the printer: a low battery makes pale prints. Cheap or old paper also prints lighter.</string>
     <string name="prn_tip_broken_title">The photo breaks up or stops halfway</string>
-    <string name="prn_tip_broken_body">Open Advanced calibration: lower the block size, raise the pause and lower the band height. Print a test page after each change.</string>
+    <string name="prn_tip_broken_body">Classic Bluetooth: open Advanced calibration, lower the block size, raise the pause and lower the band height. Bluetooth LE: pick a more careful sending option. Print a test page after each change.</string>
     <string name="prn_tip_connect_title">It won\'t connect</string>
-    <string name="prn_tip_connect_body">The printer talks to one phone at a time: disconnect it from other phones or computers, switch it off and on again and keep it within a couple of meters.</string>
+    <string name="prn_tip_connect_body">The printer talks to one phone at a time: disconnect it from other phones, apps or computers, switch it off and on again and keep it within a couple of meters.</string>
     <string name="prn_tip_missing_title">The printer isn\'t in the list</string>
-    <string name="prn_tip_missing_body">Pair it first in Android\'s Bluetooth settings. FotoFlash works with classic Bluetooth printers; printers that only offer Bluetooth Low Energy are not supported.</string>
+    <string name="prn_tip_missing_body">Classic Bluetooth printers must be paired first in Android\'s Bluetooth settings. Bluetooth LE printers, like the Phomemo, don\'t pair: tap Search under Nearby (BLE) with the printer switched on.</string>
 
     <!-- Errori riportati da PrinterManager -->
     <string name="prn_err_busy">Another print is in progress. Wait for it to finish.</string>
@@ -124,19 +203,22 @@
     <string name="prn_err_not_bonded">%1$s is no longer paired with this phone. Pair it again in Bluetooth settings.</string>
     <string name="prn_err_connect">Couldn\'t connect to %1$s. Check that it\'s on, nearby and not connected to another phone.</string>
     <string name="prn_err_connect_timeout">%1$s didn\'t answer within %2$d seconds. Check that it\'s on, nearby and not connected to another phone.</string>
+    <string name="prn_err_ble_no_channel">%1$s connected, but it offers no print channel FotoFlash knows. Check that you picked the right printer and the right driver.</string>
     <string name="prn_err_write">The connection to %1$s dropped while printing. Check the battery and the paper, then try again.</string>
     <string name="prn_err_write_stalled">%1$s stopped accepting data. It may be out of paper or have the cover open.</string>
     <string name="prn_err_unexpected">Printing failed: %1$s</string>
     <string name="prn_err_render">The print couldn\'t be prepared. The printer is fine: try again.</string>
-    <string name="prn_err_too_wide">This print was made for %1$d mm paper. Set that paper width in Printer &amp; paper to print it again.</string>
+    <string name="prn_err_too_wide">This print was made for %1$d mm paper. In Printer &amp; paper, pick a printer model with that paper width to print it again.</string>
 
     <!-- Pagina di prova: sulla carta finisce solo ASCII (gli accenti vengono tolti) -->
     <string name="prn_test_payoff">Snap. Print. Smile.</string>
     <string name="prn_test_printer">Printer: %1$s</string>
     <string name="prn_test_date">Date: %1$s</string>
     <string name="prn_test_paper">Paper: %1$d mm, %2$d dots</string>
+    <string name="prn_test_driver">Driver: %1$s (%2$d dpi)</string>
     <string name="prn_test_heat">Intensity: %1$s (%2$d/4)</string>
     <string name="prn_test_transfer">Band %1$d rows | block %2$d B | pause %3$d ms</string>
+    <string name="prn_test_transfer_ble">Band %1$d rows | BLE %2$d B every %3$d ms, %4$s</string>
     <string name="prn_test_width">Width check: both side edges of this frame must be on the paper.</string>
     <string name="prn_test_dither">Halftone methods, black to white:</string>
     <string name="prn_test_dither_current">%1$s (your default)</string>
@@ -148,4 +230,10 @@
     <string name="prn_test_tip_broken">Bands broken or garbled? Lower the block size or raise the pause.</string>
     <string name="prn_test_tip_blank">Blank paper? Flip the roll.</string>
     <string name="prn_test_end">Test page complete</string>
+
+    <!-- Pagina di prova raster (Phomemo): testi disegnati punto per punto, solo ASCII -->
+    <string name="prn_test_subtitle">Test page</string>
+    <string name="prn_test_transfer_ble_raster">BLE: %1$d B every %2$d ms, %3$s</string>
+    <string name="prn_test_gray">Gray scale, black in percent</string>
+    <string name="prn_test_black">Solid black and 1-dot lines</string>
 </resources>

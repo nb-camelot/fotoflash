@@ -9,7 +9,7 @@ import {
 import { langSetting, setLang } from '../../i18n/i18n.js';
 import { VERSION } from '../../version.js';
 import { defaultTone, DitherAlgorithm, TemplateKind } from '../../core/model.js';
-import { APK_URL, rememberedOnly } from './printer.js';
+import { APK_URL, rememberedOnly, currentDriver, unsupportedPrinter } from './printer.js';
 
 const GITHUB_URL = 'https://github.com/nb-camelot/fotoflash';
 const OFL_URL = 'https://openfontlicense.org';
@@ -86,8 +86,12 @@ export function mount(root, ctx) {
     // Anche la stampante ricordata da una visita precedente conta: la pillola la mostra per nome.
     const paired = !!st.name && st.kind !== 'unsupported' && (st.kind !== 'not-paired' || rememberedOnly(st));
     printerTitle.textContent = paired ? st.name : t('set_printer_none');
-    const mm = settings.get().paper === 'MM80' ? 80 : 58;
-    printerDesc.textContent = paired ? t('set_printer_paper', mm) : t('set_printer_hint_none');
+    // Il modello (driver) decide carta e risoluzione: «Phomemo M02 Pro · 300 dpi». Una M02X non ha
+    // driver: la riga lo dice, invece di nominarne uno che stamperebbe spazzatura.
+    const driver = currentDriver(settings);
+    if (!paired) printerDesc.textContent = t('set_printer_hint_none');
+    else if (unsupportedPrinter(st)) printerDesc.textContent = t('prn_m02x_title');
+    else printerDesc.textContent = t('set_printer_driver', driver.displayName, driver.dpi);
     pill.set(st);
   }
   cleanups.push(printer.subscribe((state) => paintPrinter(state)));

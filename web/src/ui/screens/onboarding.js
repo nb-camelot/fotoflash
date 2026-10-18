@@ -1,10 +1,14 @@
 // Primo avvio: tre schede illustrate (Scatta, Stampa, Ricorda) e il passo della stampante, con
-// abbinamento Web Bluetooth e pagina di prova. Sempre chiaro: è la "carta" del brand.
+// abbinamento Web Bluetooth, modello della stampante (riconosciuto dal nome, modificabile) e pagina
+// di prova. Sempre chiaro: è la "carta" del brand.
 import { h, s, clear, reducedMotion } from '../dom.js';
-import { wordmark } from '../icons.js';
-import { flashButton, ghostButton, textButton, printerPill, notice, listItem, toast } from '../components.js';
+import { icon, wordmark } from '../icons.js';
+import { flashButton, ghostButton, textButton, printerPill, notice, listItem, toast, sheet } from '../components.js';
 import { Ble } from '../../printer/ble.js';
-import { APK_URL, unsupportedReason, platformInfo, pairPrinter, bleErrorMessage, outcomeMessage, rememberedOnly } from './printer.js';
+import {
+  APK_URL, unsupportedReason, platformInfo, pairPrinter, bleErrorMessage, outcomeMessage, rememberedOnly,
+  adoptDetectedDriver, currentDriver, detectedDriver, driverPicker, driverSpec, isUnsupportedModel, unsupportedPrinter,
+} from './printer.js';
 
 // Illustrazioni dell'app (ill_onboarding_*.xml, viewport 320 × 240) convertite in SVG: tinte piene,
 // contorni Ink da 4, ombre piene, retino. Markup statico.
@@ -72,12 +76,27 @@ export function mount(root, ctx) {
   const apk = !iOS ? h('div', { class: 'ff-card', style: { marginTop: '16px' } },
     listItem({ icon: 'android', title: t('onb_apk'), desc: t('onb_apk_desc'), href: APK_URL, external: true })) : null;
 
+  // Modello della stampante: riconosciuto dal nome appena abbinata, si cambia con un tocco.
+  const driverTitle = h('span', { class: 'ff-item__title' });
+  const driverDesc = h('span', { class: 'ff-item__desc' });
+  const driverChange = ghostButton(t('onb_driver_change'), { small: true, onClick: openDriverSheet });
+  const driverRow = h('div', { class: 'ff-item', style: { padding: '0', minHeight: '0' } },
+    icon('print'),
+    h('span', { class: 'ff-item__body' }, driverTitle, driverDesc),
+    driverChange);
+  // La M02X ha un nome da Phomemo ma un protocollo che FotoFlash non parla: lo si dice subito.
+  const modelNote = notice({ kind: 'warn', icon: 'warning', children: [
+    h('p', { style: { fontWeight: '700' } }, t('prn_m02x_title')),
+    h('p', { style: { marginTop: '4px' } }, t('prn_m02x_body')),
+  ] });
+  modelNote.hidden = true;
+
   let printerBody;
   if (supported) {
     printerBody = h('div', null,
       h('p', { class: 'ff-onb__lead' }, t('onb_printer_text')),
       h('div', { style: { marginTop: '16px' } }, btOff),
-      h('div', { class: 'ff-pair-card' }, pill.el, testBtn,
+      h('div', { class: 'ff-pair-card' }, pill.el, driverRow, modelNote, testBtn,
         h('div', { class: 'ff-row', style: { gap: '0', justifyContent: 'center' } }, otherBtn, allBtn)),
       android ? h('p', { class: 'ff-small ff-muted', style: { marginTop: '16px' } }, t('onb_location_hint')) : null,
       h('p', { class: 'ff-small ff-muted', style: { marginTop: '12px' } }, t('onb_printer_later')),
@@ -125,7 +144,10 @@ export function mount(root, ctx) {
   // Sul passo della stampante il pulsante giallo abbina finché non c'è una stampante pronta.
   function printerAction() {
     if (!supported) return null;
-    if (state.kind === 'ready' || state.kind === 'printing' || state.kind === 'connecting') return null;
+    if (state.kind === 'printing' || state.kind === 'connecting') return null;
+    // Una M02X non stampa, nemmeno collegata: il passo si completa con un'altra stampante.
+    if (unsupportedPrinter(state)) return 'pair';
+    if (state.kind === 'ready') return null;
     // Una stampante incompatibile non si ricollega: va abbinata un'altra (come in Stampante e carta).
     const retryable = state.failure !== 'CAT_PRINTER' && state.failure !== 'UNSUPPORTED';
     if (state.kind === 'disconnected' || rememberedOnly(state) ||
@@ -137,7 +159,7 @@ export function mount(root, ctx) {
     const action = index === PRINTER_PAGE ? printerAction() : null;
     if (index < PRINTER_PAGE - 1) primary.setText(t('onb_next'));
     else if (index === PRINTER_PAGE - 1) primary.setText(t('onb_start'));
-    else if (action === 'pair') primary.setText(t('onb_pair'));
+    else if (action === 'pair') primary.setText(t(unsupportedPrinter(state) ? 'onb_pair_other' : 'onb_pair'));
     else if (action === 'reconnect') primary.setText(t('onb_reconnect', state.name || Ble.info().name || t('prn_unknown_printer')));
     else primary.setText(t('onb_done'));
     later.hidden = !action;
@@ -148,12 +170,52 @@ export function mount(root, ctx) {
     pill.set(state);
     const ready = state.kind === 'ready';
     const known = (state.kind !== 'not-paired' || rememberedOnly(state)) && state.kind !== 'unsupported';
-    testBtn.hidden = !(ready || state.kind === 'printing');
+    // Una M02X non si prova: parla un protocollo che FotoFlash non conosce (lo dice l'avviso).
+    testBtn.hidden = !(ready || state.kind === 'printing') || unsupportedPrinter(state);
     testBtn.disabled = state.kind === 'printing';
-    otherBtn.hidden = !known;
+    // Con una M02X «Abbina un'altra stampante» è già il pulsante principale.
+    otherBtn.hidden = !known || unsupportedPrinter(state);
     allBtn.disabled = pairing || state.kind === 'connecting' || state.kind === 'printing';
     otherBtn.disabled = allBtn.disabled;
+    updateDriver();
     updateBottom();
+  }
+
+  /** Riga del modello: quale driver stampa, e se il nome della stampante lo conferma. */
+  function updateDriver() {
+    const name = state.name || null;
+    const known = supported && !!name && state.kind !== 'unsupported';
+    // Per una M02X nessun driver va bene: al posto della riga del modello c'è l'avviso.
+    const noDriver = unsupportedPrinter(state) || isUnsupportedModel(name);
+    driverRow.hidden = !known || noDriver;
+    modelNote.hidden = !known || !noDriver;
+    if (!known || noDriver) return;
+    const driver = currentDriver(settings);
+    // Con il driver corrente: il nome non distingue una ESC/POS da 58 mm da una da 80.
+    const guess = detectedDriver(name, driver);
+    let how;
+    if (guess && guess.id === driver.id) how = t('onb_driver_detected');
+    else if (guess) how = t('onb_driver_mismatch', guess.displayName);
+    else how = t('onb_driver_unknown');
+    driverTitle.textContent = t('onb_driver_model', driver.displayName);
+    driverDesc.textContent = `${driverSpec(t, driver)} · ${how}`;
+    driverChange.disabled = state.kind === 'printing';
+  }
+
+  function openDriverSheet() {
+    let handle = null;
+    const picker = driverPicker(ctx, {
+      onPick: () => {
+        if (handle) handle.close();
+      },
+    });
+    picker.set(state.name || null);
+    handle = sheet({
+      title: t('onb_driver_title'),
+      content: h('div', null,
+        h('p', { class: 'ff-small ff-muted', style: { margin: '0 4px 12px' } }, t('onb_driver_hint')),
+        h('div', { class: 'ff-card' }, picker.el)),
+    });
   }
 
   function onPrimary() {
@@ -168,6 +230,9 @@ export function mount(root, ctx) {
 
   function runPair(mode, btn) {
     if (pairing) return;
+    // Nome e driver di prima si leggono senza attese: la chiamata deve restare dentro il gesto.
+    const before = state.name || null;
+    const beforeDriver = currentDriver(settings).id;
     // Prima la chiamata (serve il gesto dell'utente), poi lo stato dell'interfaccia.
     const pending = pairPrinter(ctx, mode);
     pairing = true;
@@ -176,6 +241,8 @@ export function mount(root, ctx) {
     pending.then((result) => {
       const msg = outcomeMessage(t, result);
       if (msg) toast(msg, { duration: 7000 });
+      // Stampante nuova: il nome dice il modello (M02 Pro, BlueTooth Printer…), e il driver lo segue.
+      if (mode !== 'reconnect') adoptDetectedDriver(ctx, before, (printer.state || state).name || Ble.info().name, beforeDriver);
     }).catch((e) => {
       const msg = bleErrorMessage(t, e, state.name);
       if (msg) toast(msg, { duration: 7000 });
@@ -187,6 +254,7 @@ export function mount(root, ctx) {
   }
 
   async function runTestPage() {
+    if (unsupportedPrinter(state)) return;
     testBtn.setBusy(true);
     try {
       const result = await printer.printTestPage();
@@ -275,6 +343,7 @@ export function mount(root, ctx) {
       state = next || state;
       updatePrinter();
     }));
+    cleanups.push(settings.subscribe(() => updateDriver()));
     Promise.resolve()
       .then(() => Ble.available())
       .then((value) => {

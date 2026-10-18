@@ -102,7 +102,7 @@ class BtSppTransport(context: Context) : PrinterTransport {
      * [onProgress] riceve i byte di ogni blocco appena scritto. Un blocco fermo oltre
      * PrinterTuning.WRITE_STALL_MS fa chiudere il socket (unico modo di sbloccare write()).
      */
-    suspend fun write(bytes: ByteArray, onProgress: ((Int) -> Unit)?) {
+    override suspend fun write(bytes: ByteArray, onProgress: ((Int) -> Unit)?) {
         if (bytes.isEmpty()) return
         withContext(Dispatchers.IO) {
             val s = socket
@@ -283,7 +283,7 @@ class BtSppTransport(context: Context) : PrinterTransport {
     @SuppressLint("MissingPermission")
     private fun cancelDiscoveryQuietly(adapter: BluetoothAdapter) {
         // Una scansione in corso rallenta o fa fallire la connessione. Su Android 12+ serve
-        // BLUETOOTH_SCAN, che non chiediamo: in quel caso si rinuncia senza danni.
+        // BLUETOOTH_SCAN, chiesto solo per la ricerca BLE: senza, si rinuncia senza danni.
         try {
             adapter.cancelDiscovery()
         } catch (_: SecurityException) {

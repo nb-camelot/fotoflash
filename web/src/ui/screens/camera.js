@@ -43,6 +43,7 @@ const FAILURE_TEXT = {
   RENDER_FAILED: 'cam_print_failed_render',
   CAT_PRINTER: 'cam_print_failed_cat_printer',
   NO_CHANNEL: 'cam_print_failed_no_channel',
+  UNSUPPORTED_MODEL: 'cam_print_failed_unsupported_model',
 };
 
 /** Errori della fotocamera (camera.js) → testi e possibilità di riprovare. */
