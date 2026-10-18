@@ -1,5 +1,6 @@
 /* FotoFlash web — token del brand e stili dei componenti.
-   Mobile-first (360-430 px); su schermi larghi l'app è una colonna di 480 px con il retino ai lati. */
+   Mobile-first (360-430 px); su schermi medi l'app è una colonna di 480 px con il retino ai lati; da
+   960 px nel browser c'è la presentazione, e l'app sta in una cornice di telefono (in fondo). */
 
 /* ---------------------------------------------------------------- Caratteri (OFL, in fonts/) */
 @font-face {
@@ -235,6 +236,13 @@ body {
     border-right: 2px solid var(--ff-frame);
     max-width: calc(var(--ff-col) + 4px);
   }
+}
+
+/* Prima dell'avvio nessuna vista è decisa: lo splash giallo prende tutta la finestra, come quello di
+   Android, invece di mostrare sul desktop la colonna da telefono che la presentazione sostituirà. */
+html:not([data-ff-view]) #app {
+  max-width: none;
+  border: 0;
 }
 
 h1, h2, h3, h4, p {
@@ -815,6 +823,12 @@ canvas.ff-thermal {
 .ff-chip:disabled {
   opacity: .4;
   cursor: default;
+}
+
+/* Chip che vanno a capo (le lingue): ogni scelta resta in vista, nessuna nascosta oltre il bordo. */
+.ff-chips--wrap {
+  flex-wrap: wrap;
+  overflow: visible;
 }
 
 /* ---------------------------------------------------------------- Slider */
@@ -2038,6 +2052,394 @@ dialog.ff-dialog {
   overflow-wrap: anywhere;
 }
 
+/* ---------------------------------------------------------------- Presentazione e palcoscenico */
+/* app.js mette su <html> data-ff-view: 'app' (la colonna di sempre), 'landing' (la presentazione,
+   a tutta larghezza anche sul telefono) o 'stage' (desktop: l'app in una cornice di telefono, un
+   iframe, con il pannello accanto). Dentro la cornice l'app è larga 390 px e non cambia nulla. */
+/* la presentazione è sempre chiara, come la carta (anche prima che arrivi landing.css) */
+html[data-ff-view="landing"],
+html[data-ff-view="landing"] body {
+  background: var(--ff-paper);
+}
+
+/* anche barre di scorrimento e controlli nativi chiari, pure col sistema in tema scuro */
+html[data-ff-view="landing"] {
+  color-scheme: light;
+}
+
+html[data-ff-view="landing"] #app,
+html[data-ff-view="stage"] #app {
+  max-width: none;
+  border: 0;
+  background: transparent;
+}
+
+html[data-ff-view="stage"] #app {
+  padding: 0;
+}
+
+.ff-stage {
+  --ff-stage-pad: 24px;
+  --ff-bezel: 14px;
+  --ff-screen-w: 390px;
+  /* 16 px in meno: l'ombra piena del telefono (14 px) non deve toccare il bordo della finestra.
+     Mai sotto 640 px, l'altezza di un telefono vero: nelle finestre più basse app.js rimpicciolisce
+     tutto il telefono (--ff-phone-scale) invece di schiacciare le schermate dell'app. */
+  --ff-screen-h: max(640px, min(844px, calc(100dvh - 2 * var(--ff-stage-pad) - 2 * var(--ff-bezel) - 16px)));
+  position: relative;
+  isolation: isolate;
+  display: grid;
+  grid-template-columns: minmax(280px, 380px) auto;
+  justify-content: center;
+  align-items: center;
+  column-gap: clamp(40px, 7vw, 112px);
+  height: 100dvh;
+  padding: var(--ff-stage-pad) 32px;
+  overflow: hidden;
+  background-color: var(--ff-side-bg);
+  /* il retino del brand, più largo di quello ai lati della colonna */
+  background-image:
+    radial-gradient(circle, var(--ff-side-dot) 0 2px, transparent 2.5px),
+    radial-gradient(circle, var(--ff-side-dot) 0 2px, transparent 2.5px);
+  background-size: 22px 22px;
+  background-position: 0 0, 11px 11px;
+}
+
+/* Le stampe che fluttuano piano attorno al telefono (decorative, dietro a tutto). */
+.ff-stage__bg {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  /* le stampe crescono un po' con la finestra: misure in em */
+  font-size: clamp(16px, 1.15vw, 24px);
+}
+
+.ff-stage__print {
+  --r: 0deg;
+  position: absolute;
+  display: block;
+  line-height: 0;
+  transform: rotate(var(--r));
+  animation: ff-stage-float var(--ff-float, 10s) ease-in-out var(--ff-float-delay, 0s) infinite alternate;
+}
+
+.ff-stage__print svg {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.ff-stage__print--1 { --r: -12deg; --ff-float: 9s; left: 3%; top: 7%; width: 7em; }
+.ff-stage__print--2 { --r: 9deg; --ff-float: 11s; --ff-float-delay: -3s; left: 4%; bottom: 6%; width: 4em; }
+.ff-stage__print--3 { --r: 7deg; --ff-float: 10s; --ff-float-delay: -6s; right: 2.5%; top: 9%; width: 6.5em; }
+.ff-stage__print--4 { --r: -8deg; --ff-float: 12s; --ff-float-delay: -2s; right: 3%; bottom: 8%; width: 6em; }
+/* le due in più stanno a metà altezza, nei margini liberi tra gli angoli (solo su schermi grandi) */
+.ff-stage__print--5 { --r: 15deg; --ff-float: 13s; --ff-float-delay: -8s; left: 14%; top: 44%; width: 5.5em; }
+.ff-stage__print--6 { --r: -16deg; --ff-float: 11s; --ff-float-delay: -5s; right: 13%; top: 40%; width: 5.75em; }
+
+@keyframes ff-stage-float {
+  from { transform: translateY(0) rotate(var(--r)); }
+  to { transform: translateY(-16px) rotate(calc(var(--r) + 3deg)); }
+}
+
+/* Il telefono: un disco Flash dietro (come nelle illustrazioni), cornice Ink, ombra piena. */
+.ff-stage__device {
+  position: relative;
+  display: grid;
+  place-items: center;
+}
+
+.ff-stage__device::before {
+  content: '';
+  position: absolute;
+  z-index: -1;
+  width: calc(var(--ff-screen-w) * 1.6 * var(--ff-phone-scale, 1));
+  aspect-ratio: 1;
+  border-radius: 50%;
+  background: var(--ff-flash);
+}
+
+.ff-stage__phone {
+  position: relative;
+  width: calc(var(--ff-screen-w) + 2 * var(--ff-bezel));
+  height: calc(var(--ff-screen-h) + 2 * var(--ff-bezel));
+  padding: var(--ff-bezel);
+  border-radius: 58px;
+  background: var(--ff-ink);
+  box-shadow: 0 0 0 2px var(--ff-frame), 14px 14px 0 var(--ff-flash-deep);
+  /* rimpicciolito nelle finestre basse; i margini negativi riportano l'ingombro alla misura vista,
+     così pannello e telefono restano centrati con lo stesso stacco */
+  transform: scale(var(--ff-phone-scale, 1));
+  margin:
+    calc((var(--ff-phone-scale, 1) - 1) * (var(--ff-screen-h) + 2 * var(--ff-bezel)) / 2)
+    calc((var(--ff-phone-scale, 1) - 1) * (var(--ff-screen-w) + 2 * var(--ff-bezel)) / 2);
+}
+
+/* tasti del volume (due, con l'ombra copiata) e d'accensione */
+.ff-stage__phone::before,
+.ff-stage__phone::after {
+  content: '';
+  position: absolute;
+  width: 6px;
+  border-radius: 4px;
+  background: var(--ff-ink);
+}
+
+.ff-stage__phone::before {
+  left: -6px;
+  top: 17%;
+  height: 56px;
+  box-shadow: 0 72px 0 var(--ff-ink);
+}
+
+.ff-stage__phone::after {
+  right: -6px;
+  top: 23%;
+  height: 88px;
+}
+
+.ff-stage__screen {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border: 0;
+  border-radius: 44px;
+  background: var(--ff-bg);
+}
+
+.ff-stage__screen:focus-visible {
+  outline-offset: 4px;
+}
+
+/* Il pannello: presentazione, lingua, indirizzo da aprire sul telefono, installazione. */
+.ff-stage__panel {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 16px;
+  max-height: calc(100dvh - 2 * var(--ff-stage-pad));
+  overflow-y: auto;
+  padding: 28px 26px 24px;
+  border: 2px solid var(--ff-frame);
+  border-radius: var(--ff-radius-lg);
+  background: var(--ff-bg);
+  color: var(--ff-on-bg);
+  box-shadow: 6px 6px 0 var(--ff-frame-shadow);
+}
+
+.ff-stage__brand {
+  line-height: 0;
+}
+
+.ff-stage__payoff {
+  font-family: var(--ff-font-display);
+  font-size: 26px;
+  line-height: 1.15;
+}
+
+.ff-stage__section {
+  align-self: stretch;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 10px;
+  padding-top: 16px;
+  border-top: 1px solid var(--ff-divider);
+}
+
+.ff-stage__label {
+  font-family: var(--ff-font-mono);
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: .3px;
+  color: var(--ff-muted);
+}
+
+/* Chip più piccoli che nell'app (qui si usa il mouse): due righe da tre, «Automatica» e le lingue. */
+.ff-stage__section .ff-chips {
+  flex-wrap: wrap;
+  gap: 6px;
+  overflow: visible;
+}
+
+.ff-stage__section .ff-chip {
+  height: 34px;
+  padding: 0 11px;
+  font-size: 13px;
+}
+
+.ff-stage__section .ff-chip[aria-checked="true"] {
+  padding-left: 8px;
+}
+
+.ff-stage__hint,
+.ff-stage__note {
+  font-size: 14.5px;
+  color: var(--ff-muted);
+}
+
+.ff-stage__note {
+  font-size: 13.5px;
+}
+
+.ff-stage__url {
+  align-self: stretch;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: var(--ff-surface);
+  font-family: var(--ff-font-mono);
+  font-size: 14px;
+  overflow-wrap: anywhere;
+  -webkit-user-select: all;
+  user-select: all;
+}
+
+.ff-stage__actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+/* Chiusura del pannello: cosa si fa qui sul computer, e l'installazione quando il browser la offre. */
+.ff-stage__here {
+  gap: 12px;
+}
+
+/* Le due stampe in più solo dove i margini sono larghi e alti: altrimenti spuntano a metà da dietro
+   il pannello o il telefono, e sembrano un errore. */
+@media (max-width: 1599px), (max-height: 959px) {
+  .ff-stage__print--5,
+  .ff-stage__print--6 {
+    display: none;
+  }
+}
+
+/* Sotto i 1240 px anche gli angoli sono troppo stretti: le stampe resterebbero spicchi che escono da
+   dietro il pannello e il telefono. Restano il retino e il disco Flash. */
+@media (max-width: 1239px) {
+  .ff-stage__print {
+    display: none;
+  }
+}
+
+/* Gli avvisi (link copiato, installazione) escono sotto il pannello, nella sua colonna, invece che a
+   metà finestra sopra il telefono. Il pannello è largo 380 px; il telefono 418 per la sua scala. */
+@media (min-width: 960px) and (min-height: 540px) {
+  body[data-route="stage"] .ff-toasts {
+    left: calc((100% - 380px - clamp(40px, 7vw, 112px) - 418px * var(--ff-phone-scale, 1)) / 2);
+    width: 380px;
+    transform: none;
+  }
+}
+
+/* Portatili (1366×768, 1280×720, 1536×864 al 125 %): il pannello si compatta per stare tutto in
+   vista, senza scorrere. Il puntatore del mouse non chiede i 48 px del dito. */
+@media (max-height: 860px) {
+  .ff-stage {
+    --ff-stage-pad: 20px;
+  }
+
+  .ff-stage__panel {
+    gap: 12px;
+    padding: 20px 22px 18px;
+    scrollbar-width: thin;
+  }
+
+  .ff-stage__payoff {
+    font-size: 21px;
+  }
+
+  .ff-stage__section {
+    gap: 8px;
+    padding-top: 12px;
+  }
+
+  .ff-stage__panel .ff-btn {
+    min-height: 44px;
+    margin-bottom: 0;
+    padding: 6px 18px;
+    font-size: 16px;
+  }
+
+  .ff-stage__url {
+    padding: 8px 12px;
+    font-size: 13.5px;
+  }
+
+  .ff-stage__hint {
+    font-size: 14px;
+  }
+
+  .ff-stage__note {
+    font-size: 13px;
+  }
+}
+
+/* Ancora più bassi (1024×640, finestre ridotte): restano marchio, lingua, indirizzo e azioni. */
+@media (max-height: 700px) {
+  .ff-stage__payoff,
+  .ff-stage__hint {
+    display: none;
+  }
+}
+
+@media (max-height: 600px) {
+  .ff-stage__note {
+    display: none;
+  }
+
+  /* senza nota e senza installazione la sezione resterebbe un filetto vuoto */
+  .ff-stage__here:has(> .ff-btn[hidden]) {
+    display: none;
+  }
+}
+
+/* Finestra ristretta dopo l'avvio: niente cornice, l'app torna la colonna di sempre (senza ricaricare). */
+@media (max-width: 959px), (max-height: 539px) {
+  .ff-stage {
+    display: block;
+    height: auto;
+    padding: 0;
+    overflow: visible;
+    background: none;
+  }
+
+  .ff-stage__bg,
+  .ff-stage__panel,
+  .ff-stage__device::before,
+  .ff-stage__phone::before,
+  .ff-stage__phone::after {
+    display: none;
+  }
+
+  .ff-stage__phone {
+    width: 100%;
+    max-width: calc(var(--ff-col) + 4px);
+    height: 100dvh;
+    margin: 0 auto;
+    padding: 0;
+    border-radius: 0;
+    border-left: 2px solid var(--ff-frame);
+    border-right: 2px solid var(--ff-frame);
+    background: var(--ff-bg);
+    box-shadow: none;
+    transform: none;
+  }
+
+  .ff-stage__screen {
+    border-radius: 0;
+  }
+}
+
+@media (max-width: 559px) {
+  .ff-stage__phone {
+    max-width: none;
+    border: 0;
+  }
+}
+
 /* ---------------------------------------------------------------- Animazioni */
 @keyframes ff-spin {
   to { transform: rotate(360deg); }
@@ -2090,5 +2492,10 @@ dialog.ff-dialog {
 
   .ff-topbar {
     animation: none;
+  }
+
+  /* Le stampe del palcoscenico restano ferme, ciascuna con la sua inclinazione. */
+  .ff-stage__print {
+    animation: none !important;
   }
 }

@@ -1,12 +1,13 @@
 // Impostazioni: come SettingsScreen dell'app (stampante, immagine, evento, scatto) più la sezione App
-// della versione web (installazione, lingua, versione, APK, GitHub, licenze dei font, cancella dati).
+// della versione web (installazione, lingua, presentazione, versione, APK, GitHub, licenze dei font,
+// cancella dati).
 import { h, clear } from '../dom.js';
 import { icon, wordmark } from '../icons.js';
 import {
   topBar, sectionHeader, card, divider, chipsRow, slider, toggle, textField, listItem, printerPill,
   ghostButton, textButton, toast, confirmDialog, sheet,
 } from '../components.js';
-import { langSetting, setLang } from '../../i18n/i18n.js';
+import { langSetting, setLang, LANGS, LANG_NAMES } from '../../i18n/i18n.js';
 import { VERSION } from '../../version.js';
 import { defaultTone, DitherAlgorithm, TemplateKind } from '../../core/model.js';
 import { APK_URL, rememberedOnly, currentDriver, unsupportedPrinter } from './printer.js';
@@ -314,15 +315,32 @@ export function mount(root, ctx) {
   paintInstall();
   if (install && typeof install.subscribe === 'function') cleanups.push(install.subscribe(paintInstall));
 
-  const language = chipsRow(['auto', 'en', 'it'], langSetting(),
-    (v) => t(`set_language_${v}`),
+  // Automatica più le cinque lingue, ciascuna con il suo nome (e il suo lang, per il lettore di schermo).
+  // Vanno a capo invece di scorrere: una lingua nascosta oltre il bordo non la trova nessuno. L'id fisso
+  // permette all'avvio di rimettere il fuoco sul chip quando la schermata si rimonta nella lingua nuova.
+  const languageOptions = ['auto', ...LANGS];
+  const language = chipsRow(languageOptions, langSetting(),
+    (v) => (v === 'auto' ? t('set_language_auto') : LANG_NAMES[v]),
     (v) => setLang(v === 'auto' ? null : v), { ariaLabel: t('set_language') });
+  language.el.classList.add('ff-chips--wrap');
+  language.el.querySelectorAll('.ff-chip').forEach((chip, i) => {
+    chip.id = `ff-set-lang-${languageOptions[i]}`;
+    if (languageOptions[i] !== 'auto') chip.setAttribute('lang', languageOptions[i]);
+  });
 
   const appCard = card(
     installSlot,
     h('div', { class: 'ff-block' },
       h('span', { class: 'ff-block__label' }, t('set_language')),
       language.el),
+    divider(),
+    listItem({
+      icon: 'sparkles',
+      title: t('set_presentation'),
+      desc: t('set_presentation_desc'),
+      chevron: true,
+      onClick: () => router.go('/landing'),
+    }),
     divider(),
     listItem({ icon: 'info', title: t('set_version'), value: VERSION }),
     divider(),

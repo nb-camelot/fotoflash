@@ -3,8 +3,30 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <title>FotoFlash</title>
-  <meta name="description" content="Snap. Print. Smile. Your phone becomes an instant camera that prints on a pocket Bluetooth thermal printer, straight from the browser.">
+  <title>FotoFlash · Snap. Print. Smile.</title>
+  <meta name="description" content="Snap. Print. Smile. Your phone becomes an instant camera that prints on a pocket Bluetooth thermal printer, straight from the browser. Free, open source, no account.">
+  <link rel="canonical" href="https://nb-camelot.github.io/fotoflash/">
+  <!-- Anteprima nei social e nelle chat: l'immagine la genera scripts/build-web.mjs dal banner del brand. -->
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="FotoFlash">
+  <meta property="og:title" content="FotoFlash · Snap. Print. Smile.">
+  <meta property="og:description" content="Your phone becomes an instant camera that prints on a pocket Bluetooth thermal printer. Free, open source, no account.">
+  <meta property="og:url" content="https://nb-camelot.github.io/fotoflash/">
+  <meta property="og:image" content="https://nb-camelot.github.io/fotoflash/icons/og.png">
+  <meta property="og:image:type" content="image/png">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta property="og:image:alt" content="FotoFlash, the instant camera on thermal paper: Snap. Print. Smile.">
+  <meta property="og:locale" content="en_US">
+  <meta property="og:locale:alternate" content="it_IT">
+  <meta property="og:locale:alternate" content="es_ES">
+  <meta property="og:locale:alternate" content="fr_FR">
+  <meta property="og:locale:alternate" content="de_DE">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="FotoFlash · Snap. Print. Smile.">
+  <meta name="twitter:description" content="Your phone becomes an instant camera that prints on a pocket Bluetooth thermal printer. Free, open source, no account.">
+  <meta name="twitter:image" content="https://nb-camelot.github.io/fotoflash/icons/og.png">
+  <meta name="twitter:image:alt" content="FotoFlash, the instant camera on thermal paper: Snap. Print. Smile.">
   <meta name="theme-color" content="#FBF8F1" media="(prefers-color-scheme: light)">
   <meta name="theme-color" content="#0E0C0A" media="(prefers-color-scheme: dark)">
   <meta name="color-scheme" content="light dark">
@@ -48,31 +70,51 @@
     <div class="ff-splash">
       <p class="ff-splash__fail">FotoFlash needs JavaScript to run. Turn it on in your browser settings, then reload the page.</p>
       <p class="ff-splash__fail" lang="it">FotoFlash ha bisogno di JavaScript. Attivalo nelle impostazioni del browser, poi ricarica la pagina.</p>
+      <p class="ff-splash__fail" lang="es">FotoFlash necesita JavaScript. Actívalo en los ajustes del navegador y vuelve a cargar la página.</p>
+      <p class="ff-splash__fail" lang="fr">FotoFlash a besoin de JavaScript. Active-le dans les réglages du navigateur, puis recharge la page.</p>
+      <p class="ff-splash__fail" lang="de">FotoFlash braucht JavaScript. Aktiviere es in den Browser-Einstellungen und lade die Seite neu.</p>
     </div>
   </noscript>
 
   <script>
     // Rete di sicurezza prima dell'avvio: se i moduli non arrivano (browser troppo vecchio, file
     // mancanti, connessione caduta) lo splash non resta lì per sempre. Qui le tabelle dei testi non
-    // sono ancora caricate, quindi i due messaggi sono scritti in chiaro.
+    // sono ancora caricate, quindi i messaggi sono scritti in chiaro, nelle cinque lingue dell'app.
     (function () {
       var old = !('noModule' in HTMLScriptElement.prototype);
+      var TEXTS = {
+        en: ['This browser is too old for FotoFlash: update Chrome, Edge, Safari or Firefox.', 'FotoFlash is taking too long to start.', 'Reload'],
+        it: ['Questo browser è troppo vecchio per FotoFlash: aggiorna Chrome, Edge, Safari o Firefox.', 'FotoFlash ci sta mettendo troppo ad aprirsi.', 'Ricarica'],
+        es: ['Este navegador es demasiado antiguo para FotoFlash: actualiza Chrome, Edge, Safari o Firefox.', 'FotoFlash está tardando demasiado en abrirse.', 'Recargar'],
+        fr: ['Ce navigateur est trop ancien pour FotoFlash : mets à jour Chrome, Edge, Safari ou Firefox.', 'FotoFlash met trop de temps à s’ouvrir.', 'Recharger'],
+        de: ['Dieser Browser ist zu alt für FotoFlash: Aktualisiere Chrome, Edge, Safari oder Firefox.', 'FotoFlash braucht zu lange zum Starten.', 'Neu laden']
+      };
+      function language() {
+        var saved = null;
+        try { saved = localStorage.getItem('fotoflash.lang'); } catch (e) { saved = null; }
+        var tags = [saved].concat(navigator.languages || [], navigator.language || []);
+        for (var i = 0; i < tags.length; i++) {
+          var base = String(tags[i] || '').toLowerCase().split(/[-_]/)[0];
+          if (TEXTS[base]) return base;
+        }
+        return 'en';
+      }
       setTimeout(function () {
         if (document.documentElement.getAttribute('data-ff-booted')) return;
         var splash = document.querySelector('#app .ff-splash');
         if (!splash) return;
-        var it = /^it\b/i.test(navigator.language || '');
+        var l = language();
+        var text = TEXTS[l];
         var p = document.createElement('p');
         p.className = 'ff-splash__fail';
-        p.textContent = old
-          ? (it ? 'Questo browser è troppo vecchio per FotoFlash: aggiorna Chrome, Edge, Safari o Firefox.'
-                : 'This browser is too old for FotoFlash: update Chrome, Edge, Safari or Firefox.')
-          : (it ? 'FotoFlash ci sta mettendo troppo ad aprirsi.' : 'FotoFlash is taking too long to start.');
+        p.lang = l;
+        p.textContent = old ? text[0] : text[1];
         splash.appendChild(p);
         if (!old) {
           var b = document.createElement('button');
           b.type = 'button';
-          b.textContent = it ? 'Ricarica' : 'Reload';
+          b.lang = l;
+          b.textContent = text[2];
           b.onclick = function () { location.reload(); };
           splash.appendChild(b);
         }

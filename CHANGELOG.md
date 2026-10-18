@@ -11,6 +11,13 @@ sezione della sua versione, oppure `[Unreleased]` se non la trova.
 
 ## [Unreleased]
 
+### Added
+
+- **Presentazione animata per schermi larghi** nella PWA. Hero col flash e la stampa che esce riga per riga, carosello di 5 casi d'uso animati (festa, matrimonio, bambini, viaggio, evento), «Prova il retino» col motore vero, i quattro modelli resi dal renderer, stampanti, installazione e download. Rispetta `prefers-reduced-motion`.
+- **Palcoscenico desktop**: da desktop l'app gira in una cornice di telefono con pannello laterale (ritorno alla presentazione, lingua, «aprilo sul telefono»).
+- **Cinque lingue nella PWA**: inglese, italiano, spagnolo, francese e tedesco, con selettore e riconoscimento dal browser. Le nuove traduzioni sono state riviste da revisori madrelingua.
+- **iPhone e iPad**: la PWA spiega che per stampare serve un browser con Web Bluetooth come Bluefy. È consigliato ma non ancora provato.
+
 ## [0.2.0] - 2026-10-18
 
 ### Added

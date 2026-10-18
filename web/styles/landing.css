@@ -1,0 +1,2307 @@
+/* FotoFlash web — presentazione per schermi larghi (docs/LANDING.md).
+   Tutto è sotto .ffl (la radice della presentazione) o html.ffl-on (mentre è montata): l'app non cambia.
+   Animazioni: solo transform e opacity; in loop solo con .is-playing (elemento visibile, scheda in primo
+   piano); con prefers-reduced-motion restano fotogrammi fermi, già composti come la scena migliore. */
+
+/* ---------------------------------------------------------------- Ospite: niente colonna da telefono */
+html.ffl-on,
+html.ffl-on body {
+  background: var(--ff-paper);
+  background-image: none;
+}
+
+html.ffl-on #app,
+.ffl-host {
+  max-width: none;
+  border: 0;
+  padding-left: 0;
+  padding-right: 0;
+  background: var(--ff-paper);
+}
+
+/* ---------------------------------------------------------------- Radice e token */
+.ffl {
+  --ffl-max: 1200px;
+  --ffl-pad: clamp(16px, 4vw, 40px);
+  --ffl-z: 12px;
+  --ffl-bar: 72px;
+  --ffl-muted: var(--ff-graphite);
+  --ffl-focus: var(--ff-ink);
+  --ffl-stroke: 3px;
+  position: relative;
+  overflow-x: clip;
+  min-height: 100vh;
+  background: var(--ff-paper);
+  color: var(--ff-ink);
+  font-family: var(--ff-font-body);
+  font-size: 17px;
+  line-height: 1.5;
+  text-rendering: optimizeLegibility;
+}
+
+.ffl :focus-visible {
+  outline: 3px solid var(--ffl-focus);
+  outline-offset: 3px;
+}
+
+.ffl a {
+  text-decoration-color: currentColor;
+}
+
+.ffl ::selection {
+  background: var(--ff-flash);
+  color: var(--ff-ink);
+}
+
+.ffl-page {
+  position: relative;
+}
+
+.ffl-main:focus {
+  outline: none;
+}
+
+.ffl-wrap {
+  width: 100%;
+  max-width: calc(var(--ffl-max) + 2 * var(--ffl-pad));
+  margin: 0 auto;
+  padding: 0 var(--ffl-pad);
+}
+
+.ffl h2[tabindex="-1"]:focus,
+.ffl h1[tabindex="-1"]:focus {
+  outline: none;
+}
+
+/* Salto al contenuto: invisibile finché non prende il fuoco. */
+.ffl-skip {
+  position: absolute;
+  left: 16px;
+  top: 12px;
+  z-index: 60;
+  padding: 10px 18px;
+  border: 3px solid var(--ff-ink);
+  border-radius: 999px;
+  background: var(--ff-flash);
+  color: var(--ff-ink);
+  font: 700 14px/1.2 var(--ff-font-mono);
+  text-decoration: none;
+  transform: translateY(-160%);
+}
+
+.ffl-skip:focus {
+  transform: none;
+}
+
+/* ---------------------------------------------------------------- Sezioni e bordo a dente di sega */
+.ffl-section {
+  --ffl-bg: var(--ff-paper);
+  position: relative;
+  padding: clamp(72px, 9vw, 132px) 0;
+  background: var(--ffl-bg);
+  scroll-margin-top: calc(var(--ffl-bar) - 8px);
+}
+
+/* Il bordo superiore di ogni sezione è carta strappata: denti 2:1 nel colore della sezione. */
+.ffl-section::before,
+.ffl-foot::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 100%;
+  height: var(--ffl-z);
+  background: var(--ffl-bg);
+  -webkit-mask: conic-gradient(from 135deg at top, #0000, #000 1deg 89deg, #0000 90deg) 0 0 / calc(2 * var(--ffl-z)) 100% repeat-x;
+  mask: conic-gradient(from 135deg at top, #0000, #000 1deg 89deg, #0000 90deg) 0 0 / calc(2 * var(--ffl-z)) 100% repeat-x;
+  pointer-events: none;
+}
+
+.ffl-section--paper { --ffl-bg: var(--ff-paper); }
+.ffl-section--fog { --ffl-bg: var(--ff-fog); }
+.ffl-section--flash { --ffl-bg: var(--ff-flash); --ffl-muted: var(--ff-ink); }
+.ffl-section--sky { --ffl-bg: var(--ff-sky); --ffl-muted: var(--ff-ink); }
+.ffl-section--coral { --ffl-bg: var(--ff-coral); --ffl-muted: var(--ff-ink); }
+.ffl-section--night {
+  --ffl-bg: var(--ff-night);
+  --ffl-muted: #CFC7BA;
+  --ffl-focus: var(--ff-flash);
+  color: var(--ff-paper);
+}
+
+/* ---------------------------------------------------------------- Intestazioni di sezione */
+.ffl-head {
+  max-width: 780px;
+  margin-bottom: clamp(36px, 5vw, 64px);
+}
+
+.ffl-head--center {
+  margin-left: auto;
+  margin-right: auto;
+  text-align: center;
+}
+
+.ffl-eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 18px;
+  font: 700 13px/1 var(--ff-font-mono);
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+
+.ffl-eyebrow__num {
+  display: inline-grid;
+  place-items: center;
+  min-width: 40px;
+  height: 28px;
+  padding: 0 9px;
+  border-radius: 999px;
+  background: var(--ff-ink);
+  color: var(--ff-flash);
+  letter-spacing: .04em;
+}
+
+.ffl-section--night .ffl-eyebrow__num,
+.ffl-section--coral .ffl-eyebrow__num {
+  background: var(--ff-flash);
+  color: var(--ff-ink);
+}
+
+.ffl-section--flash .ffl-eyebrow__num {
+  background: var(--ff-ink);
+  color: var(--ff-paper);
+}
+
+.ffl-h2 {
+  font: 400 clamp(38px, 4.9vw, 70px)/.98 var(--ff-font-display);
+  letter-spacing: -.012em;
+  text-wrap: balance;
+}
+
+.ffl-lead {
+  max-width: 60ch;
+  margin-top: 20px;
+  font-size: clamp(17px, 1.3vw, 20px);
+  line-height: 1.55;
+  color: var(--ffl-muted);
+  text-wrap: pretty;
+}
+
+.ffl-head--center .ffl-lead {
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.ffl-label {
+  font: 700 12.5px/1.2 var(--ff-font-mono);
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+
+/* ---------------------------------------------------------------- Pulsanti "adesivo"
+   La faccia (::before) si solleva, l'ombra piena (::after) resta dov'è: si sposta il pulsante e,
+   in senso opposto, l'ombra. Solo transform. */
+.ffl-btn {
+  --ffl-face: var(--ff-paper);
+  --ffl-fg: var(--ff-ink);
+  --ffl-shade: var(--ff-ink);
+  position: relative;
+  isolation: isolate;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  min-height: 52px;
+  max-width: 100%;
+  padding: 12px 24px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--ffl-fg);
+  font: 400 18px/1.15 var(--ff-font-display);
+  letter-spacing: .01em;
+  text-align: center;
+  text-decoration: none;
+  cursor: pointer;
+  transition: transform .18s var(--ff-ease);
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+.ffl-btn::before,
+.ffl-btn::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+}
+
+.ffl-btn::before {
+  z-index: -1;
+  background: var(--ffl-face);
+  border: var(--ffl-stroke) solid var(--ff-ink);
+}
+
+.ffl-btn::after {
+  z-index: -2;
+  background: var(--ffl-shade);
+  transform: translate(4px, 4px);
+  transition: transform .18s var(--ff-ease);
+}
+
+.ffl-btn .ff-icon {
+  flex: none;
+}
+
+.ffl-btn__label {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+@media (hover: hover) {
+  .ffl-btn:not(:disabled):hover {
+    transform: translate(-2px, -2px);
+  }
+
+  .ffl-btn:not(:disabled):hover::after {
+    transform: translate(6px, 6px);
+  }
+}
+
+.ffl-btn:not(:disabled):active {
+  transform: translate(3px, 3px);
+}
+
+.ffl-btn:not(:disabled):active::after {
+  transform: translate(1px, 1px);
+}
+
+.ffl-btn:focus-visible {
+  outline-offset: 5px;
+}
+
+.ffl-btn:disabled {
+  cursor: default;
+  opacity: .55;
+}
+
+.ffl-btn--flash { --ffl-face: var(--ff-flash); }
+.ffl-btn--coral { --ffl-face: var(--ff-coral); }
+.ffl-btn--ink {
+  --ffl-face: var(--ff-ink);
+  --ffl-fg: var(--ff-paper);
+  --ffl-shade: var(--ff-flash);
+}
+
+.ffl-btn--lg {
+  min-height: 60px;
+  padding: 14px 24px;
+  font-size: 19px;
+}
+
+.ffl-btn--sm {
+  min-height: 44px;
+  padding: 8px 18px;
+  font-size: 16px;
+}
+
+.ffl-btn--sm::after {
+  transform: translate(3px, 3px);
+}
+
+/* Pillole in Space Mono: stati, collegamenti, licenza. */
+.ffl-pill {
+  --ffl-pill: var(--ff-paper);
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px 6px 9px;
+  border: 2px solid var(--ff-ink);
+  border-radius: 999px;
+  background: var(--ffl-pill);
+  color: var(--ff-ink);
+  font: 700 12.5px/1.2 var(--ff-font-mono);
+}
+
+.ffl-pill--mint { --ffl-pill: var(--ff-mint); }
+.ffl-pill--flash { --ffl-pill: var(--ff-flash); }
+.ffl-pill--sky { --ffl-pill: #CFE0FF; }
+.ffl-pill--ink { --ffl-pill: var(--ff-ink); color: var(--ff-paper); }
+
+/* ---------------------------------------------------------------- Barra in alto */
+.ffl-top__sentinel {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 1px;
+  height: 8px;
+  pointer-events: none;
+}
+
+/* fondo pieno: una sfocatura dietro a un fondo al 97 % non si vede, ma costa a ogni fotogramma di scorrimento */
+.ffl-top {
+  position: sticky;
+  top: 0;
+  z-index: 40;
+  background: var(--ff-paper);
+  border-bottom: 2px solid transparent;
+}
+
+.ffl-top.is-scrolled {
+  border-bottom-color: var(--ff-ink);
+}
+
+.ffl-top__in {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  min-height: var(--ffl-bar);
+}
+
+.ffl-brand {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  min-height: 48px;
+  padding: 0;
+  border: 0;
+  border-radius: 12px;
+  background: none;
+  color: var(--ff-ink);
+  cursor: pointer;
+}
+
+.ffl-brand svg {
+  display: block;
+}
+
+.ffl-brand__mini {
+  display: none;
+}
+
+@media (hover: hover) {
+  .ffl-brand:hover .ff-wordmark {
+    transform: rotate(-2deg);
+  }
+}
+
+.ffl-brand .ff-wordmark {
+  transition: transform .25s var(--ff-ease);
+}
+
+.ffl-nav {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  justify-content: center;
+}
+
+.ffl-nav__list {
+  display: flex;
+  gap: 2px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.ffl-nav__link {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  padding: 0 13px;
+  border-radius: 999px;
+  color: var(--ff-ink);
+  font: 700 14px/1 var(--ff-font-mono);
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.ffl-nav__link::after {
+  content: '';
+  position: absolute;
+  left: 13px;
+  right: 13px;
+  bottom: 8px;
+  height: 3px;
+  border-radius: 2px;
+  background: var(--ff-flash-deep);
+  transform: scaleX(0);
+  transform-origin: 0 50%;
+  transition: transform .25s var(--ff-ease);
+}
+
+@media (hover: hover) {
+  .ffl-nav__link:hover::after {
+    transform: scaleX(1);
+  }
+}
+
+.ffl-nav__link[aria-current="true"] {
+  background: var(--ff-ink);
+  color: var(--ff-paper);
+}
+
+.ffl-nav__link[aria-current="true"]::after {
+  display: none;
+}
+
+.ffl-top__end {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-left: auto;
+}
+
+/* Selettore della lingua: select nativo vestito da pillola, con globo e freccia. */
+.ffl-lang {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  color: var(--ff-ink);
+}
+
+.ffl-lang__select {
+  height: 44px;
+  max-width: 190px;
+  padding: 0 34px 0 38px;
+  border: 2px solid var(--ff-ink);
+  border-radius: 999px;
+  background: var(--ff-paper);
+  color: var(--ff-ink);
+  font: 700 14px/1 var(--ff-font-mono);
+  cursor: pointer;
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+@media (hover: hover) {
+  .ffl-lang__select:hover {
+    background: var(--ff-fog);
+  }
+}
+
+.ffl-lang__select option {
+  color: var(--ff-ink);
+  background: var(--ff-paper);
+}
+
+.ffl-lang__code {
+  display: none;
+  position: absolute;
+  left: 38px;
+  font: 700 13px/1 var(--ff-font-mono);
+  pointer-events: none;
+}
+
+.ffl-lang__globe,
+.ffl-lang__chevron {
+  position: absolute;
+  pointer-events: none;
+}
+
+.ffl-lang__globe {
+  left: 13px;
+}
+
+.ffl-lang__chevron {
+  right: 12px;
+}
+
+/* ---------------------------------------------------------------- Hero */
+.ffl-hero {
+  position: relative;
+  padding: clamp(28px, 4.5vw, 64px) 0 clamp(36px, 4vw, 56px);
+  background: var(--ff-paper);
+}
+
+.ffl-hero__grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.28fr) minmax(0, 1fr);
+  gap: clamp(24px, 3vw, 48px);
+  align-items: center;
+}
+
+.ffl-hero__copy {
+  position: relative;
+  z-index: 2;
+}
+
+.ffl-hero__eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  padding: 8px 16px 8px 10px;
+  border: 2px solid var(--ff-ink);
+  border-radius: 999px;
+  background: var(--ff-paper);
+  box-shadow: 3px 3px 0 var(--ff-ink);
+  font: 700 13px/1.2 var(--ff-font-mono);
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  text-wrap: balance;
+}
+
+.ffl-hero__eyebrow svg {
+  flex: none;
+}
+
+/* sotto, lo spazio per il sorriso di «Sorridi.» (scende di .2em sotto la riga) più l'aria per l'attacco */
+.ffl-h1 {
+  margin: 26px 0 max(24px, .38em);
+  font: 400 clamp(58px, 7.6vw, 118px)/.9 var(--ff-font-display);
+  letter-spacing: -.018em;
+}
+
+.ffl-h1__line {
+  display: block;
+}
+
+.ffl-h1__word {
+  position: relative;
+  display: inline-block;
+  z-index: 0;
+}
+
+/* «Stampa.»: evidenziatore Flash, appena storto, come un adesivo. */
+.ffl-h1__line--2 .ffl-h1__word::before {
+  content: '';
+  position: absolute;
+  left: -.1em;
+  right: -.14em;
+  top: .5em;
+  bottom: -.02em;
+  z-index: -1;
+  border-radius: .08em;
+  background: var(--ff-flash);
+  transform: rotate(-2.2deg) skewX(-8deg);
+}
+
+.ffl-h1__line--2 {
+  padding-left: .38em;
+}
+
+/* «Sorridi.»: il sorriso Coral sotto la parola. */
+.ffl-h1__line--3 .ffl-h1__word::after {
+  content: '';
+  position: absolute;
+  left: 4%;
+  right: 8%;
+  bottom: -.2em;
+  height: .26em;
+  z-index: -1;
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 30' preserveAspectRatio='none'%3E%3Cpath d='M6 8 Q100 40 194 8' fill='none' stroke='%23FF5B45' stroke-width='9' stroke-linecap='round'/%3E%3C/svg%3E") center / 100% 100% no-repeat;
+}
+
+.ffl-hero__lead {
+  max-width: 33em;
+  font-size: clamp(18px, 1.45vw, 21px);
+  line-height: 1.55;
+  color: var(--ff-graphite);
+  text-wrap: pretty;
+}
+
+.ffl-hero__ctas {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 18px 16px;
+  margin-top: 34px;
+}
+
+.ffl-hero__note {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 26px;
+  font: 700 13.5px/1.3 var(--ff-font-mono);
+  color: var(--ff-graphite);
+}
+
+.ffl-hero__note .ff-icon {
+  padding: 3px;
+  border: 2px solid var(--ff-ink);
+  border-radius: 50%;
+  background: var(--ff-mint);
+  color: var(--ff-ink);
+}
+
+.ffl-hero__art {
+  position: relative;
+  justify-self: center;
+  width: 100%;
+  max-width: 600px;
+  aspect-ratio: 1 / 1;
+}
+
+.ffl-hero__disc {
+  position: absolute;
+  inset: 5%;
+  border-radius: 50%;
+  background: var(--ff-flash);
+}
+
+.ffl-hero__burst {
+  position: absolute;
+  left: -6%;
+  bottom: -4%;
+  width: 40%;
+  color: var(--ff-ink);
+  pointer-events: none;
+}
+
+.ffl-hero__burst svg,
+.ffl-models__burst svg,
+.ffl-foot__burst svg {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.ffl-hero__sparkles {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+
+.ffl-hero__stage {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  height: 100%;
+  display: grid;
+  place-items: center;
+}
+
+.ffl-hero__stage > * {
+  grid-area: 1 / 1;
+}
+
+/* con l'animazione montata disco, retino e scintille li disegna lei */
+.ffl-hero__art.has-hero .ffl-hero__disc,
+.ffl-hero__art.has-hero .ffl-hero__burst,
+.ffl-hero__art.has-hero .ffl-hero__sparkles {
+  display: none;
+}
+
+.ffl-hero__art.has-hero .ffl-hero__stage > * {
+  width: 100%;
+}
+
+.ffl-hero__fallback {
+  display: grid;
+  place-items: center;
+  width: 100%;
+  height: 100%;
+}
+
+.ffl-hero__fallback svg {
+  width: 52%;
+  height: auto;
+}
+
+.ffl-hero__foot {
+  display: flex;
+  justify-content: center;
+  margin-top: clamp(8px, 2vw, 24px);
+}
+
+.ffl-hero__cue {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 48px;
+  padding: 8px 16px;
+  border: 0;
+  border-radius: 999px;
+  background: none;
+  color: var(--ff-graphite);
+  font: 700 13px/1 var(--ff-font-mono);
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+
+.ffl-hero__cue .ff-icon {
+  animation: ffl-nudge 1.8s var(--ff-ease) infinite;
+}
+
+@media (hover: hover) {
+  .ffl-hero__cue:hover {
+    color: var(--ff-ink);
+  }
+}
+
+/* ---------------------------------------------------------------- 01 Idee */
+.ffl-ideas__stage {
+  position: relative;
+  min-height: 420px;
+}
+
+.ffl-ideas__stage.is-mounted {
+  min-height: 0;
+}
+
+/* ---------------------------------------------------------------- 02 Come funziona */
+.ffl-steps {
+  --ffl-gap: clamp(28px, 4vw, 60px);
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--ffl-gap);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.ffl-step {
+  position: relative;
+  padding: 16px 26px 30px;
+  border: var(--ffl-stroke) solid var(--ff-ink);
+  border-radius: 28px;
+  background: var(--ff-paper);
+  box-shadow: 8px 8px 0 var(--ff-ink);
+}
+
+/* frecce tratteggiate tra un passo e l'altro */
+.ffl-step:not(:last-child)::after {
+  content: '';
+  position: absolute;
+  top: 34%;
+  right: calc(-.5 * var(--ffl-gap) - 22px);
+  width: 44px;
+  height: 30px;
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 44 30'%3E%3Cpath d='M3 20 Q20 2 36 14' fill='none' stroke='%2316130F' stroke-width='3.5' stroke-linecap='round' stroke-dasharray='5 6'/%3E%3Cpath d='M28 15 L38 15 L36 5' fill='none' stroke='%2316130F' stroke-width='3.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") center / contain no-repeat;
+  pointer-events: none;
+}
+
+.ffl-step__art {
+  margin: 0 -10px;
+}
+
+.ffl-step__svg {
+  display: block;
+  width: 100%;
+  height: auto;
+  overflow: visible;
+}
+
+.ffl-step__num {
+  position: absolute;
+  top: -20px;
+  left: 22px;
+  display: grid;
+  place-items: center;
+  width: 46px;
+  height: 46px;
+  border: 3px solid var(--ff-ink);
+  border-radius: 50%;
+  background: var(--ff-ink);
+  color: var(--ff-flash);
+  font: 400 22px/1 var(--ff-font-display);
+}
+
+.ffl-step__title {
+  margin: 4px 0 8px;
+  font: 400 31px/1.05 var(--ff-font-display);
+}
+
+.ffl-step__text {
+  color: var(--ff-graphite);
+  font-size: 16.5px;
+  line-height: 1.5;
+}
+
+/* micro-animazioni dei tre passi */
+.ffl-a-pop,
+.ffl-a-shutter,
+.ffl-a-twinkle,
+.ffl-a-card,
+.ffl-a-led {
+  transform-box: fill-box;
+  transform-origin: 50% 50%;
+}
+
+.ffl-a-pop { animation: ffl-pop 2.8s var(--ff-ease) infinite; }
+.ffl-a-shutter { animation: ffl-press 2.8s ease-in-out infinite; }
+.ffl-a-screenflash { opacity: 0; animation: ffl-screenflash 2.8s linear infinite; }
+.ffl-a-twinkle { animation: ffl-twinkle 2.8s ease-in-out infinite; }
+
+.ffl-a-card {
+  opacity: 0;
+  transform-origin: 50% 70%;
+  animation: ffl-cycle 7.2s var(--ff-ease) infinite both;
+}
+
+/* la prima scheda parte già dentro il suo turno: ferma, è lei la Polaroid che si vede */
+.ffl-a-card--1 { opacity: 1; animation-delay: -.6s; }
+.ffl-a-card--2 { animation-delay: 1.8s; }
+.ffl-a-card--3 { animation-delay: 4.2s; }
+
+.ffl-a-chip {
+  opacity: 0;
+  animation: ffl-chipon 7.2s linear infinite both;
+}
+
+.ffl-a-chip--1 { opacity: 1; animation-delay: -.6s; }
+.ffl-a-chip--2 { animation-delay: 1.8s; }
+.ffl-a-chip--3 { animation-delay: 4.2s; }
+
+.ffl-a-paper { animation: ffl-print 3.8s linear infinite; }
+.ffl-a-led { animation: ffl-blink 3.8s linear infinite; }
+.ffl-a-whoosh { animation: ffl-whoosh 3.8s linear infinite; }
+
+@keyframes ffl-pop {
+  0%, 50% { transform: scale(0) rotate(-40deg); opacity: 0; }
+  58% { transform: scale(1.2) rotate(0deg); opacity: 1; }
+  68%, 84% { transform: scale(1) rotate(0deg); opacity: 1; }
+  100% { transform: scale(.6) rotate(20deg); opacity: 0; }
+}
+
+@keyframes ffl-press {
+  0%, 42% { transform: scale(1); }
+  49% { transform: scale(.7); }
+  58%, 100% { transform: scale(1); }
+}
+
+@keyframes ffl-screenflash {
+  0%, 50% { opacity: 0; }
+  53% { opacity: 1; }
+  74%, 100% { opacity: 0; }
+}
+
+@keyframes ffl-twinkle {
+  0%, 100% { transform: scale(.55) rotate(0deg); opacity: .6; }
+  60% { transform: scale(1.1) rotate(45deg); opacity: 1; }
+}
+
+@keyframes ffl-cycle {
+  0% { opacity: 0; transform: translateY(16px) rotate(-9deg) scale(.88); }
+  6%, 29% { opacity: 1; transform: none; }
+  34%, 100% { opacity: 0; transform: translateY(-12px) rotate(7deg) scale(.94); }
+}
+
+@keyframes ffl-chipon {
+  0% { opacity: 0; }
+  1%, 31% { opacity: 1; }
+  33.3%, 100% { opacity: 0; }
+}
+
+/* la carta sale a scatti, come le righe che escono dalla testina */
+@keyframes ffl-print {
+  0% { transform: translateY(78px); opacity: 1; animation-timing-function: steps(18, end); }
+  60% { transform: translateY(0); opacity: 1; animation-timing-function: ease-in-out; }
+  84% { transform: translateY(0); opacity: 1; }
+  94% { transform: translateY(-14px) rotate(-4deg); opacity: 0; }
+  100% { transform: translateY(78px); opacity: 0; }
+}
+
+@keyframes ffl-blink {
+  0%, 58% { opacity: 1; }
+  62%, 84% { opacity: .2; }
+  88%, 100% { opacity: 1; }
+}
+
+@keyframes ffl-whoosh {
+  0%, 60% { opacity: 0; transform: translateY(6px); }
+  66%, 80% { opacity: 1; transform: none; }
+  90%, 100% { opacity: 0; transform: translateY(-6px); }
+}
+
+@keyframes ffl-nudge {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(4px); }
+}
+
+/* ---------------------------------------------------------------- 03 Prova il retino */
+.ffl-try__grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.02fr);
+  gap: clamp(32px, 5vw, 84px);
+  /* il pannello a metà altezza della carta (con la nota): niente vuoto sotto i comandi */
+  align-items: center;
+}
+
+.ffl-try__paperside {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding-top: 8px;
+}
+
+/* La carta: il figure porta l'ombra piena che segue i denti (drop-shadow senza sfocatura). Lo
+   spostamento orizzontale dell'ombra è un dente intero (2 × --z): i denti dell'ombra cadono sotto
+   quelli della carta, invece di intrecciarsi in una fila di rombi. */
+.ffl-try__sheet {
+  --z: 5px;
+  width: min(100%, 440px);
+  margin: 0;
+  filter: drop-shadow(calc(2 * var(--z)) 10px 0 var(--ff-ink));
+  transform: rotate(-2deg);
+}
+
+.ffl-paper-sheet {
+  padding: calc(18px + var(--z)) 22px calc(16px + var(--z));
+  background: var(--ff-paper);
+  color: var(--ff-ink);
+  -webkit-mask:
+    conic-gradient(from 135deg at top, #0000, #000 1deg 89deg, #0000 90deg) 0 0 / calc(2 * var(--z)) var(--z) repeat-x,
+    linear-gradient(#000 0 0) 0 var(--z) / 100% calc(100% - 2 * var(--z)) no-repeat,
+    conic-gradient(from -45deg at bottom, #0000, #000 1deg 89deg, #0000 90deg) 0 100% / calc(2 * var(--z)) var(--z) repeat-x;
+  mask:
+    conic-gradient(from 135deg at top, #0000, #000 1deg 89deg, #0000 90deg) 0 0 / calc(2 * var(--z)) var(--z) repeat-x,
+    linear-gradient(#000 0 0) 0 var(--z) / 100% calc(100% - 2 * var(--z)) no-repeat,
+    conic-gradient(from -45deg at bottom, #0000, #000 1deg 89deg, #0000 90deg) 0 100% / calc(2 * var(--z)) var(--z) repeat-x;
+}
+
+.ffl-try__frame {
+  position: relative;
+  aspect-ratio: 3 / 4;
+  background: var(--ff-paper);
+}
+
+.ffl-try__frame canvas {
+  position: absolute;
+  inset: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
+  image-rendering: pixelated;
+}
+
+.ffl-try__frame .ffl-try__original {
+  opacity: 0;
+  image-rendering: auto;
+  transition: opacity .3s var(--ff-ease);
+}
+
+.ffl-try__frame.is-original .ffl-try__original {
+  opacity: 1;
+}
+
+.ffl-try__busy,
+.ffl-try__drop {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  padding: 24px;
+  margin: 0;
+  background: var(--ff-paper);
+  color: var(--ff-ink);
+  font: 700 14px/1.4 var(--ff-font-mono);
+  text-align: center;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity .2s;
+}
+
+.ffl-try__frame.is-busy .ffl-try__busy {
+  opacity: 1;
+}
+
+.ffl-try__drop {
+  border: 3px dashed var(--ff-ink);
+  background: var(--ff-flash);
+}
+
+.ffl-try__frame.is-drop .ffl-try__drop {
+  opacity: 1;
+}
+
+/* la testina che scorre mentre si prepara la foto (solo allora: nascosta non deve girare) */
+.ffl-try__head {
+  display: block;
+  width: 70%;
+  height: 6px;
+  border-radius: 3px;
+  background: var(--ff-ink);
+}
+
+.ffl-try__frame.is-busy .ffl-try__head {
+  animation: ffl-head 1.1s ease-in-out infinite alternate;
+}
+
+@keyframes ffl-head {
+  from { transform: translateY(-30px); }
+  to { transform: translateY(30px); }
+}
+
+.ffl-try__meta {
+  margin-top: 14px;
+  font: 700 12px/1.3 var(--ff-font-mono);
+  letter-spacing: .05em;
+  text-align: center;
+  text-transform: uppercase;
+}
+
+/* L'etichetta Coral con la freccia: «quella è la carta, punto per punto». */
+.ffl-try__note {
+  position: relative;
+  align-self: flex-end;
+  /* sopra, lo spazio per la freccia: la punta resta sotto l'ombra della carta, non ci finisce sopra */
+  margin: 50px 2% 0 0;
+  padding: 12px 20px;
+  /* su una riga quando c'è posto; se va a capo, due righe pari (niente parola orfana) */
+  max-width: min(100%, 440px);
+  border: 3px solid var(--ff-ink);
+  border-radius: 16px;
+  background: var(--ff-coral);
+  box-shadow: 5px 5px 0 var(--ff-ink);
+  color: var(--ff-ink);
+  font: 400 21px/1.15 var(--ff-font-display);
+  text-align: center;
+  text-wrap: balance;
+  transform: rotate(3deg);
+}
+
+.ffl-try__arrow {
+  position: absolute;
+  right: calc(100% + 6px);
+  bottom: 30%;
+  width: 86px;
+  height: auto;
+  overflow: visible;
+  transform: rotate(-3deg);
+}
+
+.ffl-try__panel {
+  padding: 26px 12px 22px;
+  border: var(--ffl-stroke) solid var(--ff-ink);
+  border-radius: 28px;
+  background: var(--ff-paper);
+  box-shadow: 10px 10px 0 var(--ff-ink);
+  color: var(--ff-ink);
+  --ff-on-bg: var(--ff-ink);
+  --ff-muted: var(--ff-graphite);
+}
+
+.ffl-try__panel > .ffl-label {
+  padding: 0 16px;
+  margin-bottom: 10px;
+}
+
+.ffl-try__panel .ff-chips {
+  flex-wrap: wrap;
+  overflow: visible;
+  padding: 4px 16px;
+  margin: 0;
+}
+
+.ffl-try__panel .ff-chip {
+  border: 2px solid var(--ff-ink);
+}
+
+.ffl-try__panel .ff-chip[aria-checked="true"] {
+  border-color: var(--ff-ink);
+  box-shadow: 3px 3px 0 var(--ff-ink);
+}
+
+@media (hover: hover) {
+  .ffl-try__panel .ff-chip:not([aria-checked="true"]):hover {
+    background: var(--ff-fog);
+  }
+}
+
+.ffl-try__hint {
+  min-height: 3em;
+  padding: 12px 16px 4px;
+  color: var(--ff-graphite);
+  font-size: 15.5px;
+}
+
+.ffl-try__sliders {
+  padding-top: 4px;
+}
+
+.ffl-try__sliders .ff-slider__label {
+  font-weight: 650;
+}
+
+.ffl-try__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px 16px;
+  padding: 18px 16px 6px;
+}
+
+.ffl-try__actions .ffl-btn[aria-pressed="true"] {
+  --ffl-face: var(--ff-ink);
+  --ffl-fg: var(--ff-paper);
+  --ffl-shade: var(--ff-flash);
+}
+
+.ffl-try__private {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 14px 16px 0;
+  color: var(--ff-graphite);
+  font-size: 14.5px;
+}
+
+.ffl-try__private .ff-icon {
+  margin-top: 1px;
+  color: var(--ff-ink);
+}
+
+.ffl-try__status {
+  min-height: 1.4em;
+  padding: 8px 16px 0;
+  font: 700 12.5px/1.4 var(--ff-font-mono);
+}
+
+/* ---------------------------------------------------------------- 04 Modelli sullo spago */
+.ffl-models {
+  overflow: visible;
+}
+
+.ffl-models__burst {
+  position: absolute;
+  right: 3%;
+  top: 56px;
+  width: 220px;
+  color: #2B2721;
+  pointer-events: none;
+}
+
+.ffl-models .ffl-head {
+  position: relative;
+}
+
+.ffl-models__rail {
+  position: relative;
+  padding-top: 8px;
+}
+
+.ffl-line {
+  position: absolute;
+  left: calc(-1 * var(--ffl-pad));
+  top: 0;
+  width: calc(100% + 2 * var(--ffl-pad));
+  height: 60px;
+  color: var(--ff-paper);
+  overflow: visible;
+  pointer-events: none;
+}
+
+.ffl-models__prints {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: clamp(20px, 3.2vw, 48px);
+  align-items: start;
+}
+
+.ffl-print {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin: 0;
+  padding-top: calc(var(--ffl-sag, 0px) - 2px);
+}
+
+/* ombra spostata di un dente intero (2 × --z della carta): denti sotto denti, non rombi */
+.ffl-print__swing {
+  --z: 4px;
+  position: relative;
+  width: 100%;
+  max-width: 260px;
+  transform: rotate(var(--ffl-tilt));
+  transform-origin: 50% 0;
+  filter: drop-shadow(calc(2 * var(--z)) 8px 0 var(--ffl-peg));
+  animation: ffl-sway var(--ffl-sway, 6s) ease-in-out infinite alternate;
+}
+
+@keyframes ffl-sway {
+  from { transform: rotate(calc(var(--ffl-tilt) - 1.6deg)); }
+  to { transform: rotate(calc(var(--ffl-tilt) + 1.6deg)); }
+}
+
+/* Passandoci sopra la stampa si raddrizza, come presa in mano, e la lente mostra i punti. */
+@media (hover: hover) and (pointer: fine) {
+  .ffl-print:hover .ffl-print__swing {
+    animation: none;
+    transform: rotate(0deg) scale(1.03);
+    transition: transform .35s var(--ff-ease);
+  }
+
+  .ffl-print__paper {
+    cursor: crosshair;
+  }
+}
+
+.ffl-lens {
+  position: absolute;
+  z-index: 5;
+  left: 0;
+  top: 0;
+  width: 150px;
+  height: 150px;
+  overflow: hidden;
+  border: 3px solid var(--ff-ink);
+  border-radius: 50%;
+  background: var(--ff-paper);
+  box-shadow: 0 0 0 3px var(--ff-paper), 6px 6px 0 3px var(--ffl-peg);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity .15s;
+}
+
+.ffl-lens.is-on {
+  opacity: 1;
+}
+
+.ffl-lens canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+  image-rendering: pixelated;
+}
+
+/* la molletta che tiene la stampa sullo spago: morde solo il bordo, così non copre l'intestazione
+   dello Scontrino (lo spago passa comunque dentro la molletta) */
+.ffl-print__peg {
+  position: absolute;
+  z-index: 2;
+  top: -24px;
+  left: 50%;
+  width: 18px;
+  height: 38px;
+  margin-left: -9px;
+  border: 3px solid var(--ff-ink);
+  border-radius: 6px;
+  background: var(--ffl-peg);
+}
+
+.ffl-print__peg::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 9px;
+  width: 8px;
+  height: 8px;
+  margin-left: -4px;
+  border-radius: 50%;
+  background: var(--ff-ink);
+}
+
+.ffl-print__paper {
+  position: relative;
+  padding-bottom: calc(10px + var(--z));
+  background: var(--ff-paper);
+  -webkit-mask:
+    conic-gradient(from -45deg at bottom, #0000, #000 1deg 89deg, #0000 90deg) 0 100% / calc(2 * var(--z)) var(--z) repeat-x,
+    linear-gradient(#000 0 0) 0 0 / 100% calc(100% - var(--z)) no-repeat;
+  mask:
+    conic-gradient(from -45deg at bottom, #0000, #000 1deg 89deg, #0000 90deg) 0 100% / calc(2 * var(--z)) var(--z) repeat-x,
+    linear-gradient(#000 0 0) 0 0 / 100% calc(100% - var(--z)) no-repeat;
+}
+
+.ffl-print__canvas {
+  display: block;
+  width: 100%;
+  height: auto;
+  image-rendering: pixelated;
+}
+
+.ffl-print__wait {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  color: var(--ff-graphite);
+  font: 700 13px/1 var(--ff-font-mono);
+  opacity: 0;
+  transition: opacity .2s;
+}
+
+.ffl-print__paper.is-waiting .ffl-print__wait {
+  opacity: 1;
+}
+
+.ffl-print__paper.is-failed .ffl-print__wait {
+  opacity: 0;
+}
+
+.ffl-print__caption {
+  max-width: 260px;
+  margin-top: 26px;
+  text-align: center;
+}
+
+.ffl-print__name {
+  display: block;
+  font: 400 26px/1.1 var(--ff-font-display);
+  color: var(--ff-flash);
+}
+
+.ffl-print__desc {
+  display: block;
+  margin-top: 6px;
+  color: #CFC7BA;
+  font-size: 15px;
+  line-height: 1.45;
+}
+
+/* ---------------------------------------------------------------- 05 Stampanti */
+.ffl-printers__list {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 26px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.ffl-printer {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border: var(--ffl-stroke) solid var(--ff-ink);
+  border-radius: 24px;
+  background: var(--ff-paper);
+  box-shadow: 7px 7px 0 var(--ff-ink);
+}
+
+.ffl-printer__art {
+  padding: 18px 18px 6px;
+  border-bottom: var(--ffl-stroke) solid var(--ff-ink);
+  background: var(--ff-fog);
+  background-image: radial-gradient(circle, rgba(22, 19, 15, .16) 0 1.4px, transparent 1.8px);
+  background-size: 12px 12px;
+}
+
+.ffl-printer__svg {
+  display: block;
+  width: 100%;
+  max-width: 220px;
+  height: auto;
+  margin: 0 auto;
+  overflow: visible;
+  transition: transform .3s var(--ff-ease);
+}
+
+@media (hover: hover) {
+  .ffl-printer:hover .ffl-printer__svg {
+    transform: translateY(-4px) rotate(-2deg);
+  }
+}
+
+.ffl-printer__body {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 18px 20px 22px;
+}
+
+.ffl-printer__name {
+  margin-top: 6px;
+  font: 400 25px/1.1 var(--ff-font-display);
+}
+
+.ffl-printer__spec {
+  font: 700 13px/1.3 var(--ff-font-mono);
+}
+
+.ffl-printer__desc {
+  color: var(--ff-graphite);
+  font-size: 15px;
+  line-height: 1.45;
+}
+
+.ffl-printer__note {
+  padding: 8px 10px;
+  border-radius: 10px;
+  background: #FFEB99;
+  font-size: 13.5px;
+  line-height: 1.4;
+}
+
+.ffl-printer__links {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: auto;
+  padding-top: 8px;
+}
+
+.ffl-printer__link {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  font: 700 12.5px/1.35 var(--ff-font-mono);
+}
+
+.ffl-printer__link .ff-icon {
+  flex: none;
+  padding: 2px;
+  border: 2px solid var(--ff-ink);
+  border-radius: 50%;
+  background: #CFE0FF;
+}
+
+.ffl-printer__link--spp .ff-icon {
+  background: var(--ff-fog);
+}
+
+/* Dove stampa e Non ancora uno sopra l'altro, iPhone e iPad accanto su due righe: altezze simili,
+   niente riquadri allungati a vuoto. L'ordine del DOM (browser, iPhone, non ancora) resta quello di lettura. */
+.ffl-support {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-areas:
+    "yes ios"
+    "not ios";
+  gap: 26px;
+  margin-top: 30px;
+}
+
+.ffl-support__box--yes { grid-area: yes; }
+.ffl-support__box--ios { grid-area: ios; }
+.ffl-support__box--not { grid-area: not; }
+
+.ffl-support__box {
+  padding: 22px 26px 24px;
+  border: var(--ffl-stroke) solid var(--ff-ink);
+  border-radius: 24px;
+  background: var(--ff-paper);
+}
+
+/* iPhone e iPad funziona (scatta, salva, condivide), serve solo un altro browser per stampare: è un
+   consiglio da trovare, non un "non supportato". Ombra piena Sky, come un adesivo. */
+.ffl-support__box--ios {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  box-shadow: 7px 7px 0 var(--ff-sky);
+}
+
+.ffl-support__box--ios .ffl-support__title {
+  margin-bottom: 10px;
+}
+
+.ffl-support__box--ios .ffl-pill {
+  margin-bottom: 12px;
+}
+
+.ffl-support__box--not {
+  border-style: dashed;
+  background: var(--ff-fog);
+}
+
+.ffl-support__tip {
+  margin-top: 10px;
+  font-size: 15.5px;
+}
+
+/* «Cerca Bluefy nell'App Store»: un biglietto da ricopiare, non un collegamento (nessun indirizzo inventato). */
+.ffl-support__search {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  max-width: 100%;
+  margin-top: 14px;
+  padding: 8px 14px;
+  border: 2px dashed var(--ff-ink);
+  border-radius: 12px;
+  background: var(--ff-fog);
+  font: 700 13.5px/1.35 var(--ff-font-mono);
+}
+
+.ffl-support__search .ff-icon {
+  flex: none;
+}
+
+.ffl-support__box--ios .ffl-support__line {
+  margin-top: 14px;
+}
+
+.ffl-support__title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 12px;
+  font: 400 24px/1.1 var(--ff-font-display);
+}
+
+.ffl-support__line {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin-top: 10px;
+  font-size: 15.5px;
+}
+
+.ffl-support__line .ff-icon {
+  flex: none;
+  margin-top: 1px;
+  padding: 2px;
+  border: 2px solid var(--ff-ink);
+  border-radius: 50%;
+}
+
+.ffl-support__line--yes .ff-icon { background: var(--ff-mint); }
+.ffl-support__line--no .ff-icon { background: var(--ff-coral); }
+
+.ffl-support__text {
+  color: var(--ff-graphite);
+  font-size: 15.5px;
+}
+
+/* ---------------------------------------------------------------- 06 Scarica */
+.ffl-get__list {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 30px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.ffl-get__card {
+  --ffl-tone: var(--ff-flash);
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 28px 26px 28px;
+  border: var(--ffl-stroke) solid var(--ff-ink);
+  border-radius: 28px;
+  background: var(--ff-paper);
+  box-shadow: 9px 9px 0 var(--ff-ink);
+}
+
+.ffl-get__card--mint { --ffl-tone: var(--ff-mint); }
+.ffl-get__card--coral { --ffl-tone: var(--ff-coral); }
+
+.ffl-get__icon {
+  display: grid;
+  place-items: center;
+  width: 62px;
+  height: 62px;
+  border: var(--ffl-stroke) solid var(--ff-ink);
+  border-radius: 50%;
+  background: var(--ffl-tone);
+  box-shadow: 4px 4px 0 var(--ff-ink);
+  transition: transform .3s var(--ff-ease);
+}
+
+@media (hover: hover) {
+  .ffl-get__card:hover .ffl-get__icon {
+    transform: rotate(-10deg) scale(1.06);
+  }
+}
+
+.ffl-get__title {
+  margin-top: 6px;
+  font: 400 28px/1.05 var(--ff-font-display);
+}
+
+.ffl-get__text {
+  color: var(--ff-graphite);
+  font-size: 16px;
+}
+
+.ffl-get__body {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 14px;
+  margin-top: auto;
+  padding-top: 10px;
+}
+
+.ffl-get__note {
+  font-size: 14.5px;
+  color: var(--ff-graphite);
+}
+
+.ffl-get__note.is-ok {
+  color: #11795F;
+  font-weight: 700;
+}
+
+.ffl-get__ticket {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 10px 14px;
+  border: 2px dashed var(--ff-ink);
+  border-radius: 12px;
+  background: var(--ff-fog);
+}
+
+.ffl-get__ticket .ff-icon {
+  flex: none;
+}
+
+.ffl-get__url {
+  flex: 1 1 auto;
+  min-width: 0;
+  padding: 4px 0;
+  border: 0;
+  background: transparent;
+  color: var(--ff-ink);
+  font: 700 14px/1.3 var(--ff-font-mono);
+  text-overflow: ellipsis;
+}
+
+.ffl-get__url:focus-visible {
+  outline-offset: 4px;
+}
+
+.ffl-get__row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+}
+
+.ffl-get__hint {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  font: 700 13px/1.4 var(--ff-font-mono);
+}
+
+.ffl-get__hint .ff-icon {
+  flex: none;
+  margin-top: 1px;
+}
+
+/* Esito di Copia: etichetta a cavallo del bordo inferiore della scheda (non sposta nulla); è fissata
+   per il bordo alto, così un messaggio su due righe cresce verso il basso, lontano dai pulsanti. Vuota
+   non si vede ma resta nel DOM, perché il lettore di schermo annunci il testo quando arriva. */
+.ffl-get__status {
+  position: absolute;
+  top: calc(100% - 18px);
+  left: 50%;
+  z-index: 1;
+  width: max-content;
+  max-width: calc(100% - 40px);
+  padding: 7px 14px;
+  border: 2px solid var(--ff-ink);
+  border-radius: 999px;
+  background: var(--ff-mint);
+  color: var(--ff-ink);
+  font: 700 13px/1.35 var(--ff-font-mono);
+  text-align: center;
+  transform: translateX(-50%);
+  animation: ffl-tag .3s var(--ff-ease) both;
+}
+
+.ffl-get__status.is-error {
+  border-radius: 14px;
+  background: var(--ff-flash);
+}
+
+.ffl-get__status:empty {
+  padding: 0;
+  border: 0;
+  animation: none;
+}
+
+@keyframes ffl-tag {
+  from { opacity: 0; transform: translateX(-50%) scale(.7) rotate(-4deg); }
+  to { opacity: 1; transform: translateX(-50%); }
+}
+
+/* ---------------------------------------------------------------- 07 Open source */
+.ffl-oss__grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr);
+  gap: clamp(32px, 5vw, 80px);
+  align-items: center;
+}
+
+.ffl-oss .ffl-head {
+  margin-bottom: 28px;
+}
+
+.ffl-oss__agent {
+  padding: 20px 24px 22px;
+  border: var(--ffl-stroke) solid var(--ff-ink);
+  border-radius: 22px;
+  background: var(--ff-fog);
+  color: var(--ff-graphite);
+}
+
+.ffl-oss__h3 {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 8px;
+  color: var(--ff-ink);
+  font: 400 24px/1.1 var(--ff-font-display);
+}
+
+.ffl-oss__actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 18px;
+  margin-top: 30px;
+}
+
+.ffl-term {
+  margin: 0;
+  overflow: hidden;
+  border: var(--ffl-stroke) solid var(--ff-ink);
+  border-radius: 22px;
+  background: var(--ff-ink);
+  box-shadow: 10px 10px 0 var(--ff-flash);
+  color: var(--ff-paper);
+  rotate: 1.5deg;
+}
+
+.ffl-term__bar {
+  display: flex;
+  gap: 8px;
+  padding: 14px 18px;
+  border-bottom: 2px solid #2B2721;
+}
+
+.ffl-term__dot {
+  width: 13px;
+  height: 13px;
+  border-radius: 50%;
+}
+
+.ffl-term__dot--coral { background: var(--ff-coral); }
+.ffl-term__dot--flash { background: var(--ff-flash); }
+.ffl-term__dot--mint { background: var(--ff-mint); }
+
+.ffl-term__lines {
+  margin: 0;
+  padding: 22px 26px 30px;
+  list-style: none;
+  font: 400 clamp(14px, 1.2vw, 16px)/1.9 var(--ff-font-mono);
+}
+
+.ffl-term__line {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+}
+
+.ffl-term__line--cmd {
+  margin-bottom: 6px;
+  font-weight: 700;
+}
+
+.ffl-term__prompt {
+  color: var(--ff-flash);
+}
+
+.ffl-term__mark {
+  flex: none;
+  width: 1.2em;
+  color: var(--ff-mint);
+  font-weight: 700;
+}
+
+.ffl-term__line:last-child .ffl-term__mark {
+  color: var(--ff-flash);
+}
+
+.ffl-term__cursor {
+  display: inline-block;
+  width: .6em;
+  height: 1.05em;
+  align-self: center;
+  background: var(--ff-flash);
+  animation: ffl-cursor 1s steps(1, end) infinite;
+}
+
+@keyframes ffl-cursor {
+  0%, 50% { opacity: 1; }
+  50.01%, 100% { opacity: 0; }
+}
+
+/* righe del terminale una dopo l'altra, la prima volta che si vede */
+.ffl--motion .ffl-term .ffl-term__line {
+  opacity: 0;
+  transform: translateX(-10px);
+}
+
+.ffl--motion .ffl-term.is-in .ffl-term__line {
+  animation: ffl-line .45s var(--ff-ease) both;
+  animation-delay: calc(.35s + var(--i, 0) * .55s);
+}
+
+@keyframes ffl-line {
+  from { opacity: 0; transform: translateX(-10px); }
+  to { opacity: 1; transform: none; }
+}
+
+/* ---------------------------------------------------------------- Chiusura */
+.ffl-final {
+  text-align: center;
+}
+
+.ffl-final__confetti {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.ffl-confetto {
+  position: absolute;
+  display: block;
+  width: var(--s, 28px);
+  height: auto;
+  animation: ffl-float var(--d, 6s) ease-in-out infinite alternate;
+  animation-delay: var(--delay, 0s);
+}
+
+@keyframes ffl-float {
+  from { transform: translateY(-8px) rotate(var(--r, 0deg)); }
+  to { transform: translateY(10px) rotate(calc(var(--r, 0deg) + 14deg)); }
+}
+
+.ffl-final__in {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.ffl-final__mark svg {
+  display: block;
+  width: clamp(96px, 10vw, 132px);
+  height: auto;
+}
+
+.ffl-final__title {
+  max-width: 16ch;
+  margin-top: 14px;
+}
+
+.ffl-final__text {
+  max-width: 40ch;
+  margin-top: 16px;
+  font-size: clamp(18px, 1.5vw, 21px);
+  text-wrap: balance;
+}
+
+.ffl-final__ctas {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 18px 22px;
+  margin-top: 36px;
+}
+
+/* ---------------------------------------------------------------- Piè di pagina */
+.ffl-foot {
+  --ffl-bg: var(--ff-night);
+  --ffl-focus: var(--ff-flash);
+  position: relative;
+  padding: clamp(64px, 7vw, 96px) 0 34px;
+  background: var(--ffl-bg);
+  color: var(--ff-paper);
+}
+
+.ffl-foot__burst {
+  position: absolute;
+  right: 3%;
+  bottom: 70px;
+  width: 200px;
+  color: #2B2721;
+  pointer-events: none;
+}
+
+.ffl-foot__grid {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr) minmax(0, 1fr);
+  gap: 40px;
+}
+
+.ffl-foot .ff-wordmark {
+  display: block;
+  color: var(--ff-paper);
+}
+
+.ffl-foot__payoff {
+  margin-top: 16px;
+  color: var(--ff-flash);
+  font: 700 15px/1.3 var(--ff-font-mono);
+}
+
+.ffl-foot__tagline {
+  max-width: 34ch;
+  margin-top: 8px;
+  color: #CFC7BA;
+}
+
+.ffl-foot__label {
+  margin-bottom: 12px;
+  color: #CFC7BA;
+  font: 700 12px/1.2 var(--ff-font-mono);
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+
+.ffl-foot__links {
+  display: grid;
+  gap: 4px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.ffl-foot__link {
+  display: inline-flex;
+  align-items: center;
+  min-height: 36px;
+  color: var(--ff-paper);
+  font-weight: 650;
+  text-decoration: underline;
+  text-decoration-color: var(--ff-flash);
+  text-decoration-thickness: 2px;
+  text-underline-offset: 4px;
+}
+
+@media (hover: hover) {
+  .ffl-foot__link:hover {
+    color: var(--ff-flash);
+  }
+}
+
+.ffl-foot__side {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+}
+
+.ffl-foot__top {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  margin-top: 14px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--ff-flash);
+  font: 700 14px/1 var(--ff-font-mono);
+  text-decoration: underline;
+  text-underline-offset: 4px;
+  cursor: pointer;
+}
+
+.ffl-foot__legal {
+  position: relative;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 8px 24px;
+  margin-top: 52px;
+  padding-top: 22px;
+  border-top: 1px solid #2B2721;
+  color: #CFC7BA;
+  font-size: 13.5px;
+}
+
+.ffl-foot__version {
+  font-family: var(--ff-font-mono);
+}
+
+/* ---------------------------------------------------------------- Comparsa e ingresso */
+.ffl--motion .ffl-reveal {
+  opacity: 0;
+  transform: translateY(28px);
+  transition: opacity .7s var(--ff-ease), transform .7s var(--ff-ease);
+}
+
+.ffl--motion .ffl-reveal.is-in {
+  opacity: 1;
+  transform: none;
+}
+
+/* schede in fila: la seconda e la terza arrivano un attimo dopo */
+.ffl--motion li.ffl-reveal:nth-child(2),
+.ffl--motion .ffl-print:nth-child(2) { transition-delay: .08s; }
+.ffl--motion li.ffl-reveal:nth-child(3),
+.ffl--motion .ffl-print:nth-child(3) { transition-delay: .16s; }
+.ffl--motion li.ffl-reveal:nth-child(4),
+.ffl--motion .ffl-print:nth-child(4) { transition-delay: .24s; }
+
+/* ingresso dell'hero, una volta sola all'apertura */
+.ffl--intro .ffl-hero__eyebrow,
+.ffl--intro .ffl-h1__line,
+.ffl--intro .ffl-hero__lead,
+.ffl--intro .ffl-hero__ctas,
+.ffl--intro .ffl-hero__note {
+  animation: ffl-rise .8s var(--ff-ease) both;
+}
+
+.ffl--intro .ffl-h1__line--1 { animation-delay: .06s; }
+.ffl--intro .ffl-h1__line--2 { animation-delay: .14s; }
+.ffl--intro .ffl-h1__line--3 { animation-delay: .22s; }
+.ffl--intro .ffl-hero__lead { animation-delay: .32s; }
+.ffl--intro .ffl-hero__ctas { animation-delay: .4s; }
+.ffl--intro .ffl-hero__note { animation-delay: .48s; }
+
+.ffl--intro .ffl-hero__disc {
+  animation: ffl-disc .9s cubic-bezier(.3, 1.4, .5, 1) both;
+}
+
+@keyframes ffl-rise {
+  from { opacity: 0; transform: translateY(26px) rotate(-1.5deg); }
+  to { opacity: 1; transform: none; }
+}
+
+@keyframes ffl-disc {
+  from { opacity: 0; transform: scale(.6); }
+  to { opacity: 1; transform: none; }
+}
+
+/* ---------------------------------------------------------------- Animazioni in loop: solo se visibili */
+.ffl-anim:not(.is-playing),
+.ffl-anim:not(.is-playing) * {
+  animation-play-state: paused !important;
+}
+
+/* ---------------------------------------------------------------- Larghezze */
+@media (max-width: 1140px) {
+  .ffl-nav {
+    display: none;
+  }
+
+  .ffl-printers__list {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 960px) {
+  .ffl-hero__grid,
+  .ffl-try__grid,
+  .ffl-oss__grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .ffl-hero__art {
+    max-width: 460px;
+  }
+
+  .ffl-steps {
+    grid-template-columns: minmax(0, 1fr);
+    max-width: 520px;
+    margin: 0 auto;
+    gap: 44px;
+  }
+
+  .ffl-step:not(:last-child)::after {
+    display: none;
+  }
+
+  .ffl-try__panel {
+    width: 100%;
+    max-width: 560px;
+    justify-self: center;
+  }
+
+  .ffl-try__note {
+    align-self: center;
+    margin-top: 30px;
+    margin-right: 0;
+  }
+
+  .ffl-try__arrow {
+    display: none;
+  }
+
+  .ffl-models__prints {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    row-gap: 56px;
+  }
+
+  .ffl-print {
+    padding-top: 6px;
+  }
+
+  .ffl-line {
+    display: none;
+  }
+
+  .ffl-get__list,
+  .ffl-support {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  /* in colonna: browser, iPhone e iPad, non ancora (l'ordine del DOM) */
+  .ffl-support {
+    grid-template-areas: none;
+  }
+
+  .ffl-support__box--yes,
+  .ffl-support__box--ios,
+  .ffl-support__box--not {
+    grid-area: auto;
+  }
+
+  .ffl-get__list {
+    max-width: 560px;
+    margin: 0 auto;
+  }
+
+  .ffl-foot__grid {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  }
+
+  .ffl-foot__brand {
+    grid-column: 1 / -1;
+  }
+}
+
+@media (max-width: 640px) {
+  .ffl {
+    --ffl-bar: 64px;
+    --ffl-z: 9px;
+    font-size: 16px;
+  }
+
+  .ffl-top__in {
+    gap: 10px;
+  }
+
+  .ffl-top__end {
+    gap: 8px;
+  }
+
+  .ffl-brand__full {
+    display: none;
+  }
+
+  .ffl-brand__mini {
+    display: block;
+  }
+
+  .ffl-lang__select {
+    width: 92px;
+    padding-right: 28px;
+    color: transparent;
+    font-size: 13px;
+  }
+
+  .ffl-lang__code {
+    display: block;
+  }
+
+  .ffl-top .ffl-btn--sm .ff-icon {
+    display: none;
+  }
+
+  .ffl-top .ffl-btn--sm {
+    padding: 8px 14px;
+    font-size: 15px;
+  }
+
+  /* l'occhiello dell'hero sta su una riga anche a 360 px */
+  .ffl-hero__eyebrow {
+    padding-right: 12px;
+    font-size: 11.5px;
+    letter-spacing: .02em;
+  }
+
+  /* a tutta larghezza e un filo più piccoli: «Open FotoFlash in the browser» resta su una riga */
+  .ffl-hero__ctas .ffl-btn,
+  .ffl-final__ctas .ffl-btn {
+    width: 100%;
+  }
+
+  .ffl-btn--lg {
+    padding-left: 18px;
+    padding-right: 18px;
+    font-size: 17px;
+  }
+
+  /* la carta lascia posto alla sua ombra dentro lo schermo */
+  .ffl-try__sheet {
+    width: calc(100% - 14px);
+  }
+
+  /* coriandoli solo in alto: in basso finirebbero sopra i pulsanti */
+  .ffl-confetto:nth-child(2),
+  .ffl-confetto:nth-child(3),
+  .ffl-confetto:nth-child(5),
+  .ffl-confetto:nth-child(6) {
+    display: none;
+  }
+
+  .ffl-printers__list {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .ffl-step {
+    padding: 14px 18px 24px;
+  }
+
+  .ffl-try__panel {
+    padding-left: 4px;
+    padding-right: 4px;
+  }
+
+  .ffl-get__card {
+    padding: 24px 20px;
+  }
+
+  .ffl-foot__grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .ffl-models__burst,
+  .ffl-foot__burst {
+    display: none;
+  }
+}
+
+@media (max-width: 420px) {
+  .ffl-models__prints {
+    gap: 14px;
+  }
+
+  .ffl-print__name {
+    font-size: 21px;
+  }
+}
+
+/* Contrasto forzato (Windows): il testo trasparente del selettore stretto tornerebbe visibile sotto
+   il codice della lingua; si mostra il select così com'è. */
+@media (forced-colors: active) {
+  .ffl-lang__select {
+    color: CanvasText;
+  }
+
+  .ffl-lang__code {
+    display: none !important;
+  }
+}
+
+/* ---------------------------------------------------------------- Meno movimento: fotogrammi fermi */
+@media (prefers-reduced-motion: reduce) {
+  .ffl *,
+  .ffl *::before,
+  .ffl *::after {
+    animation: none !important;
+    transition: none !important;
+  }
+
+  .ffl--motion .ffl-reveal,
+  .ffl--motion .ffl-term .ffl-term__line {
+    opacity: 1;
+    transform: none;
+  }
+}

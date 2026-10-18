@@ -4,7 +4,8 @@
 //   /fotoflash/ e il browser non risolve né percorsi assoluti né pacchetti);
 // - ogni .js si importa in Node, dove window, document, navigator e gli storage qui non esistono:
 //   usarli al caricamento è vietato (docs/WEB.md) e fa fallire il test con file e riga;
-// - le tabelle i18n hanno le stesse chiavi in en e it, con il prefisso dell'area;
+// - le tabelle i18n hanno le stesse chiavi in en e it, con il prefisso dell'area (le lingue in più di
+//   i18n/locales/ sono mappe piatte e le controlla i18n-locales.test.mjs);
 // - le chiavi passate a t() sono nelle tabelle, in en e in it. Si controllano le chiavi ricavabili dal
 //   testo: letterali ('ed_title'), rami di un'espressione (cond ? 'a' : 'b', x || 'c') e template
 //   (`ed_fail_${k}_title`, almeno una chiave deve combaciare). Chiavi da variabili, come
@@ -47,7 +48,10 @@ const CONTRACT_FILES = [
   'src/store/settings.js',
   'src/store/history.js',
   'src/i18n/i18n.js',
-  ...['common', 'cam', 'ed', 'hist', 'set', 'printer', 'onb', 'app'].map((a) => `src/i18n/strings/${a}.js`),
+  // land e scene: testi della presentazione e delle scene (docs/LANDING.md), importati da i18n.js.
+  ...['common', 'cam', 'ed', 'hist', 'set', 'printer', 'onb', 'app', 'land', 'scene'].map((a) => `src/i18n/strings/${a}.js`),
+  // Lingue in più: mappe piatte chiave → testo, controllate da i18n-locales.test.mjs (qui solo l'import).
+  ...['es', 'fr', 'de'].map((l) => `src/i18n/locales/${l}.js`),
   'src/ui/dom.js',
   'src/ui/icons.js',
   'src/ui/components.js',

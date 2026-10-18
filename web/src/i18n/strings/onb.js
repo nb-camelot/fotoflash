@@ -35,7 +35,7 @@ export default {
     onb_location_hint: 'Nothing in the list? On Android, allow Chrome to use Location and switch Location on: older Android versions need it to search for Bluetooth devices.',
 
     onb_unsupported_title: 'Printing doesn’t work in this browser',
-    onb_unsupported_ios: 'On iPhone and iPad no browser can talk to Bluetooth printers yet. You can still take photos, save and share them; to print, open FotoFlash with Chrome on Android or on a computer.',
+    onb_unsupported_ios: "On iPhone and iPad, Safari, Chrome and the other usual browsers can't talk to Bluetooth printers (Apple doesn't allow Web Bluetooth). To print, open FotoFlash in a browser that adds it, such as Bluefy (free: search for “Bluefy” in the App Store). The app added to the Home Screen from Safari can't print. You can still take photos, save and share them.",
     onb_unsupported_browser: 'This browser can’t talk to Bluetooth printers. Open FotoFlash in Chrome or Edge, on Android or on a computer. Meanwhile you can take photos, save and share them.',
     onb_unsupported_insecure: 'Printing needs a secure connection: open FotoFlash from its https:// address.',
     onb_apk: 'Android app (APK)',
@@ -76,7 +76,7 @@ export default {
     onb_location_hint: 'Elenco vuoto? Su Android consenti a Chrome di usare la Posizione e attiva la Localizzazione: le versioni meno recenti di Android ne hanno bisogno per cercare i dispositivi Bluetooth.',
 
     onb_unsupported_title: 'In questo browser la stampa non funziona',
-    onb_unsupported_ios: 'Su iPhone e iPad nessun browser può ancora parlare con le stampanti Bluetooth. Puoi comunque scattare, salvare e condividere; per stampare apri FotoFlash con Chrome su Android o su un computer.',
+    onb_unsupported_ios: "Su iPhone e iPad Safari, Chrome e gli altri browser comuni non possono parlare con le stampanti Bluetooth (Apple non consente Web Bluetooth). Per stampare apri FotoFlash in un browser che lo aggiunge, come Bluefy (gratis: cerca «Bluefy» nell’App Store). L’app aggiunta alla Home da Safari non può stampare. Puoi comunque scattare, salvare e condividere.",
     onb_unsupported_browser: 'Questo browser non sa parlare con le stampanti Bluetooth. Apri FotoFlash in Chrome o Edge, su Android o su un computer. Intanto puoi scattare, salvare e condividere.',
     onb_unsupported_insecure: 'Per stampare serve una connessione sicura: apri FotoFlash dal suo indirizzo https://.',
     onb_apk: 'App Android (APK)',

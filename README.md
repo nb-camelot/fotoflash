@@ -250,6 +250,18 @@ dell'app (il motore è il porting di `core-thermal`, verificato con gli stessi v
 Kotlin: stesse impostazioni, stessa carta), tiene lo storico e **stampa direttamente dal browser via
 Web Bluetooth (BLE)**. Si installa come un'app e, dopo il primo avvio, si apre anche offline.
 
+**Presentazione e lingue.** Da desktop o da uno schermo largo (≥ 960 px, nel browser) la pagina si apre su una
+**presentazione animata**:
+- casi d'uso illustrati;
+- «Prova il retino» col motore vero, anche su una tua foto che resta nel browser;
+- i quattro modelli resi dal renderer;
+- stampanti compatibili, installazione e download.
+
+«Apri l'app» la mostra dentro una cornice di telefono. Sul telefono e nell'app installata si va dritti all'app; la
+presentazione resta raggiungibile da `#/landing` e dalle impostazioni. Testi in **inglese, italiano, spagnolo,
+francese e tedesco**: la lingua segue il browser o si sceglie dal selettore. Brief e contratti sono in
+[`docs/LANDING.md`](docs/LANDING.md).
+
 **Browser supportati**
 
 | Browser | Scatto, modelli, storico, salvataggio | Stampa Bluetooth |
@@ -259,7 +271,8 @@ Web Bluetooth (BLE)**. Si installa come un'app e, dopo il primo avvio, si apre a
 | Samsung Internet, Opera su Android | Sì | Di solito sì, non verificato |
 | Chrome su Linux | Sì | Solo con `chrome://flags/#enable-experimental-web-platform-features` (BlueZ 5.41+) |
 | Firefox (ogni piattaforma), Safari su macOS | Sì | No: manca Web Bluetooth |
-| iPhone e iPad (ogni browser) | Sì | No: vedi *Limiti su iOS* |
+| iPhone e iPad: Safari, Chrome e gli altri browser comuni | Sì | No: vedi *Limiti su iOS* |
+| iPhone e iPad: Bluefy (browser con Web Bluetooth) | Sì | Consigliato, non ancora provato su carta |
 
 **Stampanti.** Il browser parla con la stampante via **Bluetooth LE**, non con il Bluetooth classico
 (SPP) dell'app Android. Usa gli **stessi driver dell'app, con gli stessi byte** (vedi
@@ -290,8 +303,10 @@ altrimenti, dopo una ricarica, basta un tocco per ricollegarla: Web Bluetooth ch
 dell'utente per scegliere un dispositivo.
 
 **Limiti su iOS.** Su iPhone e iPad tutti i browser usano WebKit, che non ha Web Bluetooth: la PWA
-scatta, compone, salva e condivide, ma **non stampa**, e lo dice. Per stampare usa l'app Android,
-oppure Chrome su Android o su un computer. Conviene aggiungerla alla schermata Home: Safari può
+scatta, compone, salva e condivide, ma **non stampa**, e lo dice. Per stampare da iPhone o iPad apri
+FotoFlash in un browser che aggiunge Web Bluetooth, come **Bluefy** (gratis: cerca «Bluefy» nell'App Store).
+È consigliato ma non ancora provato su carta. L'app aggiunta alla Home da Safari gira in WebKit e non stampa.
+In alternativa usa l'app Android, oppure Chrome su Android o su un computer. Conviene aggiungerla alla schermata Home: Safari può
 cancellare i dati dei siti che non apri da qualche giorno, storico compreso.
 
 **Sviluppo locale.** Serve solo Node 24 (come la CI): niente `npm install`, niente bundler,

@@ -1,0 +1,731 @@
+/* FotoFlash — animazioni della presentazione: hero e scene dei casi d'uso (src/landing/hero.js,
+   src/landing/scenes.js, disegni in src/landing/art/). Il JS dice quale battuta è in corso con le
+   classi cumulative b-<battuta> sulla radice .ffx; qui si muovono le parti, solo transform e opacity.
+   Stati della radice: is-playing (suona), is-paused (ferma), is-static (fotogramma finale per le
+   animazioni ridotte), is-reset (un istante senza transizioni quando il giro ricomincia). */
+
+:root {
+  /* sonda: ensureStyles() sa che il foglio è già attivo */
+  --ffx-css: 1;
+  /* le illustrazioni e i loro controlli sono sempre carta e inchiostro, anche sul tema scuro */
+  --ffx-ink: #16130F;
+  --ffx-paper: #FBF8F1;
+  --ffx-ease: cubic-bezier(.2, .8, .2, 1);
+  --ffx-back: cubic-bezier(.34, 1.56, .64, 1);
+  --ffx-io: cubic-bezier(.65, 0, .35, 1);
+}
+
+.ffx {
+  position: relative;
+}
+
+.ffx svg {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.ffx-display,
+.ffx-sfx {
+  font-family: var(--ff-font-display, 'Righteous', 'Trebuchet MS', sans-serif);
+  fill: var(--ffx-ink);
+}
+
+.ffx-mono {
+  font-family: var(--ff-font-mono, 'Space Mono', ui-monospace, monospace);
+  fill: var(--ffx-ink);
+}
+
+/* Retino e scintille fuori dal disco: colore del testo, così si vedono anche sul tema scuro. */
+.ffx-deco {
+  color: var(--ff-on-bg, #16130F);
+}
+
+/* ------------------------------------------------------------------ Stati */
+.ffx.is-reset *,
+.ffx.is-static * {
+  transition: none !important;
+  animation: none !important;
+}
+
+.ffx.is-paused * {
+  animation-play-state: paused !important;
+}
+
+/* ------------------------------------------------------------------ Facce: data-eyes e data-mouth */
+.ffx-who .ffx-e-happy,
+.ffx-who .ffx-e-wide,
+.ffx-who .ffx-e-wink,
+.ffx-who .ffx-e-shut,
+.ffx-who .ffx-m-open,
+.ffx-who .ffx-m-tongue,
+.ffx-who .ffx-m-o,
+.ffx-who:not([data-eyes="dot"]) .ffx-e-dot,
+.ffx-who:not([data-mouth="smile"]) .ffx-m-smile {
+  opacity: 0;
+}
+
+.ffx-who[data-eyes="happy"] .ffx-e-happy,
+.ffx-who[data-eyes="wide"] .ffx-e-wide,
+.ffx-who[data-eyes="wink"] .ffx-e-wink,
+.ffx-who[data-eyes="shut"] .ffx-e-shut,
+.ffx-who[data-mouth="open"] .ffx-m-open,
+.ffx-who[data-mouth="tongue"] .ffx-m-tongue,
+.ffx-who[data-mouth="o"] .ffx-m-o {
+  opacity: 1;
+}
+
+.ffx-e-dot {
+  transform-box: fill-box;
+  transform-origin: center;
+}
+
+.ffx.is-playing .ffx-e-dot {
+  animation: ffx-blink 4.2s infinite;
+}
+
+/* Personaggi vivi: un leggero respiro, sfalsato. */
+.ffx.is-playing .ffx-who {
+  animation: ffx-breathe 2.8s ease-in-out infinite;
+}
+
+/* Scintille, coriandoli, lampi */
+.ffx.is-playing .ffx-tw {
+  animation: ffx-twinkle 2.4s ease-in-out infinite;
+}
+
+.ffx-burst,
+.ffx-cf {
+  opacity: 0;
+}
+
+.ffx.is-static .ffx-confetti .ffx-cf {
+  opacity: 1;
+  transform: translate(var(--dx), calc(var(--dy) + var(--fall) * .35)) rotate(var(--r));
+}
+
+/* Effetti di battuta: il JS rimette la classe is-fx all'inizio delle battute elencate in data-fx. */
+.ffx-fx-burst,
+.ffx-fx-glare,
+.ffx-fx-say,
+.ffx-fx-float,
+.ffx-fx-pop {
+  opacity: 0;
+}
+
+.ffx-fx-burst.is-fx {
+  animation: ffx-burst .6s var(--ffx-ease) both;
+}
+
+.ffx-fx-glare.is-fx {
+  animation: ffx-glare .42s ease-out both;
+}
+
+.ffx-fx-hop.is-fx {
+  animation: ffx-hop .6s var(--ffx-back) both;
+}
+
+.ffx-fx-say.is-fx {
+  animation: ffx-say 1.6s var(--ffx-ease) both;
+}
+
+.ffx-fx-buzz.is-fx {
+  animation: ffx-shake .12s linear 10;
+}
+
+.ffx-fx-float.is-fx {
+  animation: ffx-float 1.8s ease-out both;
+}
+
+.ffx-fx-pop.is-fx {
+  animation: ffx-pop-in .45s var(--ffx-back) both;
+}
+
+.ffx-fx-wobble.is-fx {
+  animation: ffx-wobble .9s ease-out both;
+}
+
+.ffx-confetti.is-fx .ffx-cf {
+  animation: ffx-confetti 2s var(--ffx-ease) both;
+}
+
+.ffx-fx-plane {
+  opacity: 0;
+}
+
+.ffx-fx-plane.is-fx {
+  animation: ffx-plane 1.5s ease-in-out both;
+}
+
+/* nel fotogramma fermo restano i fumetti e gli oggetti segnati data-keep */
+.ffx.is-static [data-keep] {
+  opacity: 1;
+}
+
+/* Movimenti continui: ondeggiare (festoni, palloncini), scodinzolare. */
+.ffx.is-playing .ffs-sway {
+  animation: ffx-sway 3.2s ease-in-out infinite;
+}
+
+.ffx.is-playing .ffs-sway--slow {
+  animation-duration: 4.4s;
+}
+
+.ffx.is-playing .ffs-tail {
+  animation: ffx-wag .7s ease-in-out infinite;
+}
+
+.ffx.is-playing[data-beat="happy"] .ffs-tail {
+  animation-duration: .24s;
+}
+
+/* ------------------------------------------------------------------ Controlli */
+.ffx-btn {
+  display: inline-grid;
+  place-items: center;
+  width: 48px;
+  height: 48px;
+  padding: 0;
+  border: 2.5px solid var(--ffx-ink);
+  border-radius: 50%;
+  background: var(--ffx-paper);
+  color: var(--ffx-ink);
+  box-shadow: 3px 3px 0 var(--ffx-ink);
+  cursor: pointer;
+  transition: transform .15s var(--ffx-ease);
+  -webkit-tap-highlight-color: transparent;
+}
+
+.ffx-btn:hover {
+  transform: translate(-1px, -1px);
+  box-shadow: 4px 4px 0 var(--ffx-ink);
+}
+
+.ffx-btn:active {
+  transform: translate(2px, 2px);
+  box-shadow: 1px 1px 0 var(--ffx-ink);
+}
+
+.ffx-btn:focus-visible {
+  outline: 3px solid var(--ff-focus, #3D8BFF);
+  outline-offset: 3px;
+}
+
+.ffx-btn svg {
+  width: 22px;
+  height: 22px;
+}
+
+/* ================================================================== HERO */
+.ffh {
+  width: 100%;
+}
+
+.ffh .ffx-pause {
+  position: absolute;
+  left: 2%;
+  bottom: 1%;
+  width: 44px;
+  height: 44px;
+}
+
+.ffh-glare,
+.ffh-screen-glare,
+.ffh-heat,
+.ffh-yay,
+.ffh-send {
+  opacity: 0;
+}
+
+.ffh-heat {
+  mix-blend-mode: multiply;
+}
+
+.ffx.is-playing .ffh-phone {
+  animation: ffx-bob 2.6s ease-in-out infinite;
+}
+
+/* flash: il disco e lo schermo diventano bianchi, il lampo scatta, il sole si espande */
+.ffh.b-flash .ffh-glare {
+  animation: ffx-glare .55s ease-out both;
+}
+
+.ffh.b-flash .ffh-screen-glare {
+  animation: ffx-glare .45s ease-out both;
+}
+
+.ffh.b-flash .ffh-burst {
+  animation: ffx-burst .65s var(--ffx-ease) both;
+}
+
+.ffh.b-flash .ffh-bolt {
+  animation: ffx-pop .5s var(--ffx-back) both;
+}
+
+.ffh-rays {
+  opacity: .9;
+}
+
+.ffh.b-flash .ffh-rays {
+  animation: ffx-rays .6s ease-out both;
+}
+
+.ffh-vf-eyes {
+  transform-box: fill-box;
+  transform-origin: center;
+}
+
+.ffh.b-flash .ffh-vf-eyes {
+  animation: ffx-blink-once .35s .08s both;
+}
+
+/* la foto appare nella galleria del telefono e parte verso la stampante */
+.ffh-thumb {
+  transform: scale(0);
+  transition: transform .4s var(--ffx-back);
+}
+
+.ffh.b-send .ffh-thumb {
+  transform: scale(1);
+}
+
+.ffh.b-out .ffh-thumb {
+  transform: scale(0);
+}
+
+.ffh.b-send .ffh-send {
+  animation: ffx-send .8s ease-in-out both;
+}
+
+/* stampa: la stampantina vibra, il led lampeggia, la fessura scalda */
+.ffh-printer {
+  transform-box: fill-box;
+  transform-origin: 50% 100%;
+}
+
+.ffx.is-playing.ffh.b-print:not(.b-done) .ffh-printer {
+  animation: ffx-shake .14s linear infinite;
+}
+
+.ffh.b-print:not(.b-done) .ffx-pr-led {
+  animation: ffx-led .32s steps(2) infinite;
+}
+
+.ffh.b-print:not(.b-done) .ffh-heat {
+  opacity: .8;
+  animation: ffx-heat .18s ease-in-out infinite alternate;
+}
+
+/* fatto: la stampa si stacca e s'inclina, la stampantina salta, coriandoli */
+.ffh-lift {
+  transition: transform .7s var(--ffx-back), opacity .5s ease;
+}
+
+.ffh.b-done .ffh-lift {
+  transform: translateY(-18px) rotate(4deg);
+}
+
+.ffh.b-out .ffh-lift {
+  opacity: 0;
+  transform: translateY(-34px) rotate(6deg);
+}
+
+.ffh.b-done .ffh-printer {
+  animation: ffx-hop .6s var(--ffx-back) both;
+}
+
+.ffh.b-done .ffh-confetti .ffx-cf {
+  animation: ffx-confetti 2s var(--ffx-ease) both;
+}
+
+.ffh.b-done .ffh-yay {
+  opacity: 1;
+  transition: opacity .3s ease;
+}
+
+.ffh.b-out .ffh-yay {
+  opacity: 0;
+}
+
+.ffh.is-static .ffh-yay {
+  opacity: 1;
+}
+
+/* ================================================================== CAROSELLO DELLE IDEE */
+.ffs {
+  --ffs-gap: clamp(24px, 4vw, 64px);
+  position: relative;
+}
+
+.ffs__viewport {
+  display: grid;
+}
+
+.ffs__slide {
+  grid-area: 1 / 1;
+  display: grid;
+  grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr);
+  gap: var(--ffs-gap);
+  align-items: center;
+  opacity: 0;
+  visibility: hidden;
+  transform: translateX(28px);
+  transition: opacity .4s ease, transform .5s var(--ffx-ease, ease), visibility 0s linear .5s;
+}
+
+.ffs__slide.is-before {
+  transform: translateX(-28px);
+}
+
+.ffs__slide.is-active {
+  opacity: 1;
+  visibility: visible;
+  transform: none;
+  transition: opacity .45s ease .12s, transform .55s var(--ffx-ease, ease) .12s, visibility 0s;
+}
+
+.ffs.is-reduced .ffs__slide {
+  transition: none;
+  transform: none;
+}
+
+.ffs__card {
+  position: relative;
+  aspect-ratio: 4 / 3;
+  overflow: hidden;
+  border: 3px solid var(--ffx-ink);
+  border-radius: 28px;
+  background: var(--ffx-paper);
+  box-shadow: 8px 8px 0 var(--ffx-ink);
+  color: var(--ffx-ink);
+}
+
+.ffs__card svg {
+  width: 100%;
+  height: 100%;
+}
+
+.ffs__num {
+  margin: 0;
+  font-family: var(--ff-font-mono, 'Space Mono', monospace);
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--ff-muted, #4A4640);
+}
+
+.ffs__title {
+  margin: 10px 0 12px;
+  font-family: var(--ff-font-display, 'Righteous', sans-serif);
+  font-size: clamp(28px, 3.2vw, 42px);
+  font-weight: 400;
+  line-height: 1.1;
+  color: var(--ff-on-bg, #16130F);
+}
+
+.ffs__text {
+  max-width: 36ch;
+  margin: 0;
+  font-size: clamp(16px, 1.4vw, 19px);
+  line-height: 1.55;
+  color: var(--ff-muted, #4A4640);
+}
+
+.ffs__controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 12px 16px;
+  margin-top: clamp(24px, 3vw, 40px);
+}
+
+.ffs__dots {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.ffs__dot {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 44px;
+  padding: 0;
+  border: 0;
+  background: none;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.ffs__dot[aria-current="true"] {
+  width: 60px;
+}
+
+.ffs__pill {
+  position: relative;
+  display: block;
+  width: 14px;
+  height: 14px;
+  overflow: hidden;
+  border: 2.5px solid var(--ffx-ink);
+  border-radius: 999px;
+  background: var(--ffx-paper);
+}
+
+.ffs__dot:hover .ffs__pill {
+  background: var(--ff-fog, #EDE8DE);
+}
+
+.ffs__dot[aria-current="true"] .ffs__pill {
+  width: 48px;
+  background: var(--ffx-paper);
+}
+
+.ffs__fill {
+  position: absolute;
+  inset: 0;
+  background: var(--ff-flash, #FFCC00);
+  transform: scaleX(0);
+  transform-origin: left center;
+}
+
+.ffs.is-reduced .ffs__dot[aria-current="true"] .ffs__fill {
+  transform: scaleX(1) !important;
+}
+
+.ffs.is-held .ffs__fill {
+  opacity: .45;
+}
+
+.ffs__dot:focus-visible {
+  outline: none;
+}
+
+.ffs__dot:focus-visible .ffs__pill {
+  outline: 3px solid var(--ff-focus, #3D8BFF);
+  outline-offset: 3px;
+}
+
+/* Due colonne: i controlli seguono la griglia delle slide invece di galleggiare a metà fra
+   illustrazione e testo. Sotto la scheda, centrati su di lei; sugli schermi larghi nella colonna
+   del testo, allineati alla base della scheda (sotto il testo c'è posto per loro: padding). */
+@media (min-width: 861px) {
+  .ffs {
+    display: grid;
+    grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr);
+    column-gap: var(--ffs-gap);
+  }
+
+  .ffs__viewport {
+    grid-area: 1 / 1 / 2 / 3;
+  }
+
+  .ffs__controls {
+    grid-column: 1;
+  }
+}
+
+@media (min-width: 1080px) {
+  .ffs__copy {
+    padding-bottom: 88px;
+  }
+
+  .ffs__controls {
+    grid-area: 1 / 2;
+    align-self: end;
+    justify-content: flex-start;
+    gap: 12px;
+    margin-top: 0;
+    /* sopra alle slide, che occupano la stessa cella della griglia */
+    position: relative;
+    z-index: 1;
+  }
+}
+
+@media (max-width: 420px) {
+  .ffs__controls {
+    gap: 8px;
+  }
+
+  .ffs__dot {
+    width: 24px;
+  }
+
+  .ffs__dot[aria-current="true"] {
+    width: 52px;
+  }
+
+  .ffs__dot[aria-current="true"] .ffs__pill {
+    width: 42px;
+  }
+}
+
+@media (max-width: 860px) {
+  .ffs__slide {
+    grid-template-columns: 1fr;
+    gap: 20px;
+    align-items: start;
+  }
+
+  .ffs__copy {
+    text-align: center;
+  }
+
+  .ffs__text {
+    margin-inline: auto;
+  }
+
+  .ffs__card {
+    border-radius: 22px;
+    box-shadow: 5px 5px 0 var(--ffx-ink);
+  }
+}
+
+/* ================================================================== Keyframe */
+@keyframes ffx-glare {
+  0% { opacity: 0; }
+  14% { opacity: .82; }
+  100% { opacity: 0; }
+}
+
+@keyframes ffx-burst {
+  0% { opacity: 0; transform: scale(.2) rotate(0deg); }
+  18% { opacity: 1; }
+  100% { opacity: 0; transform: scale(1.6) rotate(25deg); }
+}
+
+@keyframes ffx-pop {
+  0% { transform: scale(1); }
+  35% { transform: scale(1.3) rotate(-8deg); }
+  100% { transform: scale(1); }
+}
+
+@keyframes ffx-rays {
+  0% { opacity: 0; transform: scale(.7); }
+  25% { opacity: 1; }
+  100% { opacity: .9; transform: scale(1.15); }
+}
+
+@keyframes ffx-bob {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-5px); }
+}
+
+@keyframes ffx-breathe {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-1.5px); }
+}
+
+@keyframes ffx-twinkle {
+  0%, 100% { opacity: .55; transform: scale(.55) rotate(0deg); }
+  50% { opacity: 1; transform: scale(1) rotate(18deg); }
+}
+
+@keyframes ffx-blink {
+  0%, 93%, 100% { transform: scaleY(1); }
+  96% { transform: scaleY(.1); }
+}
+
+@keyframes ffx-blink-once {
+  0%, 100% { transform: scaleY(1); }
+  50% { transform: scaleY(.1); }
+}
+
+@keyframes ffx-shake {
+  0%, 100% { transform: translate(0, 0); }
+  25% { transform: translate(-1.2px, .6px); }
+  50% { transform: translate(.8px, -.6px); }
+  75% { transform: translate(1.2px, .4px); }
+}
+
+@keyframes ffx-hop {
+  0% { transform: translateY(0) scale(1, 1); }
+  30% { transform: translateY(-14px) scale(.97, 1.04); }
+  60% { transform: translateY(0) scale(1.05, .95); }
+  100% { transform: translateY(0) scale(1, 1); }
+}
+
+@keyframes ffx-led {
+  50% { opacity: .2; }
+}
+
+@keyframes ffx-heat {
+  from { opacity: .55; }
+  to { opacity: .95; }
+}
+
+@keyframes ffx-send {
+  0% { opacity: 0; transform: translate(0, 0) scale(.4); }
+  20% { opacity: 1; transform: translate(calc(var(--dx) * .15), calc(var(--dy) * .1)) scale(1); }
+  80% { opacity: 1; }
+  100% { opacity: 0; transform: translate(var(--dx), var(--dy)) scale(.6); }
+}
+
+@keyframes ffx-confetti {
+  0% { opacity: 0; transform: translate(0, 0) rotate(0deg) scale(.2); }
+  8% { opacity: 1; }
+  38% { transform: translate(var(--dx), var(--dy)) rotate(calc(var(--r) * .5)) scale(1); }
+  85% { opacity: 1; }
+  100% { opacity: 0; transform: translate(var(--dx), calc(var(--dy) + var(--fall))) rotate(var(--r)) scale(1); }
+}
+
+@keyframes ffx-say {
+  0% { opacity: 0; transform: scale(.2); }
+  12% { opacity: 1; transform: scale(1.12); }
+  20% { transform: scale(1); }
+  80% { opacity: 1; transform: scale(1); }
+  100% { opacity: 0; transform: translateY(-6px) scale(.92); }
+}
+
+@keyframes ffx-float {
+  0% { opacity: 0; transform: translate(0, 0) scale(.4); }
+  18% { opacity: 1; transform: translate(0, -8px) scale(1); }
+  100% { opacity: 0; transform: translate(var(--fx, 0px), -64px) scale(1); }
+}
+
+@keyframes ffx-pop-in {
+  0% { opacity: 0; transform: scale(0); }
+  60% { opacity: 1; transform: scale(1.18); }
+  100% { opacity: 1; transform: scale(1); }
+}
+
+@keyframes ffx-wobble {
+  0% { transform: rotate(0deg); }
+  20% { transform: rotate(-9deg); }
+  45% { transform: rotate(6deg); }
+  70% { transform: rotate(-3deg); }
+  100% { transform: rotate(0deg); }
+}
+
+@keyframes ffx-sway {
+  0%, 100% { transform: rotate(-2.5deg); }
+  50% { transform: rotate(2.5deg); }
+}
+
+@keyframes ffx-wag {
+  0%, 100% { transform: rotate(-14deg); }
+  50% { transform: rotate(18deg); }
+}
+
+@keyframes ffx-plane {
+  0% { opacity: 0; transform: translate(0, 0) rotate(-12deg); }
+  8% { opacity: 1; }
+  45% { transform: translate(250px, -46px) rotate(6deg); }
+  70% { transform: translate(390px, -10px) rotate(-8deg); }
+  92% { opacity: 1; }
+  100% { opacity: 0; transform: translate(560px, -40px) rotate(-14deg); }
+}
+
+/* Il sistema chiede meno movimento: anche se il JS non lo sapesse, niente si muove da solo. */
+@media (prefers-reduced-motion: reduce) {
+  .ffs__slide,
+  .ffs__dot,
+  .ffs__pill,
+  .ffx-btn,
+  .ffx *,
+  .ffx *::before,
+  .ffx *::after {
+    animation: none !important;
+    transition: none !important;
+  }
+}
