@@ -9,6 +9,7 @@ import androidx.lifecycle.viewModelScope
 import io.github.nik2208.fotoflash.di.AppGraph
 import io.github.nik2208.fotoflash.model.AppSettings
 import io.github.nik2208.fotoflash.model.PrinterState
+import io.github.nik2208.fotoflash.thermal.PrinterDrivers
 import io.github.nik2208.fotoflash.thermal.ToneAdjustments
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
@@ -97,9 +98,9 @@ class SettingsViewModel(private val graph: AppGraph) : ViewModel() {
 
     fun resetCounter() = update { it.copy(printCounter = 0) }
 
+    /** Il retino "di serie" e quello del driver in uso: Floyd-Steinberg sulle Phomemo, Atkinson sulle ESC/POS. */
     fun resetImageDefaults() {
-        val defaults = AppSettings()
-        update { it.copy(dither = defaults.dither, tone = ToneAdjustments()) }
+        update { it.copy(dither = PrinterDrivers.byId(it.printerDriver).defaultDither, tone = ToneAdjustments()) }
     }
 
     private fun flushTitle() {

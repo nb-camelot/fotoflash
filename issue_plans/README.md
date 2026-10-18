@@ -21,7 +21,9 @@ generarne uno; un `/oc` nudo in un commento basta. Si può anche partire a mano:
 
 | Piano | Cosa | Tipo |
 |---|---|---|
-| [`ble-cat-printer.md`](ble-cat-printer.md) | Stampanti BLE "cat printer" (GB01/MX05 e simili) | agente + prova su stampante |
+| [`ble-cat-printer.md`](ble-cat-printer.md) | Driver per le stampanti BLE "cat printer" (GB01/MX05 e simili, servizio `AE30`) | agente + prova su stampante |
+| [`phomemo-m02x.md`](phomemo-m02x.md) | Driver per la Phomemo M02X (protocollo diverso dalla M02) | agente + prova su stampante |
+| [`phomemo-paper-status.md`](phomemo-paper-status.md) | Stato di carta e batteria delle Phomemo dalle notifiche BLE | agente + prova su stampante |
 | [`sticker-mode.md`](sticker-mode.md) | Modalità adesivo con linea di taglio e retino "Contorni" | agente |
 | [`doodle-captions.md`](doodle-captions.md) | Disegni e scritte a mano sulla foto | agente |
 | [`receipt-qr.md`](receipt-qr.md) | QR code sullo scontrino con il link all'album dell'evento | agente |
@@ -54,6 +56,9 @@ Regole per scrivere un buon piano:
   file e risorse presenti (in inglese e in italiano). Niente criteri che richiedono un telefono o una
   stampante: quelli vanno in *Fuori dalla CI*.
 - La logica va in `core-thermal` quando può: lì si testa senza Android.
+- Un piano che tocca una stampante è un piano di **driver** (`docs/DRIVERS.md`): Kotlin, JavaScript e
+  casi golden nello stesso lavoro (`AGENTS.md`, § 3 ter). Cita le fonti del protocollo e dichiara dove
+  non concordano; la verifica sulla stampante vera va in *Fuori dalla CI*.
 - Se il piano cambia un contratto di `docs/ARCHITECTURE.md`, lo dice esplicitamente e chiede di
   aggiornare il documento e tutti i chiamanti.
 - Niente dipendenze nuove, salvo eccezione scritta e motivata nel piano stesso.

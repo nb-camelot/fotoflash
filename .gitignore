@@ -28,3 +28,6 @@ Thumbs.db
 
 # Configurazione locale di Claude Code
 .claude/
+
+# Build del sito (scripts/build-web.mjs)
+dist/

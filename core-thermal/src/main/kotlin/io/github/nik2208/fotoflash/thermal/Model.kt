@@ -5,11 +5,21 @@ package io.github.nik2208.fotoflash.thermal
  * (algoritmi puri, testabili in JVM) e l'app Android: cambiarli vuol dire toccare entrambi.
  */
 
-/** Larghezza della carta e punti stampabili per riga (testina a 203 dpi, 8 punti/mm). */
-enum class PaperWidth(val mm: Int, val dots: Int) {
+/**
+ * Larghezza della carta, punti stampabili per riga e risoluzione della testina.
+ * L'impaginazione lavora in punti: M02PRO (576 punti a 300 dpi = 48,8 mm) esce fisicamente quasi
+ * uguale alla 58 mm (384 punti a 203 dpi = 48 mm). Vedi docs/DRIVERS.md.
+ */
+enum class PaperWidth(val mm: Int, val dots: Int, val dpi: Int = 203) {
     MM58(58, 384),
     MM80(80, 576),
+
+    /** Phomemo M02 Pro / M02S: carta da 53 mm, 576 punti a 300 dpi. */
+    M02PRO(53, 576, 300),
 }
+
+/** Collegamento con la stampante: Bluetooth classico (SPP) o Bluetooth Low Energy (GATT). */
+enum class PrinterLink { CLASSIC, BLE }
 
 /** Algoritmo di retinatura: trasforma i grigi in punti neri/bianchi. */
 enum class DitherAlgorithm {

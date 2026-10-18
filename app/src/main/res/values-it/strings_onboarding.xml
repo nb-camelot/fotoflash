@@ -18,7 +18,7 @@
     <string name="onb_perm_camera">Fotocamera</string>
     <string name="onb_perm_camera_desc">Per scattare le foto</string>
     <string name="onb_perm_bluetooth">Dispositivi nelle vicinanze</string>
-    <string name="onb_perm_bluetooth_desc">Per collegarsi alla stampante accoppiata</string>
+    <string name="onb_perm_bluetooth_desc">Per trovare la stampante e collegarsi</string>
     <string name="onb_perm_granted">Consentito</string>
     <string name="onb_perm_denied">Negato</string>
     <string name="onb_perm_pending">Da consentire</string>
@@ -27,7 +27,7 @@
     <string name="onb_perm_settings">Apri impostazioni dell\'app</string>
 
     <string name="onb_printer_title">La tua stampante</string>
-    <string name="onb_printer_text">Accoppia la stampante nelle impostazioni Bluetooth (il PIN spesso è 0000 o 1234), poi sceglila qui.</string>
+    <string name="onb_printer_text">Sceglila tra le accoppiate (impostazioni Bluetooth, il PIN spesso è 0000 o 1234) o tra le vicine: le stampanti Bluetooth LE come le Phomemo non vanno accoppiate.</string>
     <string name="onb_printer_none">Ancora nessun dispositivo accoppiato</string>
     <string name="onb_printer_no_permission">Consenti «Dispositivi nelle vicinanze» per vedere le stampanti</string>
     <string name="onb_printer_bt_off">Il Bluetooth è spento: accendilo per vedere le stampanti</string>
@@ -38,6 +38,38 @@
     <string name="onb_test_page">Stampa pagina di prova</string>
     <string name="onb_test_ok">Pagina di prova stampata!</string>
     <string name="onb_printer_later">Puoi scegliere o cambiare la stampante anche dopo, dalle impostazioni.</string>
+
+    <!-- Elenchi e ricerca Bluetooth LE -->
+    <string name="onb_printer_paired">ACCOPPIATE</string>
+    <string name="onb_printer_nearby">VICINE (BLE)</string>
+    <string name="onb_device_detail">%1$s · %2$s</string>
+    <string name="onb_scan">Cerca</string>
+    <string name="onb_scan_running">Ricerca…</string>
+    <string name="onb_scan_progress">Cerco stampanti qui vicino…</string>
+    <string name="onb_scan_hint">Tocca Cerca per trovare le stampanti Bluetooth LE vicine, come le Phomemo.</string>
+    <string name="onb_scan_none">Nessuna stampante qui vicino: accendila, tienila accanto al telefono e cerca di nuovo</string>
+    <string name="onb_scan_permission_nearby">Consenti «Dispositivi nelle vicinanze» per cercare le stampanti</string>
+    <string name="onb_scan_permission_location">Su questa versione di Android la ricerca Bluetooth richiede il permesso di posizione. FotoFlash non usa mai la tua posizione.</string>
+    <string name="onb_scan_location_off">La Localizzazione è spenta: su questa versione di Android serve alla ricerca Bluetooth</string>
+    <string name="onb_scan_location_settings">Attiva la Localizzazione</string>
+
+    <!-- Driver di stampa -->
+    <string name="onb_driver_title">Driver di stampa</string>
+    <string name="onb_driver_for">Per %1$s, via %2$s</string>
+    <string name="onb_link_classic">Bluetooth (SPP)</string>
+    <string name="onb_link_ble">Bluetooth LE</string>
+    <string name="onb_driver_auto">Riconosciuto dal nome. Se la pagina di prova esce male, scegline un altro.</string>
+    <string name="onb_driver_unknown">Nome non riconosciuto: uso %1$s. Se la pagina di prova esce male, scegline un altro.</string>
+    <string name="onb_driver_manual">Scelto da te: la pagina di prova ti dice se è quello giusto.</string>
+    <string name="onb_driver_unsupported">La Phomemo M02X parla un\'altra lingua e non è supportata: le stampe uscirebbero sbagliate.</string>
+    <string name="onb_driver_ble_only">Questo driver funziona solo in Bluetooth LE: scegli la stampante tra le vicine.</string>
+    <string name="onb_driver_classic_only">Questo driver funziona solo con le stampanti accoppiate: sceglila tra le accoppiate.</string>
+    <string name="onb_dither_suggest">Questa stampante rende al meglio con il retino %1$s</string>
+    <string name="onb_dither_use">Usalo</string>
+    <string name="onb_dither_atkinson">Atkinson</string>
+    <string name="onb_dither_floyd">Floyd-Steinberg</string>
+    <string name="onb_dither_bayer">Bayer</string>
+    <string name="onb_dither_threshold">Soglia</string>
 
     <string name="onb_fail_no_printer">Prima scegli una stampante dall\'elenco</string>
     <string name="onb_fail_no_permission">FotoFlash non ha il permesso di usare il Bluetooth</string>

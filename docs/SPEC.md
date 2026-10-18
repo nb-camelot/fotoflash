@@ -4,12 +4,14 @@
 
 FotoFlash trasforma il telefono in una **fotocamera istantanea a carta termica**: come le
 fotocamere per bambini che stampano lo scatto su uno scontrino, ma con il telefono e una
-stampante termica Bluetooth da 58 mm (ESC/POS, Bluetooth classico SPP). Serve per foto
+stampante termica Bluetooth: una ESC/POS da 58 o 80 mm (Bluetooth classico SPP o Bluetooth LE)
+oppure una Phomemo M02 o M02 Pro (Bluetooth LE). Ogni famiglia ha il suo **driver**
+([`docs/DRIVERS.md`](DRIVERS.md)), scelto in automatico dal nome della stampante. Serve per foto
 ricordo al volo: feste, matrimoni, gite, giochi con i bambini, banchetti e fotocabine fai da te.
 
 ## Principi
 
-1. **La carta è il prodotto.** Ogni stampa deve essere bella su carta termica a 203 dpi:
+1. **La carta è il prodotto.** Ogni stampa deve essere bella su carta termica a 203 o 300 dpi:
    impaginazione curata, testi nitidi (mai retinati), foto retinata con algoritmi buoni.
 2. **WYSIWYG.** L'anteprima mostra esattamente i punti che andranno sulla carta (stessa
    immagine a 1 bit, ingrandita senza filtri). Niente sorprese.
@@ -23,9 +25,11 @@ ricordo al volo: feste, matrimoni, gite, giochi con i bambini, banchetti e fotoc
 
 ### Primo avvio (onboarding)
 1. Tre schede illustrate: *Scatta* → *Stampa* → *Ricorda*.
-2. Permessi: fotocamera; Bluetooth (Android 12+: «Dispositivi nelle vicinanze»).
-3. Scelta della stampante tra i dispositivi accoppiati (con scorciatoia alle impostazioni
-   Bluetooth per accoppiarla) e **pagina di prova**.
+2. Permessi: fotocamera; Bluetooth (Android 12+: «Dispositivi nelle vicinanze»; fino ad Android 11
+   la ricerca BLE chiede la posizione e la Localizzazione attiva).
+3. Scelta della stampante in due elenchi: **Accoppiate** (SPP, con scorciatoia alle impostazioni
+   Bluetooth per accoppiarla) e **Vicine (BLE)** (pulsante «Cerca», 10 s). Il driver viene
+   riconosciuto dal nome e mostrato; si può cambiare. Poi **pagina di prova**.
 4. Si può saltare: la stampante si sceglie anche dopo.
 
 ### Scatto
@@ -67,10 +71,22 @@ ricordo al volo: feste, matrimoni, gite, giochi con i bambini, banchetti e fotoc
 - **Esporta tutte le foto**: salva in galleria gli originali di tutto lo storico, con avanzamento.
 
 ### Impostazioni
-- **Stampante**: scelta, stato, pagina di prova, dimentica.
-- **Carta e stampa**: larghezza (58/80 mm), avanzamento dopo la stampa, taglio carta,
-  intensità (riscaldamento testina), *avanzate*: dimensione blocco, pausa tra blocchi,
-  altezza banda (calibrazione per stampanti con buffer piccolo).
+- **Stampante**: scelta (accoppiate in SPP o vicine in BLE), **driver** (riconosciuto dal nome,
+  modificabile), collegamento (SPP/BLE), stato, pagina di prova, dimentica. Una Phomemo **M02X** viene
+  riconosciuta e segnalata come non supportata.
+- **Carta e stampa**: larghezza (58/80 mm, solo per i driver ESC/POS: per i Phomemo la decide il
+  driver), avanzamento dopo la stampa; per le ESC/POS anche taglio carta e intensità (riscaldamento
+  testina); *avanzate*: dimensione blocco, pausa tra blocchi, altezza banda (calibrazione per
+  stampanti con buffer piccolo). La schermata mostra solo le voci del driver scelto.
+- **Phomemo**, al posto di intensità e taglio: densità 1-15 (predefinita: quella che discende
+  dall'intensità), larghezza di stampa 72 o 78 byte (solo M02 Pro), velocità di stampa sperimentale
+  (spenta di default).
+- **Velocità di invio BLE**: *Automatica* (i predefiniti del driver, consigliata), *Sicura* (20 byte,
+  15 ms), *Veloce* (60 byte, 20 ms), *Massima* (128 byte, 20 ms), con una riga che spiega perché la
+  prudenza è il default. Sul web vale per le Phomemo; le ESC/POS hanno la modalità d'invio del bridge.
+  Nell'app vale per ogni stampante BLE: la prima voce si chiama «Predefinita del driver», e ce n'è una
+  in più, «Con conferma» (100 byte, ognuno confermato), che coincide con il predefinito delle ESC/POS
+  in BLE; lì ogni cambio di driver riporta la scelta ai predefiniti.
 - **Immagine**: retino predefinito, regolazioni predefinite.
 - **Evento**: titolo, hashtag, data sì/no, numerazione sì/no, azzera contatore.
 - **Scatto**: stampa istantanea, timer predefinito, scatti per striscia (3/4), suono
@@ -89,15 +105,38 @@ ricordo al volo: feste, matrimoni, gite, giochi con i bambini, banchetti e fotoc
 Regole: i testi si disegnano in nero pieno (soglia, niente retino); le foto si retinano a parte
 e poi si compone tutto in un'unica immagine a 1 bit.
 
+Le misure sono in punti e scalano con la larghezza del driver. A 576 punti, cioè ESC/POS 80 mm e
+Phomemo M02 Pro, tutto cresce di 1,5 volte. Sulla M02 Pro (300 dpi) la stampa esce fisicamente quasi
+identica a quella da 58 mm: 576 punti a 300 dpi sono 48,8 mm, 384 punti a 203 dpi sono 48 mm.
+
 ## Stampante e trasmissione
 
-- ESC/POS su Bluetooth classico SPP (UUID 00001101-…), dispositivi già accoppiati.
-- Immagini con `GS v 0` **a bande** (default 24 righe), scritte a **blocchi** (default 256
-  byte) con **pausa** configurabile (default 15 ms): una foto vale ~10 volte uno scontrino e le
-  stampanti economiche non hanno controllo di flusso.
-- Prima della chiusura del socket: attesa proporzionale ai byte inviati (svuotamento buffer).
+Ogni stampa passa da un **driver** (contratti e byte in [`docs/DRIVERS.md`](DRIVERS.md)), che
+trasforma l'immagine a 1 bit nei comandi della sua stampante e dice come spedirli:
+
+| Driver | Stampanti | Punti/dpi | Collegamento | Retino predefinito |
+|---|---|---|---|---|
+| `escpos-58` | ESC/POS 58 mm ("BlueTooth Printer", Netum…) | 384 / 203 | App: SPP o BLE · Web: BLE | Atkinson |
+| `escpos-80` | ESC/POS 80 mm | 576 / 203 | App: SPP o BLE · Web: BLE | Atkinson |
+| `phomemo-m02` | Phomemo M02 | 384 / 203 | BLE (app e web) | Floyd-Steinberg |
+| `phomemo-m02pro` | Phomemo M02 Pro (la M02S è riconosciuta, ma la sua larghezza è da verificare) | 576 / 300 | BLE (app e web) | Floyd-Steinberg |
+
+- **ESC/POS su SPP** (UUID 00001101-…, dispositivi già accoppiati): immagini con `GS v 0` **a
+  bande** (default 24 righe), scritte a **blocchi** (default 256 byte) con **pausa** configurabile
+  (default 15 ms). Una foto vale circa 10 volte uno scontrino, e le stampanti economiche non hanno
+  controllo di flusso.
+- **BLE** (GATT; sul web Web Bluetooth): stessi byte del driver, spezzati secondo il driver. ESC/POS
+  scrive con conferma, Phomemo senza conferma, a pezzi piccoli con pausa. Su Android i pezzi stanno
+  nell'MTU negoziato. Sul web, che non conosce l'MTU, partono da 20 byte. Si regola con i preset di
+  invio BLE.
+- **Phomemo**: inizializzazione, densità, blocchi raster da 255 righe al massimo, avanzamento e coda
+  di interrogazioni di stato, come l'app ufficiale. La M02X ha un protocollo diverso e non è
+  supportata.
+- Prima della chiusura: attesa per lo svuotamento del buffer (in SPP proporzionale ai byte inviati).
 - Connessione tenuta aperta tra stampe vicine (timeout di inattività 45 s), riconnessione
-  automatica una volta in caso di errore.
+  automatica una volta in caso di errore, con entrambi i collegamenti.
+- La carta segue il driver: scegliere una M02 Pro imposta 576 punti a 300 dpi e propone il retino
+  Floyd-Steinberg.
 
 ## Brand (sintesi — dettagli in docs/brand/BRAND.md)
 

@@ -1,0 +1,2094 @@
+/* FotoFlash web — token del brand e stili dei componenti.
+   Mobile-first (360-430 px); su schermi larghi l'app è una colonna di 480 px con il retino ai lati. */
+
+/* ---------------------------------------------------------------- Caratteri (OFL, in fonts/) */
+@font-face {
+  font-family: 'Righteous';
+  src: url('../fonts/righteous_regular.ttf') format('truetype');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Space Mono';
+  src: url('../fonts/space_mono_regular.ttf') format('truetype');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Space Mono';
+  src: url('../fonts/space_mono_bold.ttf') format('truetype');
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+/* ---------------------------------------------------------------- Token */
+:root {
+  /* Palette del brand (ff_* dell'app Android) */
+  --ff-ink: #16130F;
+  --ff-paper: #FBF8F1;
+  --ff-flash: #FFCC00;
+  --ff-flash-deep: #E0A800;
+  --ff-coral: #FF5B45;
+  --ff-mint: #22B89A;
+  --ff-sky: #3D8BFF;
+  --ff-graphite: #4A4640;
+  --ff-fog: #EDE8DE;
+  --ff-night: #0E0C0A;
+
+  --ff-font-display: 'Righteous', 'Trebuchet MS', system-ui, sans-serif;
+  --ff-font-mono: 'Space Mono', ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace;
+  --ff-font-body: system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+
+  --ff-col: 480px;
+  --ff-gutter: 16px;
+  --ff-radius-sm: 10px;
+  --ff-radius-md: 18px;
+  --ff-radius-lg: 28px;
+  --ff-tooth: 12px;
+  --ff-depth: 6px;
+  --ff-ease: cubic-bezier(.2, .8, .2, 1);
+  --ff-safe-top: env(safe-area-inset-top, 0px);
+  --ff-safe-bottom: env(safe-area-inset-bottom, 0px);
+  --ff-safe-left: env(safe-area-inset-left, 0px);
+  --ff-safe-right: env(safe-area-inset-right, 0px);
+}
+
+/* Schema chiaro (default) — ripetuto sotto per i contenitori che lo forzano. */
+:root,
+.ff-theme-light {
+  color-scheme: light;
+  --ff-bg: var(--ff-paper);
+  --ff-on-bg: var(--ff-ink);
+  --ff-surface: rgba(22, 19, 15, .045);
+  --ff-surface-hover: rgba(22, 19, 15, .06);
+  --ff-raised: var(--ff-paper);
+  --ff-muted: var(--ff-graphite);
+  --ff-outline: #7A7368;
+  --ff-outline-soft: #D6CFC2;
+  --ff-divider: rgba(22, 19, 15, .08);
+  --ff-track: #DDD7CB;
+  --ff-accent-text: #6B5300;
+  --ff-focus: var(--ff-sky);
+  --ff-error-text: #C4321E;
+  --ff-error-bg: #FFDAD3;
+  --ff-on-error-bg: #410802;
+  --ff-warn-bg: #FFEB99;
+  --ff-on-warn-bg: var(--ff-ink);
+  --ff-info-bg: #DCE7FF;
+  --ff-on-info-bg: #0A1F45;
+  --ff-ok-bg: #CDEFE6;
+  --ff-on-ok-bg: #062B23;
+  --ff-inverse-bg: var(--ff-ink);
+  --ff-on-inverse: var(--ff-paper);
+  --ff-inverse-accent: var(--ff-flash);
+  --ff-pill-bg: rgba(251, 248, 241, .82);
+  --ff-scrim: rgba(14, 12, 10, .5);
+  --ff-frame: var(--ff-ink);
+  --ff-frame-shadow: var(--ff-ink);
+  --ff-paper-shadow: #DDD7CB;
+  --ff-side-bg: var(--ff-fog);
+  --ff-side-dot: rgba(22, 19, 15, .13);
+  --ff-press: rgba(22, 19, 15, .08);
+  --ff-disabled-bg: rgba(22, 19, 15, .12);
+  --ff-disabled-fg: rgba(22, 19, 15, .38);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    color-scheme: dark;
+    --ff-bg: var(--ff-night);
+    --ff-on-bg: var(--ff-paper);
+    --ff-surface: rgba(251, 248, 241, .055);
+    --ff-surface-hover: rgba(251, 248, 241, .08);
+    --ff-raised: #1C1915;
+    --ff-muted: #CFC7BA;
+    --ff-outline: #8E877B;
+    --ff-outline-soft: #3B362F;
+    --ff-divider: rgba(251, 248, 241, .09);
+    --ff-track: #3B362F;
+    --ff-accent-text: var(--ff-flash);
+    --ff-focus: var(--ff-flash);
+    --ff-error-text: #FF8A78;
+    --ff-error-bg: #5C1A10;
+    --ff-on-error-bg: #FFDAD3;
+    --ff-warn-bg: #4A3B00;
+    --ff-on-warn-bg: var(--ff-paper);
+    --ff-info-bg: #13336B;
+    --ff-on-info-bg: #DCE7FF;
+    --ff-ok-bg: #0F3D33;
+    --ff-on-ok-bg: #CDEFE6;
+    --ff-inverse-bg: var(--ff-paper);
+    --ff-on-inverse: var(--ff-ink);
+    --ff-inverse-accent: #6B5300;
+    --ff-pill-bg: rgba(14, 12, 10, .62);
+    --ff-scrim: rgba(0, 0, 0, .6);
+    --ff-frame: #3B362F;
+    --ff-frame-shadow: #000;
+    --ff-paper-shadow: rgba(0, 0, 0, .55);
+    --ff-side-bg: #090807;
+    --ff-side-dot: rgba(251, 248, 241, .07);
+    --ff-press: rgba(251, 248, 241, .1);
+    --ff-disabled-bg: rgba(251, 248, 241, .12);
+    --ff-disabled-fg: rgba(251, 248, 241, .38);
+  }
+}
+
+/* Schema scuro forzato (mirino, sempre scuro come nell'app). */
+.ff-theme-dark {
+  color-scheme: dark;
+  --ff-bg: var(--ff-night);
+  --ff-on-bg: var(--ff-paper);
+  --ff-surface: rgba(251, 248, 241, .055);
+  --ff-surface-hover: rgba(251, 248, 241, .08);
+  --ff-raised: #1C1915;
+  --ff-muted: #CFC7BA;
+  --ff-outline: #8E877B;
+  --ff-outline-soft: #3B362F;
+  --ff-divider: rgba(251, 248, 241, .09);
+  --ff-track: #3B362F;
+  --ff-accent-text: var(--ff-flash);
+  --ff-focus: var(--ff-flash);
+  --ff-error-text: #FF8A78;
+  --ff-error-bg: #5C1A10;
+  --ff-on-error-bg: #FFDAD3;
+  --ff-warn-bg: #4A3B00;
+  --ff-on-warn-bg: var(--ff-paper);
+  --ff-info-bg: #13336B;
+  --ff-on-info-bg: #DCE7FF;
+  --ff-ok-bg: #0F3D33;
+  --ff-on-ok-bg: #CDEFE6;
+  --ff-inverse-bg: var(--ff-paper);
+  --ff-on-inverse: var(--ff-ink);
+  --ff-inverse-accent: #6B5300;
+  --ff-pill-bg: rgba(14, 12, 10, .62);
+  --ff-scrim: rgba(0, 0, 0, .6);
+  --ff-frame: #3B362F;
+  --ff-frame-shadow: #000;
+  --ff-paper-shadow: rgba(0, 0, 0, .55);
+  --ff-press: rgba(251, 248, 241, .1);
+  --ff-disabled-bg: rgba(251, 248, 241, .12);
+  --ff-disabled-fg: rgba(251, 248, 241, .38);
+}
+
+/* Un contenitore con il tema forzato ricalcola anche testo e fondo (non solo i token ereditati). */
+.ff-theme-light,
+.ff-theme-dark {
+  color: var(--ff-on-bg);
+  background-color: var(--ff-bg);
+}
+
+/* ---------------------------------------------------------------- Base */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+  background: var(--ff-side-bg);
+}
+
+body {
+  margin: 0;
+  min-height: 100dvh;
+  font-family: var(--ff-font-body);
+  font-size: 16px;
+  line-height: 1.45;
+  color: var(--ff-on-bg);
+  background-color: var(--ff-side-bg);
+  -webkit-tap-highlight-color: transparent;
+  -webkit-font-smoothing: antialiased;
+  overscroll-behavior-y: none;
+}
+
+/* La colonna dell'app; ai lati, su schermi larghi, il retino del brand. */
+#app {
+  position: relative;
+  max-width: var(--ff-col);
+  min-height: 100dvh;
+  margin: 0 auto;
+  background: var(--ff-bg);
+  color: var(--ff-on-bg);
+  padding-left: var(--ff-safe-left);
+  padding-right: var(--ff-safe-right);
+  /* rete di sicurezza: niente scorrimento orizzontale della pagina (clip non rompe sticky) */
+  overflow-x: clip;
+}
+
+@media (min-width: 560px) {
+  body {
+    background-image:
+      radial-gradient(circle, var(--ff-side-dot) 0 1.6px, transparent 2px),
+      radial-gradient(circle, var(--ff-side-dot) 0 1.6px, transparent 2px);
+    background-size: 14px 14px;
+    background-position: 0 0, 7px 7px;
+    background-attachment: fixed;
+  }
+
+  #app {
+    border-left: 2px solid var(--ff-frame);
+    border-right: 2px solid var(--ff-frame);
+    max-width: calc(var(--ff-col) + 4px);
+  }
+}
+
+h1, h2, h3, h4, p {
+  margin: 0;
+}
+
+img, svg, canvas, video {
+  max-width: 100%;
+}
+
+button, input, select, textarea {
+  font: inherit;
+  color: inherit;
+}
+
+button {
+  -webkit-user-select: none;
+  user-select: none;
+  touch-action: manipulation;
+}
+
+a {
+  color: inherit;
+  text-decoration-color: var(--ff-sky);
+  text-decoration-thickness: 2px;
+  text-underline-offset: 3px;
+}
+
+::selection {
+  background: var(--ff-flash);
+  color: var(--ff-ink);
+}
+
+:focus-visible {
+  outline: 3px solid var(--ff-focus);
+  outline-offset: 2px;
+}
+
+[hidden] {
+  display: none !important;
+}
+
+/* Fuoco spostato dal router sul titolo o sulla colonna: serve al lettore di schermo, non all'occhio. */
+#app:focus,
+h1[tabindex="-1"]:focus {
+  outline: none;
+}
+
+.ff-sr-only {
+  position: absolute !important;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.ff-icon {
+  flex: none;
+  display: block;
+}
+
+.ff-display { font-family: var(--ff-font-display); font-weight: 400; }
+.ff-mono { font-family: var(--ff-font-mono); }
+.ff-muted { color: var(--ff-muted); }
+.ff-center { text-align: center; }
+.ff-grow { flex: 1 1 auto; min-width: 0; }
+.ff-small { font-size: 13.5px; line-height: 1.45; }
+
+/* ---------------------------------------------------------------- Splash e avvio */
+.ff-splash {
+  min-height: 100dvh;
+  display: grid;
+  place-items: center;
+  align-content: center;
+  gap: 20px;
+  background: var(--ff-flash);
+  color: var(--ff-ink);
+}
+
+.ff-splash .ff-mark {
+  animation: ff-bob 1.6s var(--ff-ease) infinite;
+}
+
+.ff-boot-error {
+  min-height: 100dvh;
+  display: grid;
+  place-items: center;
+  align-content: center;
+  gap: 16px;
+  padding: 32px;
+  text-align: center;
+}
+
+/* ---------------------------------------------------------------- Schermate */
+/* L'ingresso animato lo fa il router sul contenitore, senza lasciare trasformazioni attive. */
+.ff-screen {
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+}
+
+.ff-content {
+  flex: 1 1 auto;
+  padding: 4px var(--ff-gutter) calc(40px + var(--ff-safe-bottom));
+}
+
+.ff-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.ff-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.ff-bottom-bar {
+  position: sticky;
+  bottom: 0;
+  z-index: 5;
+  padding: 12px var(--ff-gutter) calc(12px + var(--ff-safe-bottom));
+  background: var(--ff-bg);
+  border-top: 1px solid var(--ff-divider);
+}
+
+.ff-screen-error {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 32px;
+  text-align: center;
+}
+
+.ff-screen-error code {
+  font-family: var(--ff-font-mono);
+  font-size: 12.5px;
+  color: var(--ff-muted);
+  overflow-wrap: anywhere;
+}
+
+/* ---------------------------------------------------------------- Barra in alto */
+.ff-topbar {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  display: grid;
+  grid-template-columns: minmax(56px, 1fr) minmax(0, auto) minmax(56px, 1fr);
+  align-items: center;
+  min-height: calc(64px + var(--ff-safe-top));
+  padding: var(--ff-safe-top) 4px 0;
+  background: var(--ff-bg);
+  border-bottom: 1px solid transparent;
+}
+
+.ff-topbar__start,
+.ff-topbar__end {
+  display: flex;
+  align-items: center;
+  gap: 0;
+}
+
+.ff-topbar__end {
+  justify-content: flex-end;
+}
+
+.ff-topbar__title {
+  font-family: var(--ff-font-display);
+  font-weight: 400;
+  font-size: 22px;
+  line-height: 28px;
+  text-align: center;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Filetto sotto la barra solo quando la pagina scorre (dove il browser lo sa fare). */
+@supports (animation-timeline: scroll()) {
+  .ff-topbar {
+    animation: ff-topbar-line linear both;
+    animation-timeline: scroll(root);
+    animation-range: 0 24px;
+  }
+}
+
+@keyframes ff-topbar-line {
+  to { border-bottom-color: var(--ff-divider); }
+}
+
+/* ---------------------------------------------------------------- Pulsanti */
+.ff-btn {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  min-height: 56px;
+  max-width: 100%;
+  padding: 12px 28px;
+  margin-bottom: 4px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  font-family: var(--ff-font-display);
+  font-weight: 400;
+  font-size: 18px;
+  line-height: 22px;
+  letter-spacing: .2px;
+  text-decoration: none;
+  cursor: pointer;
+  transition: transform .07s ease-out, box-shadow .07s ease-out, background-color .15s;
+}
+
+/* Su due righe piuttosto che tagliato: sui telefoni stretti certe etichette non stanno in una. */
+.ff-btn__label {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  text-align: center;
+}
+
+.ff-btn .ff-icon {
+  width: 22px;
+  height: 22px;
+}
+
+/* più specifico di .ff-spinner: lo spinner del pulsante compare solo durante l'attesa */
+.ff-btn .ff-btn__spinner {
+  display: none;
+}
+
+.ff-btn[aria-busy="true"] {
+  cursor: progress;
+}
+
+.ff-btn[aria-busy="true"] .ff-btn__spinner {
+  display: inline-block;
+}
+
+.ff-btn[aria-busy="true"] > .ff-icon {
+  display: none;
+}
+
+/* Primario giallo: un tasto fisico con il gradino FlashDeep che si abbassa sotto il dito. */
+.ff-btn--flash {
+  background: var(--ff-flash);
+  color: var(--ff-ink);
+  box-shadow: 0 4px 0 var(--ff-flash-deep);
+}
+
+.ff-btn--flash:not(:disabled):not([aria-busy="true"]):active {
+  transform: translateY(4px);
+  box-shadow: 0 0 0 var(--ff-flash-deep);
+}
+
+.ff-btn--flash:disabled {
+  background: var(--ff-disabled-bg);
+  color: var(--ff-disabled-fg);
+  box-shadow: none;
+  cursor: default;
+}
+
+.ff-btn--ghost {
+  color: var(--ff-on-bg);
+  box-shadow: inset 0 0 0 2px currentColor;
+}
+
+.ff-btn--ghost:not(:disabled):active {
+  background: var(--ff-press);
+}
+
+.ff-btn--ghost:disabled {
+  color: var(--ff-disabled-fg);
+  box-shadow: inset 0 0 0 2px var(--ff-disabled-bg);
+  cursor: default;
+}
+
+.ff-btn--danger {
+  background: var(--ff-coral);
+  color: var(--ff-ink);
+  box-shadow: 0 4px 0 #C4321E;
+}
+
+.ff-btn--danger:not(:disabled):active {
+  transform: translateY(4px);
+  box-shadow: 0 0 0 #C4321E;
+}
+
+/* Testuale: azioni secondarie leggere (Salta, Più tardi, link). */
+.ff-btn--text {
+  min-height: 48px;
+  padding: 8px 14px;
+  margin-bottom: 0;
+  font-family: var(--ff-font-body);
+  font-size: 15px;
+  font-weight: 650;
+  color: var(--ff-accent-text);
+}
+
+.ff-btn--text:not(:disabled):active {
+  background: var(--ff-press);
+}
+
+.ff-btn--text:disabled {
+  color: var(--ff-disabled-fg);
+  cursor: default;
+}
+
+.ff-btn--small {
+  min-height: 48px;
+  padding: 8px 20px;
+  font-size: 16px;
+}
+
+.ff-btn--block {
+  display: flex;
+  width: 100%;
+}
+
+@media (hover: hover) {
+  .ff-btn--ghost:not(:disabled):hover,
+  .ff-btn--text:not(:disabled):hover {
+    background: var(--ff-press);
+  }
+
+  .ff-btn--flash:not(:disabled):hover {
+    filter: brightness(1.04);
+  }
+}
+
+.ff-iconbtn {
+  position: relative;
+  flex: none;
+  display: inline-grid;
+  place-items: center;
+  width: 48px;
+  height: 48px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  transition: background-color .15s, color .15s, transform .1s;
+}
+
+.ff-iconbtn:not(:disabled):active {
+  background: var(--ff-press);
+  transform: scale(.94);
+}
+
+.ff-iconbtn.is-active {
+  background: var(--ff-flash);
+  color: var(--ff-ink);
+}
+
+.ff-iconbtn:disabled {
+  opacity: .38;
+  cursor: default;
+}
+
+@media (hover: hover) {
+  .ff-iconbtn:not(:disabled):not(.is-active):hover {
+    background: var(--ff-press);
+  }
+}
+
+.ff-spinner {
+  display: inline-block;
+  flex: none;
+  width: 20px;
+  height: 20px;
+  border: 2.5px solid currentColor;
+  border-right-color: transparent;
+  border-radius: 50%;
+  animation: ff-spin .8s linear infinite;
+}
+
+/* ---------------------------------------------------------------- Otturatore */
+.ff-shutter {
+  position: relative;
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 84px;
+  height: 84px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--ff-ink);
+  cursor: pointer;
+}
+
+.ff-shutter::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border: 4px solid #fff;
+  border-radius: 50%;
+}
+
+.ff-shutter__disc {
+  display: grid;
+  place-items: center;
+  width: 68px;
+  height: 68px;
+  border-radius: 50%;
+  /* bombatura leggera: centro Flash, bordo FlashDeep, come un tasto vero */
+  background: radial-gradient(circle at 50% 50%, var(--ff-flash) 0 58%, var(--ff-flash-deep) 100%);
+  transition: transform .18s cubic-bezier(.3, 1.6, .5, 1);
+}
+
+.ff-shutter:not(:disabled):not([aria-busy="true"]):active .ff-shutter__disc {
+  transform: scale(.86);
+}
+
+.ff-shutter:disabled {
+  opacity: .4;
+  cursor: default;
+}
+
+.ff-shutter[aria-busy="true"] {
+  cursor: progress;
+}
+
+.ff-shutter .ff-spinner {
+  width: 34px;
+  height: 34px;
+  border-width: 3px;
+}
+
+.ff-shutter__count {
+  font-family: var(--ff-font-display);
+  font-size: 34px;
+  line-height: 36px;
+  animation: ff-pop .45s cubic-bezier(.3, 1.5, .5, 1) both;
+}
+
+/* ---------------------------------------------------------------- Carta a dente di sega */
+.ff-paper {
+  --ff-zz-top: conic-gradient(from 135deg at 50% 0, #0000, #000 1deg 89deg, #0000 90deg) top / var(--ff-tooth) 51% round no-repeat;
+  --ff-zz-bottom: conic-gradient(from -45deg at 50% 100%, #0000, #000 1deg 89deg, #0000 90deg) bottom / var(--ff-tooth) 51% round no-repeat;
+  position: relative;
+  isolation: isolate;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: calc(14px + var(--ff-depth)) 16px;
+  margin: 0 3px 3px 0;
+  color: var(--ff-ink);
+  --ff-on-bg: var(--ff-ink);
+  --ff-muted: var(--ff-graphite);
+}
+
+/* Carta e ombra piena sono pseudo-elementi mascherati: i figli restano fuori dalla maschera. */
+.ff-paper::before,
+.ff-paper::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: var(--ff-paper);
+  -webkit-mask: var(--ff-zz-top), var(--ff-zz-bottom);
+  mask: var(--ff-zz-top), var(--ff-zz-bottom);
+}
+
+.ff-paper::after {
+  z-index: -2;
+  background: var(--ff-paper-shadow);
+  transform: translate(3px, 3px);
+}
+
+.ff-paper--flat-top {
+  --ff-zz-top: linear-gradient(#000 0 0) top / 100% 51% no-repeat;
+  padding-top: 14px;
+}
+
+.ff-paper--flat-bottom {
+  --ff-zz-bottom: linear-gradient(#000 0 0) bottom / 100% 51% no-repeat;
+  padding-bottom: 14px;
+}
+
+.ff-thermal {
+  display: block;
+  width: 100%;
+  margin: 0;
+}
+
+.ff-thermal canvas,
+.ff-thermal img,
+canvas.ff-thermal {
+  display: block;
+  width: 100%;
+  height: auto;
+  image-rendering: crisp-edges;
+  image-rendering: pixelated;
+}
+
+/* ---------------------------------------------------------------- Chip di scelta */
+.ff-chips {
+  position: relative;
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding: 4px 2px;
+  margin: 0 -2px;
+  scrollbar-width: none;
+  overscroll-behavior-x: contain;
+  scroll-padding-inline: 16px;
+}
+
+.ff-chips::-webkit-scrollbar {
+  display: none;
+}
+
+.ff-chip {
+  position: relative;
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 40px;
+  padding: 0 16px;
+  border: 1.5px solid var(--ff-outline);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--ff-on-bg);
+  font-family: var(--ff-font-mono);
+  font-weight: 700;
+  font-size: 14px;
+  line-height: 1;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background-color .15s, border-color .15s;
+}
+
+/* Area di tocco di 48 px senza ingrandire il chip. */
+.ff-chip::before {
+  content: '';
+  position: absolute;
+  inset: -4px 0;
+}
+
+.ff-chip .ff-icon {
+  width: 18px;
+  height: 18px;
+}
+
+.ff-chip__check {
+  display: none;
+}
+
+.ff-chip[aria-checked="true"] {
+  padding-left: 11px;
+  background: var(--ff-flash);
+  border-color: var(--ff-flash);
+  color: var(--ff-ink);
+}
+
+.ff-chip[aria-checked="true"] .ff-chip__check {
+  display: block;
+}
+
+.ff-chip:not([aria-checked="true"]):active {
+  background: var(--ff-press);
+}
+
+.ff-chip:disabled {
+  opacity: .4;
+  cursor: default;
+}
+
+/* ---------------------------------------------------------------- Slider */
+.ff-slider {
+  padding: 10px 16px 2px;
+}
+
+.ff-slider__head {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+}
+
+.ff-slider__label {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.ff-slider__value {
+  flex: none;
+  font-family: var(--ff-font-mono);
+  font-weight: 700;
+  font-size: 13px;
+  color: var(--ff-muted);
+}
+
+.ff-slider__desc {
+  font-size: 13.5px;
+  color: var(--ff-muted);
+}
+
+.ff-range {
+  --p: 50%;
+  display: block;
+  width: 100%;
+  height: 44px;
+  margin: 0;
+  background: transparent;
+  -webkit-appearance: none;
+  appearance: none;
+  cursor: pointer;
+  touch-action: pan-y;
+}
+
+.ff-range:focus-visible {
+  outline: none;
+}
+
+.ff-range::-webkit-slider-runnable-track {
+  height: 6px;
+  border-radius: 3px;
+  background: linear-gradient(to right, var(--ff-flash) var(--p), var(--ff-track) var(--p));
+}
+
+.ff-range::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 26px;
+  height: 26px;
+  margin-top: -10px;
+  border: 2px solid var(--ff-ink);
+  border-radius: 50%;
+  background: var(--ff-flash-deep);
+  box-shadow: 0 2px 0 var(--ff-ink);
+  transition: transform .12s;
+}
+
+.ff-range:active::-webkit-slider-thumb {
+  transform: scale(1.12);
+}
+
+.ff-range:focus-visible::-webkit-slider-thumb {
+  box-shadow: 0 0 0 4px var(--ff-focus);
+}
+
+.ff-range::-moz-range-track {
+  height: 6px;
+  border-radius: 3px;
+  background: var(--ff-track);
+}
+
+.ff-range::-moz-range-progress {
+  height: 6px;
+  border-radius: 3px;
+  background: var(--ff-flash);
+}
+
+.ff-range::-moz-range-thumb {
+  width: 22px;
+  height: 22px;
+  border: 2px solid var(--ff-ink);
+  border-radius: 50%;
+  background: var(--ff-flash-deep);
+}
+
+.ff-range:focus-visible::-moz-range-thumb {
+  box-shadow: 0 0 0 4px var(--ff-focus);
+}
+
+.ff-range:disabled {
+  opacity: .4;
+  cursor: default;
+}
+
+/* ---------------------------------------------------------------- Interruttore */
+.ff-toggle {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  min-height: 56px;
+  padding: 10px 16px;
+  cursor: pointer;
+}
+
+.ff-toggle:active {
+  background: var(--ff-press);
+}
+
+.ff-toggle > .ff-icon {
+  color: var(--ff-muted);
+  width: 22px;
+  height: 22px;
+}
+
+.ff-toggle__text {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.ff-toggle__desc {
+  font-size: 13.5px;
+  color: var(--ff-muted);
+}
+
+.ff-switch {
+  position: relative;
+  flex: none;
+  width: 52px;
+  height: 32px;
+  margin: 0;
+  border: 2px solid var(--ff-outline);
+  border-radius: 16px;
+  background: transparent;
+  -webkit-appearance: none;
+  appearance: none;
+  cursor: pointer;
+  transition: background-color .18s, border-color .18s;
+}
+
+.ff-switch::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 6px;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--ff-outline);
+  transform: translateY(-50%);
+  transition: left .18s var(--ff-ease), width .18s, height .18s, background-color .18s;
+}
+
+.ff-switch:checked {
+  background: var(--ff-flash);
+  border-color: var(--ff-flash);
+}
+
+.ff-switch:checked::before {
+  left: 22px;
+  width: 24px;
+  height: 24px;
+  background: var(--ff-ink);
+}
+
+.ff-switch:disabled {
+  opacity: .4;
+}
+
+/* ---------------------------------------------------------------- Intestazioni e schede */
+.ff-section-title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 28px 0 10px;
+  font-family: var(--ff-font-mono);
+  font-weight: 400;
+  font-size: 12.5px;
+  line-height: 1.3;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  color: var(--ff-muted);
+}
+
+.ff-section-title::after {
+  content: '';
+  flex: 1 1 auto;
+  border-top: 1.5px dashed var(--ff-outline-soft);
+}
+
+.ff-card {
+  border-radius: 20px;
+  background: var(--ff-surface);
+  overflow: hidden;
+}
+
+.ff-card--pad {
+  padding: 16px;
+}
+
+.ff-divider {
+  height: 1px;
+  margin: 0 16px;
+  background: var(--ff-divider);
+  border: 0;
+}
+
+.ff-block {
+  padding: 12px 16px;
+}
+
+.ff-block__label {
+  display: block;
+}
+
+.ff-block__desc {
+  display: block;
+  font-size: 13.5px;
+  color: var(--ff-muted);
+}
+
+.ff-block .ff-chips {
+  margin-top: 8px;
+}
+
+/* Riga di elenco: icona, titolo con descrizione, valore o freccia. */
+.ff-item {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  width: 100%;
+  min-height: 56px;
+  padding: 12px 16px;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  text-align: left;
+  text-decoration: none;
+}
+
+a.ff-item,
+button.ff-item {
+  cursor: pointer;
+}
+
+a.ff-item:active,
+button.ff-item:active {
+  background: var(--ff-press);
+}
+
+@media (hover: hover) {
+  a.ff-item:hover,
+  button.ff-item:hover {
+    background: var(--ff-surface-hover);
+  }
+}
+
+.ff-item > .ff-icon,
+.ff-item__icon {
+  flex: none;
+  width: 22px;
+  height: 22px;
+  color: var(--ff-muted);
+}
+
+.ff-item__body {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.ff-item__title {
+  overflow-wrap: anywhere;
+}
+
+.ff-item__desc {
+  font-size: 13.5px;
+  color: var(--ff-muted);
+}
+
+.ff-item__value {
+  flex: none;
+  font-family: var(--ff-font-mono);
+  font-size: 13px;
+  color: var(--ff-muted);
+}
+
+.ff-item--danger .ff-item__title,
+.ff-item--danger > .ff-icon {
+  color: var(--ff-error-text);
+}
+
+.ff-disc {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: var(--ff-flash);
+  color: var(--ff-ink);
+}
+
+/* ---------------------------------------------------------------- Pillola della stampante */
+.ff-pill {
+  --dot: var(--ff-muted);
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 36px;
+  max-width: 240px;
+  padding: 6px 14px 6px 10px;
+  border: 1px solid color-mix(in srgb, var(--ff-on-bg) 14%, transparent);
+  border-radius: 999px;
+  background: var(--ff-pill-bg);
+  color: var(--ff-on-bg);
+  font-family: var(--ff-font-mono);
+  font-size: 13px;
+  line-height: 1.2;
+  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(8px);
+  cursor: pointer;
+}
+
+.ff-pill::before {
+  content: '';
+  position: absolute;
+  inset: -6px 0;
+}
+
+.ff-pill:active {
+  transform: scale(.97);
+}
+
+.ff-pill__text {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ff-pill__dot {
+  position: relative;
+  flex: none;
+  width: 9px;
+  height: 9px;
+  margin: 3.5px;
+  border-radius: 50%;
+  background: var(--dot);
+}
+
+.ff-pill--hollow {
+  border: 1.5px dashed color-mix(in srgb, var(--ff-on-bg) 55%, transparent);
+}
+
+.ff-pill--hollow .ff-pill__dot {
+  background: transparent;
+  box-shadow: inset 0 0 0 1.5px var(--dot);
+}
+
+.ff-pill--ring .ff-pill__dot {
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--ff-on-bg) 60%, transparent);
+}
+
+/* Alone che si allarga: "sta lavorando", visibile anche con la coda dell'occhio. */
+.ff-pill--pulse .ff-pill__dot::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: var(--dot);
+  animation: ff-halo 1.1s cubic-bezier(.4, 0, .2, 1) infinite;
+}
+
+.ff-pill[data-kind="ready"] { --dot: var(--ff-mint); }
+.ff-pill[data-kind="connecting"],
+.ff-pill[data-kind="printing"] { --dot: var(--ff-flash); }
+.ff-pill[data-kind="error"] { --dot: var(--ff-coral); }
+
+.ff-pill--large {
+  min-height: 48px;
+  max-width: 100%;
+  padding: 10px 18px 10px 14px;
+  font-size: 15px;
+}
+
+.ff-pill--large::before {
+  inset: 0;
+}
+
+.ff-pill--large .ff-pill__dot {
+  width: 12px;
+  height: 12px;
+}
+
+button.ff-pill:disabled,
+.ff-pill--static {
+  cursor: default;
+}
+
+/* ---------------------------------------------------------------- Stato vuoto */
+.ff-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  padding: 24px 32px;
+}
+
+.ff-empty__art {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 168px;
+  height: 168px;
+  color: color-mix(in srgb, var(--ff-on-bg) 22%, transparent);
+}
+
+.ff-empty__art > .ff-halftone {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.ff-empty__disc {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 96px;
+  height: 96px;
+  border-radius: 50%;
+  background: var(--ff-flash);
+  color: var(--ff-ink);
+}
+
+.ff-empty__disc .ff-icon {
+  width: 44px;
+  height: 44px;
+}
+
+.ff-empty__title {
+  margin-top: 16px;
+  font-family: var(--ff-font-display);
+  font-weight: 400;
+  font-size: 24px;
+  line-height: 30px;
+}
+
+.ff-empty__message {
+  margin-top: 8px;
+  max-width: 320px;
+  color: var(--ff-muted);
+}
+
+.ff-empty .ff-btn {
+  margin-top: 24px;
+}
+
+/* ---------------------------------------------------------------- Avvisi, avanzamento, campi */
+.ff-notice {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 14px 16px;
+  border-radius: 16px;
+  background: var(--ff-surface);
+  color: var(--ff-on-bg);
+  font-size: 14.5px;
+}
+
+.ff-notice > .ff-icon {
+  width: 22px;
+  height: 22px;
+  margin-top: 1px;
+}
+
+.ff-notice--info { background: var(--ff-info-bg); color: var(--ff-on-info-bg); }
+.ff-notice--warn { background: var(--ff-warn-bg); color: var(--ff-on-warn-bg); }
+.ff-notice--error { background: var(--ff-error-bg); color: var(--ff-on-error-bg); }
+.ff-notice--ok { background: var(--ff-ok-bg); color: var(--ff-on-ok-bg); }
+
+.ff-progress {
+  --p: 0%;
+  position: relative;
+  height: 8px;
+  border-radius: 4px;
+  background: var(--ff-track);
+  overflow: hidden;
+}
+
+.ff-progress::after {
+  content: '';
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: var(--p);
+  border-radius: 4px;
+  background: var(--ff-flash);
+  transition: width .2s linear;
+}
+
+.ff-progress--indeterminate::after {
+  width: 35%;
+  animation: ff-indeterminate 1.2s var(--ff-ease) infinite;
+}
+
+.ff-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 12px 16px 6px;
+}
+
+.ff-field__label {
+  font-size: 14px;
+  color: var(--ff-muted);
+}
+
+.ff-input {
+  width: 100%;
+  min-height: 52px;
+  padding: 12px 14px;
+  border: 2px solid var(--ff-outline-soft);
+  border-radius: 14px;
+  background: transparent;
+  color: var(--ff-on-bg);
+  font-size: 16px;
+}
+
+.ff-input::placeholder {
+  color: var(--ff-muted);
+  opacity: .7;
+}
+
+.ff-input:focus {
+  outline: none;
+  border-color: var(--ff-on-bg);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--ff-focus) 45%, transparent);
+}
+
+.ff-field__foot {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 12.5px;
+  color: var(--ff-muted);
+}
+
+.ff-field__count {
+  flex: none;
+  font-family: var(--ff-font-mono);
+}
+
+.ff-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  border: 1px solid var(--ff-outline);
+  border-radius: 999px;
+  font-family: var(--ff-font-mono);
+  font-size: 11px;
+  line-height: 1.4;
+  letter-spacing: .04em;
+  color: var(--ff-muted);
+  white-space: nowrap;
+}
+
+.ff-badge--flash {
+  border-color: var(--ff-flash);
+  background: var(--ff-flash);
+  color: var(--ff-ink);
+  font-weight: 700;
+}
+
+/* Scelta singola a righe (radio), per opzioni che chiedono una spiegazione. */
+.ff-radio {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  padding: 12px 16px;
+  cursor: pointer;
+}
+
+.ff-radio:active {
+  background: var(--ff-press);
+}
+
+.ff-radio input {
+  position: relative;
+  flex: none;
+  width: 24px;
+  height: 24px;
+  margin: 0;
+  border: 2px solid var(--ff-outline);
+  border-radius: 50%;
+  background: transparent;
+  -webkit-appearance: none;
+  appearance: none;
+  cursor: pointer;
+}
+
+.ff-radio input:checked {
+  border-color: var(--ff-ink);
+  background: var(--ff-flash);
+  box-shadow: inset 0 0 0 5px var(--ff-flash), inset 0 0 0 12px var(--ff-ink);
+}
+
+.ff-radio__text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.ff-radio__desc {
+  font-size: 13.5px;
+  color: var(--ff-muted);
+}
+
+/* Consigli a fisarmonica. */
+.ff-tip {
+  border-top: 1px solid var(--ff-divider);
+}
+
+.ff-tip:first-child {
+  border-top: 0;
+}
+
+.ff-tip > summary {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 56px;
+  padding: 10px 16px;
+  list-style: none;
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.ff-tip > summary::-webkit-details-marker {
+  display: none;
+}
+
+.ff-tip > summary .ff-icon {
+  margin-left: auto;
+  color: var(--ff-muted);
+  transition: transform .2s;
+}
+
+.ff-tip[open] > summary .ff-icon {
+  transform: rotate(180deg);
+}
+
+.ff-tip__num {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: var(--ff-flash);
+  color: var(--ff-ink);
+  font-family: var(--ff-font-mono);
+  font-weight: 700;
+  font-size: 13px;
+}
+
+.ff-tip__body {
+  padding: 0 16px 16px 54px;
+  color: var(--ff-muted);
+  font-size: 14.5px;
+}
+
+/* ---------------------------------------------------------------- Toast */
+.ff-toasts {
+  position: fixed;
+  left: 50%;
+  bottom: calc(16px + var(--ff-safe-bottom));
+  z-index: 1000;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: min(448px, calc(100% - 32px));
+  transform: translateX(-50%);
+  pointer-events: none;
+}
+
+dialog .ff-toasts {
+  position: absolute;
+}
+
+body[data-route="camera"] .ff-toasts {
+  top: calc(72px + var(--ff-safe-top));
+  bottom: auto;
+}
+
+.ff-toast {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 52px;
+  padding: 8px 6px 8px 16px;
+  border-radius: 16px;
+  background: var(--ff-inverse-bg);
+  color: var(--ff-on-inverse);
+  box-shadow: 0 3px 0 rgba(0, 0, 0, .22);
+  font-size: 15px;
+  pointer-events: auto;
+  animation: ff-toast-in .22s var(--ff-ease) both;
+}
+
+.ff-toast.is-leaving {
+  animation: ff-toast-out .18s ease-in both;
+}
+
+.ff-toast__text {
+  flex: 1 1 auto;
+  min-width: 0;
+  padding: 6px 0;
+}
+
+.ff-toast__action {
+  flex: none;
+  min-height: 44px;
+  padding: 8px 12px;
+  border: 0;
+  border-radius: 12px;
+  background: transparent;
+  color: var(--ff-inverse-accent);
+  font-family: var(--ff-font-mono);
+  font-weight: 700;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.ff-toast__action:active,
+.ff-toast .ff-iconbtn:active {
+  background: color-mix(in srgb, var(--ff-on-inverse) 12%, transparent);
+}
+
+.ff-toast .ff-iconbtn {
+  width: 44px;
+  height: 44px;
+}
+
+/* ---------------------------------------------------------------- Foglio dal basso e dialoghi */
+dialog.ff-sheet,
+dialog.ff-dialog {
+  padding: 0;
+  border: 0;
+  color: var(--ff-on-bg);
+  background: var(--ff-bg);
+}
+
+dialog.ff-sheet::backdrop,
+dialog.ff-dialog::backdrop {
+  background: var(--ff-scrim);
+  animation: ff-fade .2s ease-out both;
+}
+
+dialog.ff-sheet {
+  width: 100%;
+  max-width: var(--ff-col);
+  max-height: min(90dvh, calc(100dvh - 24px - var(--ff-safe-top)));
+  margin: auto auto 0;
+  border-radius: 28px 28px 0 0;
+  box-shadow: 0 -2px 0 var(--ff-frame);
+  transform: translateY(100%);
+  transition: transform .28s var(--ff-ease);
+  overflow: hidden;
+}
+
+dialog.ff-sheet[open] {
+  display: flex;
+  flex-direction: column;
+}
+
+dialog.ff-sheet.is-open {
+  transform: translateY(var(--ff-drag, 0px));
+}
+
+dialog.ff-sheet.is-dragging {
+  transition: none;
+}
+
+.ff-sheet__handle {
+  flex: none;
+  display: grid;
+  place-items: center;
+  height: 24px;
+  touch-action: none;
+  cursor: grab;
+}
+
+.ff-sheet__handle::before {
+  content: '';
+  width: 36px;
+  height: 4px;
+  border-radius: 2px;
+  background: var(--ff-outline-soft);
+}
+
+.ff-sheet__head {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 8px 4px 20px;
+}
+
+.ff-sheet__title {
+  flex: 1 1 auto;
+  min-width: 0;
+  font-family: var(--ff-font-display);
+  font-weight: 400;
+  font-size: 22px;
+  line-height: 28px;
+}
+
+.ff-sheet__body {
+  position: relative;
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 8px 20px calc(24px + var(--ff-safe-bottom));
+}
+
+dialog.ff-dialog {
+  width: min(400px, calc(100% - 40px));
+  max-height: calc(100dvh - 48px);
+  margin: auto;
+  padding: 24px 24px 16px;
+  border: 2px solid var(--ff-frame);
+  border-radius: 28px;
+  box-shadow: 6px 6px 0 var(--ff-frame-shadow);
+  animation: ff-dialog-in .2s var(--ff-ease) both;
+}
+
+.ff-dialog__title {
+  font-family: var(--ff-font-display);
+  font-weight: 400;
+  font-size: 22px;
+  line-height: 28px;
+}
+
+.ff-dialog__message {
+  margin-top: 10px;
+  color: var(--ff-muted);
+  white-space: pre-line;
+}
+
+.ff-dialog__actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 22px;
+}
+
+.ff-dialog__actions .ff-btn {
+  min-height: 48px;
+  padding: 8px 20px;
+  font-size: 16px;
+}
+
+/* ---------------------------------------------------------------- Onboarding */
+/* Altezza fissa come il pager dell'app: le schede scorrono dentro, i pulsanti restano in basso. */
+.ff-onb {
+  height: 100vh;
+  height: 100dvh;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  background: var(--ff-bg);
+}
+
+.ff-onb__top {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: calc(64px + var(--ff-safe-top));
+  padding: var(--ff-safe-top) 8px 0 24px;
+}
+
+.ff-onb__top .ff-btn--text {
+  margin-left: auto;
+  color: var(--ff-graphite);
+}
+
+/* position: relative tiene dentro lo scorrimento anche i testi nascosti posizionati in assoluto */
+.ff-onb__pager {
+  position: relative;
+  flex: 1 1 0;
+  min-height: 0;
+  display: flex;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scroll-snap-type: x mandatory;
+  scrollbar-width: none;
+  overscroll-behavior-x: contain;
+}
+
+.ff-onb__pager::-webkit-scrollbar {
+  display: none;
+}
+
+.ff-onb__page {
+  position: relative;
+  flex: 0 0 100%;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  scroll-snap-align: start;
+  scroll-snap-stop: always;
+  overflow-y: auto;
+}
+
+.ff-onb__intro {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 8px 32px;
+  text-align: center;
+}
+
+.ff-onb__art {
+  width: 100%;
+  max-width: 320px;
+  aspect-ratio: 4 / 3;
+}
+
+.ff-onb__art svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.ff-onb__title {
+  margin-top: 28px;
+  font-family: var(--ff-font-display);
+  font-weight: 400;
+  font-size: 44px;
+  line-height: 48px;
+}
+
+.ff-onb__text {
+  margin-top: 12px;
+  max-width: 340px;
+  font-size: 17px;
+  color: var(--ff-graphite);
+}
+
+.ff-onb__printer {
+  padding: 8px 24px 16px;
+}
+
+.ff-onb__h2 {
+  font-family: var(--ff-font-display);
+  font-weight: 400;
+  font-size: 32px;
+  line-height: 38px;
+}
+
+.ff-onb__lead {
+  margin-top: 8px;
+  font-size: 16.5px;
+  color: var(--ff-graphite);
+}
+
+.ff-onb__dots {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+  padding: 16px 0;
+}
+
+.ff-onb__dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 4px;
+  background: color-mix(in srgb, var(--ff-ink) 22%, transparent);
+  transition: width .25s var(--ff-ease), background-color .25s;
+}
+
+.ff-onb__dot.is-current {
+  width: 24px;
+  background: var(--ff-ink);
+}
+
+.ff-onb__bottom {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 4px;
+  padding: 0 24px calc(16px + var(--ff-safe-bottom));
+}
+
+.ff-onb__bottom .ff-btn--text {
+  align-self: center;
+}
+
+.ff-pair-card {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  margin-top: 20px;
+  padding: 18px;
+  border: 2px solid var(--ff-ink);
+  border-radius: 24px;
+  box-shadow: 4px 4px 0 var(--ff-ink);
+  background: var(--ff-paper);
+}
+
+/* ---------------------------------------------------------------- Stampante */
+.ff-status {
+  --accent: var(--ff-outline-soft);
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  margin-top: 8px;
+  padding: 18px;
+  border: 2px solid var(--accent);
+  border-radius: 24px;
+  background: var(--ff-surface);
+}
+
+.ff-status[data-kind="ready"] { --accent: var(--ff-mint); }
+.ff-status[data-kind="connecting"],
+.ff-status[data-kind="printing"] { --accent: var(--ff-flash); }
+.ff-status[data-kind="error"],
+.ff-status[data-kind="unsupported"] { --accent: var(--ff-coral); }
+
+.ff-status__head {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+}
+
+.ff-status__icon {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  background: var(--accent);
+  color: var(--ff-ink);
+}
+
+.ff-status[data-kind="not-paired"] .ff-status__icon,
+.ff-status[data-kind="disconnected"] .ff-status__icon {
+  background: var(--ff-flash);
+}
+
+.ff-status__title {
+  font-family: var(--ff-font-display);
+  font-weight: 400;
+  font-size: 24px;
+  line-height: 30px;
+}
+
+.ff-status__body {
+  margin-top: 4px;
+  color: var(--ff-muted);
+  font-size: 15px;
+}
+
+.ff-status__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 10px;
+}
+
+.ff-status__actions .ff-btn {
+  flex: 1 1 auto;
+}
+
+.ff-kv {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 10px 16px;
+  border-top: 1px solid var(--ff-divider);
+  font-size: 14.5px;
+}
+
+.ff-kv:first-child {
+  border-top: 0;
+}
+
+.ff-kv__key {
+  flex: none;
+  color: var(--ff-muted);
+}
+
+.ff-kv__value {
+  min-width: 0;
+  text-align: right;
+  font-family: var(--ff-font-mono);
+  font-size: 13px;
+  overflow-wrap: anywhere;
+}
+
+.ff-diag-svc {
+  padding: 12px 16px;
+  border-top: 1px solid var(--ff-divider);
+}
+
+.ff-diag-svc__uuid {
+  font-family: var(--ff-font-mono);
+  font-weight: 700;
+  font-size: 13px;
+  overflow-wrap: anywhere;
+}
+
+.ff-diag-char {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 0 0 12px;
+}
+
+.ff-diag-char__info {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.ff-diag-char__uuid {
+  font-family: var(--ff-font-mono);
+  font-size: 12.5px;
+  overflow-wrap: anywhere;
+}
+
+.ff-diag-char__props {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.ff-compat {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  border-top: 1px solid var(--ff-divider);
+}
+
+.ff-compat:first-child {
+  border-top: 0;
+}
+
+.ff-compat__dot {
+  flex: none;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--ff-outline);
+}
+
+.ff-compat__dot.is-ok { background: var(--ff-mint); }
+.ff-compat__dot.is-no { background: var(--ff-coral); }
+
+.ff-compat__value {
+  margin-left: auto;
+  text-align: right;
+  font-family: var(--ff-font-mono);
+  font-size: 13px;
+  color: var(--ff-muted);
+}
+
+/* ---------------------------------------------------------------- Impostazioni */
+.ff-brand-footer {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  margin-top: 36px;
+  color: var(--ff-on-bg);
+}
+
+.ff-brand-footer__tagline {
+  font-family: var(--ff-font-mono);
+  font-size: 13px;
+  color: var(--ff-muted);
+}
+
+.ff-license {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-bottom: 14px;
+}
+
+.ff-license__name {
+  font-weight: 700;
+}
+
+.ff-license__text {
+  font-family: var(--ff-font-mono);
+  font-size: 12.5px;
+  color: var(--ff-muted);
+  overflow-wrap: anywhere;
+}
+
+/* ---------------------------------------------------------------- Animazioni */
+@keyframes ff-spin {
+  to { transform: rotate(360deg); }
+}
+
+@keyframes ff-fade {
+  from { opacity: 0; }
+}
+
+@keyframes ff-pop {
+  from { opacity: 0; transform: scale(1.5); }
+}
+
+@keyframes ff-bob {
+  0%, 100% { transform: translateY(0) rotate(0); }
+  50% { transform: translateY(-6px) rotate(-2deg); }
+}
+
+@keyframes ff-halo {
+  from { opacity: .55; transform: scale(1); }
+  to { opacity: 0; transform: scale(2.4); }
+}
+
+@keyframes ff-indeterminate {
+  from { transform: translateX(-100%); }
+  to { transform: translateX(290%); }
+}
+
+@keyframes ff-toast-in {
+  from { opacity: 0; transform: translateY(12px) scale(.98); }
+}
+
+@keyframes ff-toast-out {
+  to { opacity: 0; transform: translateY(8px); }
+}
+
+@keyframes ff-dialog-in {
+  from { opacity: 0; transform: scale(.94); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: .01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: .01ms !important;
+    scroll-behavior: auto !important;
+  }
+
+  .ff-topbar {
+    animation: none;
+  }
+}

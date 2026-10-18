@@ -11,6 +11,23 @@ sezione della sua versione, oppure `[Unreleased]` se non la trova.
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-10-18
+
+### Added
+
+- **Versione web (PWA)** su GitHub Pages ([nb-camelot.github.io/fotoflash](https://nb-camelot.github.io/fotoflash/)): scatto, modelli, regolazioni e storico come nell'app, stampa dal browser via Web Bluetooth (BLE), installabile e offline; zero dipendenze, test `node --test web/tests/*.test.mjs` anche nella CI (job *Web (PWA)*), build e deploy con `scripts/build-web.mjs` e `pages.yml`.
+- **Stampanti intercambiabili tramite driver**, nell'app e nella PWA: `escpos-58`, `escpos-80`, `phomemo-m02` e `phomemo-m02pro`, con la stessa interfaccia in Kotlin (`core-thermal`) e in JavaScript (`web/src/printer/drivers/`). Il driver è riconosciuto dal nome annunciato dalla stampante e si cambia a mano; la larghezza della carta discende dal driver. Contratti e byte in `docs/DRIVERS.md`.
+- **Phomemo M02 e M02 Pro**: protocollo Phomemo (init, densità `1F 11 02`, blocchi raster da 255 righe al massimo, avanzamento, coda di stato come l'app ufficiale), 384 punti a 203 dpi per la M02 e 576 punti a 300 dpi per la M02 Pro, retino Floyd-Steinberg proposto, densità 1-15, larghezza 72/78 byte, velocità sperimentale spenta di default. La M02X, che ha un protocollo diverso, viene riconosciuta e segnalata come non supportata.
+- **Bluetooth LE nell'app Android**: ricerca dei dispositivi vicini (10 s) accanto a quelli accoppiati in SPP, trasporto GATT con MTU negoziato (`requestMtu(247)`) e scritture serializzate, anche per le ESC/POS che hanno un canale BLE. Permessi `BLUETOOTH_SCAN` (`neverForLocation`) su Android 12+ e posizione fino ad Android 11.
+- **Calibrazione dell'invio BLE** con i preset *Automatica* (predefiniti del driver), *Sicura* (20 byte, 15 ms), *Veloce* (60 byte, 20 ms) e *Massima* (128 byte, 20 ms), invio senza conferma per le Phomemo con ripiego su quello con conferma. Sul web 20 byte sono il default, perché Web Bluetooth non espone l'MTU. Nell'app c'è anche l'invio *con conferma* (100 byte), predefinito per le ESC/POS in BLE.
+- **Pagina di prova raster** per i driver Phomemo: scritta FOTOFLASH, bande di gradiente per ciascun retino, scala di grigi e parametri correnti.
+- **Vettori golden condivisi** `web/tests/fixtures/drivers-golden.json`: generati dai test JS e verificati in Kotlin da `DriversGoldenTest`, garantiscono gli stessi byte da app e PWA.
+- Piani pronti in `issue_plans/`: `phomemo-m02x.md` (driver M02X) e `phomemo-paper-status.md` (stato di carta, coperchio e batteria letto dalle notifiche); `ble-cat-printer.md` riscritto come driver.
+
+### Changed
+
+- La larghezza della carta discende dal driver: per le Phomemo la decide il driver, per le ESC/POS resta la scelta 58/80 mm (`escpos-58` / `escpos-80`). Una stampante già configurata continua in Bluetooth classico con il driver ESC/POS.
+
 ## [0.1.0] - 2026-10-17
 
 ### Fixed

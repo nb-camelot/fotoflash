@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="en" dir="ltr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>FotoFlash</title>
+  <meta name="description" content="Snap. Print. Smile. Your phone becomes an instant camera that prints on a pocket Bluetooth thermal printer, straight from the browser.">
+  <meta name="theme-color" content="#FBF8F1" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#0E0C0A" media="(prefers-color-scheme: dark)">
+  <meta name="color-scheme" content="light dark">
+  <meta name="application-name" content="FotoFlash">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="FotoFlash">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="format-detection" content="telephone=no">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" href="brand/icon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+  <link rel="preload" href="fonts/righteous_regular.ttf" as="font" type="font/ttf" crossorigin>
+  <link rel="stylesheet" href="styles/app.css">
+  <link rel="modulepreload" href="src/app.js">
+  <style>
+    /* Splash minimo, valido anche prima che arrivi app.css: giallo Flash come lo splash di Android. */
+    html, body { margin: 0; }
+    .ff-splash { min-height: 100vh; min-height: 100dvh; display: grid; place-items: center; align-content: center; gap: 20px; background: #FFCC00; color: #16130F; font-family: system-ui, sans-serif; text-align: center; }
+    .ff-splash__fail { max-width: 300px; padding: 0 24px; }
+    .ff-splash__fail button { min-height: 48px; padding: 10px 24px; border: 2px solid #16130F; border-radius: 999px; background: #FBF8F1; color: #16130F; font: inherit; font-weight: 700; cursor: pointer; }
+  </style>
+  <script type="module" src="src/app.js"></script>
+</head>
+<body>
+  <div id="app">
+    <div class="ff-splash" role="status" aria-label="FotoFlash">
+      <svg class="ff-mark" viewBox="22 22 64 64" width="128" height="128" aria-hidden="true" focusable="false">
+        <g transform="rotate(-8 54 54)">
+          <path transform="translate(3 3)" fill="#E0A800" d="M34,33 A4,4 0 0 1 38,29 L68,29 A4,4 0 0 1 72,33 L72,73.2 L68.2,77 L64.4,73.2 L60.6,77 L56.8,73.2 L53,77 L49.2,73.2 L45.4,77 L41.6,73.2 L37.8,77 L34,73.2 Z"/>
+          <path fill="#FBF8F1" stroke="#16130F" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" d="M34,33 A4,4 0 0 1 38,29 L68,29 A4,4 0 0 1 72,33 L72,73.2 L68.2,77 L64.4,73.2 L60.6,77 L56.8,73.2 L53,77 L49.2,73.2 L45.4,77 L41.6,73.2 L37.8,77 L34,73.2 Z"/>
+          <path fill="#16130F" d="M41,33.5 L65,33.5 A2.5,2.5 0 0 1 67.5,36 L67.5,60 A2.5,2.5 0 0 1 65,62.5 L41,62.5 A2.5,2.5 0 0 1 38.5,60 L38.5,36 A2.5,2.5 0 0 1 41,33.5 Z"/>
+          <path fill="#FFCC00" d="M49.98,36.45 L59.88,36.45 L55.48,44.7 L61.53,44.7 L48.33,59.55 L51.08,49.1 L44.48,49.1 Z"/>
+          <path fill="none" stroke="#16130F" stroke-width="2.6" stroke-linecap="round" d="M45,68 L61,68"/>
+        </g>
+      </svg>
+    </div>
+  </div>
+
+  <noscript>
+    <div class="ff-splash">
+      <p class="ff-splash__fail">FotoFlash needs JavaScript to run. Turn it on in your browser settings, then reload the page.</p>
+      <p class="ff-splash__fail" lang="it">FotoFlash ha bisogno di JavaScript. Attivalo nelle impostazioni del browser, poi ricarica la pagina.</p>
+    </div>
+  </noscript>
+
+  <script>
+    // Rete di sicurezza prima dell'avvio: se i moduli non arrivano (browser troppo vecchio, file
+    // mancanti, connessione caduta) lo splash non resta lì per sempre. Qui le tabelle dei testi non
+    // sono ancora caricate, quindi i due messaggi sono scritti in chiaro.
+    (function () {
+      var old = !('noModule' in HTMLScriptElement.prototype);
+      setTimeout(function () {
+        if (document.documentElement.getAttribute('data-ff-booted')) return;
+        var splash = document.querySelector('#app .ff-splash');
+        if (!splash) return;
+        var it = /^it\b/i.test(navigator.language || '');
+        var p = document.createElement('p');
+        p.className = 'ff-splash__fail';
+        p.textContent = old
+          ? (it ? 'Questo browser è troppo vecchio per FotoFlash: aggiorna Chrome, Edge, Safari o Firefox.'
+                : 'This browser is too old for FotoFlash: update Chrome, Edge, Safari or Firefox.')
+          : (it ? 'FotoFlash ci sta mettendo troppo ad aprirsi.' : 'FotoFlash is taking too long to start.');
+        splash.appendChild(p);
+        if (!old) {
+          var b = document.createElement('button');
+          b.type = 'button';
+          b.textContent = it ? 'Ricarica' : 'Reload';
+          b.onclick = function () { location.reload(); };
+          splash.appendChild(b);
+        }
+        splash.removeAttribute('role');
+      }, old ? 0 : 15000);
+    })();
+  </script>
+</body>
+</html>

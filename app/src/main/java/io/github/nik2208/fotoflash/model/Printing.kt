@@ -8,8 +8,12 @@ import io.github.nik2208.fotoflash.thermal.TemplateKind
 import io.github.nik2208.fotoflash.thermal.TemplateTexts
 import io.github.nik2208.fotoflash.thermal.ToneAdjustments
 
-/** Stampante Bluetooth accoppiata. */
-data class PrinterDevice(val name: String, val address: String)
+/** Stampante Bluetooth: accoppiata (CLASSIC, SPP) o trovata con la ricerca BLE. */
+data class PrinterDevice(
+    val name: String,
+    val address: String,
+    val link: io.github.nik2208.fotoflash.thermal.PrinterLink = io.github.nik2208.fotoflash.thermal.PrinterLink.CLASSIC,
+)
 
 /** Stato osservabile della stampante, esposto da PrinterManager.state. */
 sealed interface PrinterState {

@@ -91,7 +91,20 @@ class SettingsRepository(context: Context) {
             onboardingDone = this[K_ONBOARDING_DONE] ?: d.onboardingDone,
             printerAddress = this[K_PRINTER_ADDRESS]?.takeIf { it.isNotBlank() },
             printerName = this[K_PRINTER_NAME]?.takeIf { it.isNotBlank() },
+            // Per nome: comprende M02PRO; un nome sconosciuto torna a MM58.
             paper = enumOrDefault(this[K_PAPER], d.paper),
+            // L'id resta una stringa: un driver sconosciuto lo risolve PrinterDrivers.byId (ripiego su escpos-58).
+            printerDriver = this[K_PRINTER_DRIVER]?.trim()?.takeIf { it.isNotEmpty() } ?: d.printerDriver,
+            printerLink = enumOrDefault(this[K_PRINTER_LINK], d.printerLink),
+            // I campi BLE nulli vogliono dire "predefiniti del driver": la chiave assente resta null.
+            bleChunkSize = this[K_BLE_CHUNK_SIZE]?.coerceIn(1, 65_536),
+            bleChunkDelayMs = this[K_BLE_CHUNK_DELAY_MS]?.coerceIn(0, 10_000),
+            bleWithoutResponse = this[K_BLE_WITHOUT_RESPONSE],
+            phomemoDensity = this[K_PHOMEMO_DENSITY]?.coerceIn(1, 15),
+            // Solo le due larghezze che il protocollo conosce (72 = 576 punti, 78 = 624 punti).
+            phomemoWidthBytes = this[K_PHOMEMO_WIDTH_BYTES]?.takeIf { it in PHOMEMO_WIDTHS } ?: d.phomemoWidthBytes,
+            // Va in un byte del comando.
+            printerSpeed = this[K_PRINTER_SPEED]?.coerceIn(0, 255),
             feedLines = (this[K_FEED_LINES] ?: d.feedLines).coerceIn(0, 255),
             cutPaper = this[K_CUT_PAPER] ?: d.cutPaper,
             heatLevel = (this[K_HEAT_LEVEL] ?: d.heatLevel).coerceIn(0, 4),
@@ -131,6 +144,14 @@ class SettingsRepository(context: Context) {
         putOrRemove(K_PRINTER_ADDRESS, s.printerAddress)
         putOrRemove(K_PRINTER_NAME, s.printerName)
         this[K_PAPER] = s.paper.name
+        this[K_PRINTER_DRIVER] = s.printerDriver.trim().ifEmpty { DEFAULTS.printerDriver }
+        this[K_PRINTER_LINK] = s.printerLink.name
+        putOrRemoveValue(K_BLE_CHUNK_SIZE, s.bleChunkSize)
+        putOrRemoveValue(K_BLE_CHUNK_DELAY_MS, s.bleChunkDelayMs)
+        putOrRemoveValue(K_BLE_WITHOUT_RESPONSE, s.bleWithoutResponse)
+        putOrRemoveValue(K_PHOMEMO_DENSITY, s.phomemoDensity)
+        this[K_PHOMEMO_WIDTH_BYTES] = s.phomemoWidthBytes
+        putOrRemoveValue(K_PRINTER_SPEED, s.printerSpeed)
         this[K_FEED_LINES] = s.feedLines
         this[K_CUT_PAPER] = s.cutPaper
         this[K_HEAT_LEVEL] = s.heatLevel
@@ -165,6 +186,11 @@ class SettingsRepository(context: Context) {
         if (value.isNullOrBlank()) remove(key) else this[key] = value
     }
 
+    /** null toglie la chiave: alla lettura torna null, cioe "usa il predefinito". */
+    private fun <T : Any> MutablePreferences.putOrRemoveValue(key: Preferences.Key<T>, value: T?) {
+        if (value == null) remove(key) else this[key] = value
+    }
+
     private companion object {
         const val TAG = "SettingsRepository"
         val DEFAULTS = AppSettings()
@@ -173,6 +199,15 @@ class SettingsRepository(context: Context) {
         val K_PRINTER_ADDRESS = stringPreferencesKey("printer_address")
         val K_PRINTER_NAME = stringPreferencesKey("printer_name")
         val K_PAPER = stringPreferencesKey("paper")
+        val K_PRINTER_DRIVER = stringPreferencesKey("printer_driver")
+        val K_PRINTER_LINK = stringPreferencesKey("printer_link")
+        val K_BLE_CHUNK_SIZE = intPreferencesKey("ble_chunk_size")
+        val K_BLE_CHUNK_DELAY_MS = intPreferencesKey("ble_chunk_delay_ms")
+        val K_BLE_WITHOUT_RESPONSE = booleanPreferencesKey("ble_without_response")
+        val K_PHOMEMO_DENSITY = intPreferencesKey("phomemo_density")
+        val K_PHOMEMO_WIDTH_BYTES = intPreferencesKey("phomemo_width_bytes")
+        val K_PRINTER_SPEED = intPreferencesKey("printer_speed")
+        val PHOMEMO_WIDTHS = setOf(72, 78)
         val K_FEED_LINES = intPreferencesKey("feed_lines")
         val K_CUT_PAPER = booleanPreferencesKey("cut_paper")
         val K_HEAT_LEVEL = intPreferencesKey("heat_level")
