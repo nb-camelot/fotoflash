@@ -294,7 +294,7 @@ scatta, compone, salva e condivide, ma **non stampa**, e lo dice. Per stampare u
 oppure Chrome su Android o su un computer. Conviene aggiungerla alla schermata Home: Safari può
 cancellare i dati dei siti che non apri da qualche giorno, storico compreso.
 
-**Sviluppo locale.** Serve solo Node 20 o successivo: niente `npm install`, niente bundler,
+**Sviluppo locale.** Serve solo Node 24 (come la CI): niente `npm install`, niente bundler,
 nessuna dipendenza. Le regole e i contratti dei moduli sono in [`docs/WEB.md`](docs/WEB.md).
 
 ```bash

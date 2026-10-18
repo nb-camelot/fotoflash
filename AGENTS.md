@@ -100,9 +100,9 @@ testi, stessi flussi). Prima di toccarla leggi `docs/WEB.md`: le firme dei modul
 - Niente `innerHTML` con testo dell'utente o dello storico: `textContent` o `h()`.
 - Un modulo nuovo che l'app carica va anche nella precache di `web/sw.js`, altrimenti offline manca
   finché non è stato aperto online (la build lo segnala con un avviso).
-- **La CI usa Node 20**: il codice che i test eseguono in Node non deve usare API più recenti
-  (`Promise.withResolvers`, `Object.groupBy`, metodi nuovi di `Set`, iterator helpers…), anche se
-  Chrome le ha.
+- **La CI usa Node 24**, ma il codice gira soprattutto in Chrome per Android, anche su telefoni non
+  aggiornati. Niente API troppo recenti senza un ripiego: per esempio `Promise.withResolvers`,
+  `Object.groupBy`, i metodi nuovi di `Set` o gli iterator helpers.
 - Commenti in italiano, brevi, sul perché; niente `TODO` per funzioni richieste.
 
 ## 3 ter. Driver di stampa (app e PWA)
@@ -161,7 +161,7 @@ gradle --no-daemon :core-thermal:test :app:testDebugUnitTest :app:assembleDebug
   `gh api repos/nb-camelot/fotoflash/commits/<sha>/check-runs --jq '.check_runs[] | select(.name=="FotoFlash build report") | .output.text'`.
   I report HTML dei test sono nell'artifact `test-reports-<run>`.
 
-**Versione web** (`web/`): niente Gradle, basta Node 20 o successivo, senza `npm install`.
+**Versione web** (`web/`): niente Gradle, basta Node 24 (come la CI), senza `npm install`.
 
 ```bash
 node --test web/tests/*.test.mjs   # come il job «Web (PWA)» di ci.yml e pages.yml
