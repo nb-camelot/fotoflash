@@ -311,15 +311,13 @@ collegalo via USB con il debug attivo, apri `chrome://inspect` → *Port forward
 `localhost` è un contesto sicuro. Da Node 21 `node --test` non esplora
 più una cartella: passa i file (`web/tests/*.test.mjs`), come fanno i workflow.
 
-**Pubblicazione.** [`.github/workflows/pages.yml`](.github/workflows/pages.yml) gira a ogni push su
-`main`, cioè a ogni rilascio, e a mano (*Run workflow* scegliendo `main`; lanciato su un altro branch
+**Pubblicazione.** [`.github/workflows/pages.yml`](.github/workflows/pages.yml) gira dopo ogni
+«Bump version» riuscito su `main`, cioè a ogni rilascio e con la versione già aggiornata, e a mano (*Run workflow* scegliendo `main`; lanciato su un altro branch
 non pubblica nulla): test, icone PNG da
 `docs/brand/icon.svg` con `rsvg-convert`, `scripts/build-web.mjs` (versione di `gradle.properties` più
 lo sha corto del commit, nome della cache del service worker, verifica che manifest, precache,
 `index.html` e CSS puntino a file veri) e deploy su GitHub Pages. La CI di ogni push (`ci.yml`, job *Web
-(PWA)*) esegue gli stessi test e una build di controllo. Il commit di versione di `bump-version`
-contiene `[skip ci]`, quindi il sito pubblicato al merge mostra ancora il numero precedente (con lo sha
-giusto): per allinearlo, *Run workflow* di `pages.yml` su `main` dopo la release.
+(PWA)*) esegue gli stessi test e una build di controllo.
 
 ## Sviluppo
 
@@ -399,7 +397,7 @@ fotoflash/
   `applicationId` e versione, e pubblica la Release con `fotoflash-X.Y.Z.apk`, il suo SHA-256, le note
   generate da GitHub e la sezione del `CHANGELOG.md`. Se mancano i secret di firma si ferma con un
   errore: non ripiega mai sulla chiave di debug. Se la release esiste già, si ferma.
-- `pages.yml` pubblica la versione web a ogni push su `main`, in parallelo a `bump-version`: vedi
+- `pages.yml` pubblica la versione web dopo `bump-version` (evento `workflow_run`): vedi
   [Versione web (PWA)](#versione-web-pwa), *Pubblicazione*.
 
 | Commit (titolo della PR) | Bump |

@@ -1,14 +1,17 @@
 name: Pages
 
 # Pubblica la versione web (PWA, cartella web/) su GitHub Pages: https://nb-camelot.github.io/fotoflash/
-# Gira su ogni push su main (cioè a ogni rilascio) e a mano (Run workflow, branch main).
+# Gira DOPO «Bump version» riuscito su main (cioè a ogni rilascio, con la versione già aggiornata in
+# gradle.properties: il commit di versione, pushato con il GITHUB_TOKEN, non avvierebbe un push) e a mano.
 #   build:  test di web/, icone PNG con rsvg-convert, scripts/build-web.mjs (versione da
 #           gradle.properties + sha corto, nome della cache del SW, verifica di manifest e precache);
 #   deploy: pubblica l'artifact sull'ambiente github-pages.
 # Configurazione una tantum (README, "Versione web (PWA)"): Settings → Pages → Source "GitHub Actions"
 # e, nell'ambiente github-pages, main tra i branch che possono pubblicare.
 on:
-  push:
+  workflow_run:
+    workflows: ["Bump version"]
+    types: [completed]
     branches: [main]
   workflow_dispatch:
 
@@ -27,14 +30,19 @@ jobs:
     name: Build della PWA
     # Solo main: con "Run workflow" su dev (il branch di default, ammesso dall'ambiente github-pages)
     # si pubblicherebbe sul sito il codice non ancora rilasciato.
-    if: github.ref == 'refs/heads/main'
+    if: >-
+      github.ref == 'refs/heads/main' &&
+      (github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success')
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
       - name: Checkout
         uses: actions/checkout@v6
+        with:
+          # Dopo il bump: la punta di main contiene il commit di versione.
+          ref: main
 
-      - name: Node 20
+      - name: Node 24
         uses: actions/setup-node@v7
         with:
           node-version: "24"

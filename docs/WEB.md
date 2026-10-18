@@ -359,7 +359,7 @@ export function mount(root, ctx, params) // → unmount()
 
 ## Pubblicazione
 
-`.github/workflows/pages.yml`, su push a `main` e a mano:
+`.github/workflows/pages.yml`, dopo ogni «Bump version» riuscito su `main` (quindi con la versione nuova) e a mano:
 1. `node --test web/tests/*.test.mjs`;
 2. `node scripts/build-web.mjs dist`: copia `web/`, i font e il brand sheet, genera le icone PNG con
    `rsvg-convert`, scrive `src/version.js` e il nome della cache del SW con la versione di `gradle.properties`;
