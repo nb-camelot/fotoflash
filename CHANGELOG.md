@@ -11,6 +11,8 @@ sezione della sua versione, oppure `[Unreleased]` se non la trova.
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-10-19
+
 ### Added
 
 - **Presentazione animata per schermi larghi** nella PWA. Hero col flash e la stampa che esce riga per riga, carosello di 5 casi d'uso animati (festa, matrimonio, bambini, viaggio, evento), «Prova il retino» col motore vero, i quattro modelli resi dal renderer, stampanti, installazione e download. Rispetta `prefers-reduced-motion`.
