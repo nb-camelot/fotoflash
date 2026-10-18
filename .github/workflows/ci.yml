@@ -125,3 +125,29 @@ jobs:
           name: fotoflash-debug-${{ github.run_number }}
           path: app/build/outputs/apk/debug/*.apk
           if-no-files-found: error
+
+  # Versione web (PWA): stessi test che fa pages.yml prima di pubblicare, su ogni push e PR.
+  web:
+    name: Web (PWA)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Node 20
+        uses: actions/setup-node@v7
+        with:
+          node-version: "20"
+          package-manager-cache: false
+
+      # Motore, store, stampante e imports.test.mjs: ogni modulo si importa in Node senza DOM,
+      # import relativi con estensione verso file esistenti, chiavi i18n presenti in en e it.
+      # Glob espanso dalla shell: funziona con ogni versione di Node.
+      - name: Test della versione web
+        run: node --test web/tests/*.test.mjs
+
+      # Build di controllo senza icone: manifest, precache del SW e index.html puntano a file veri.
+      - name: Build di controllo
+        run: node scripts/build-web.mjs "$RUNNER_TEMP/fotoflash-web" --no-icons

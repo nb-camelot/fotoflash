@@ -4,6 +4,10 @@ Documento di riferimento per chi sviluppa, persone e agenti. **I contratti qui s
 vincolanti**: firme pubbliche, nomi di file e prefissi delle risorse. Se un contratto va
 cambiato, si cambia qui e in tutti i chiamanti nello stesso commit.
 
+> **Versione web (PWA, `web/`)**: struttura, regole e contratti dei moduli JavaScript sono in
+> [`docs/WEB.md`](WEB.md), vincolanti allo stesso modo. Qui sotto c'è solo l'app Android; il motore
+> web (`web/src/core/`) è il porting di `:core-thermal` e deve restare allineato ai suoi test.
+
 ## Moduli
 
 | Modulo | Tipo | Contenuto |

@@ -11,6 +11,10 @@ sezione della sua versione, oppure `[Unreleased]` se non la trova.
 
 ## [Unreleased]
 
+### Added
+
+- **Versione web (PWA)** su GitHub Pages ([nb-camelot.github.io/fotoflash](https://nb-camelot.github.io/fotoflash/)): scatto, modelli, regolazioni e storico come nell'app, stampa dal browser via Web Bluetooth (BLE), installabile e offline; zero dipendenze, test `node --test web/tests/*.test.mjs` anche nella CI (job *Web (PWA)*), build e deploy con `scripts/build-web.mjs` e `pages.yml`.
+
 ## [0.1.0] - 2026-10-17
 
 ### Fixed

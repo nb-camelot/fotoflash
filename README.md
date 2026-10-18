@@ -6,6 +6,7 @@
   <a href="https://github.com/nb-camelot/fotoflash/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/nb-camelot/fotoflash/actions/workflows/ci.yml/badge.svg?branch=dev"></a>
   <a href="https://github.com/nb-camelot/fotoflash/releases/latest"><img alt="Ultima release" src="https://img.shields.io/github/v/release/nb-camelot/fotoflash?label=release&color=FFCC00&labelColor=16130F"></a>
   <img alt="Android 8.0+" src="https://img.shields.io/badge/Android-8.0%2B-22B89A?labelColor=16130F">
+  <a href="https://nb-camelot.github.io/fotoflash/"><img alt="Versione web (PWA)" src="https://img.shields.io/badge/web-PWA-FF5B45?labelColor=16130F"></a>
   <a href="LICENSE"><img alt="Licenza MIT" src="https://img.shields.io/badge/licenza-MIT-3D8BFF?labelColor=16130F"></a>
 </p>
 
@@ -24,6 +25,7 @@ fotocabine fai da te.
 - [Installazione](#installazione)
 - [Primo utilizzo](#primo-utilizzo)
 - [Calibrazione](#calibrazione)
+- [Versione web (PWA)](#versione-web-pwa)
 - [Sviluppo](#sviluppo)
 - [Rilasci e versioni](#rilasci-e-versioni)
 - [Sviluppo agentico con /oc](#sviluppo-agentico-con-oc)
@@ -90,6 +92,9 @@ dalla sua app, è una stampante BLE proprietaria.
   `fotoflash-debug-<n>` (Actions → run → Artifacts; serve essere loggati su GitHub). Ha
   `applicationId` `io.github.nik2208.fotoflash.debug`, quindi **convive** con la versione stabile, e
   tutte le build di debug hanno la stessa firma: si aggiornano senza disinstallare.
+- **Senza installare l'APK**: apri [nb-camelot.github.io/fotoflash](https://nb-camelot.github.io/fotoflash/)
+  con Chrome (Android o computer) o Edge e stampa direttamente dal browser via Bluetooth LE. Vedi
+  [Versione web (PWA)](#versione-web-pwa).
 
 ## Primo utilizzo
 
@@ -130,6 +135,78 @@ Carta, Intensità di stampa e Calibrazione avanzata, quest'ultima da aprire con 
 | Margine destro tagliato | Controlla la larghezza della carta (58 o 80 mm) |
 | «Stampante occupata» | Il Bluetooth classico accetta una connessione sola: chiudi le altre app che la usano |
 
+## Versione web (PWA)
+
+**[nb-camelot.github.io/fotoflash](https://nb-camelot.github.io/fotoflash/)** è FotoFlash nel browser,
+senza installare l'APK. Scatta, compone le stampe con gli stessi modelli, regolazioni e retini
+dell'app (il motore è il porting di `core-thermal`, verificato con gli stessi valori dei test
+Kotlin: stesse impostazioni, stessa carta), tiene lo storico e **stampa direttamente dal browser via
+Web Bluetooth (BLE)**. Si installa come un'app e, dopo il primo avvio, si apre anche offline.
+
+**Browser supportati**
+
+| Browser | Scatto, modelli, storico, salvataggio | Stampa Bluetooth |
+|---|---|---|
+| Chrome su Android | Sì | Sì |
+| Chrome ed Edge su Windows 10+, macOS, ChromeOS | Sì | Sì |
+| Samsung Internet, Opera su Android | Sì | Di solito sì, non verificato |
+| Chrome su Linux | Sì | Solo con `chrome://flags/#enable-experimental-web-platform-features` (BlueZ 5.41+) |
+| Firefox (ogni piattaforma), Safari su macOS | Sì | No: manca Web Bluetooth |
+| iPhone e iPad (ogni browser) | Sì | No: vedi *Limiti su iOS* |
+
+**Stampanti.** Il browser parla con la stampante via **Bluetooth LE**, non con il Bluetooth classico
+(SPP) dell'app Android. Vanno le stampanti termiche ESC/POS da 58 e 80 mm che espongono un canale
+seriale BLE: il profilo `18F0/2AF1` delle comuni "BlueTooth Printer" e Netum (quello verificato), e i
+canali `FF00`, `FFE0`, ISSC, `E7810A71` e Nordic UART. Molte mini stampanti hanno sia il classico sia
+il BLE: col browser non serve accoppiarle nelle impostazioni del telefono, si sceglie la stampante dal
+selettore che apre Chrome. Le "cat printer" (servizio `AE30`) vengono riconosciute e rifiutate con un
+messaggio chiaro: hanno un protocollo proprio. Se la tua stampante funziona solo in Bluetooth classico,
+usa l'app Android.
+
+**Installarla**
+- **Android, Chrome**: FotoFlash propone *Installa* da sola; altrimenti menu ⋮ → *Installa app* (o
+  *Aggiungi a schermata Home*). Si apre a tutto schermo, come un'app.
+- **Computer, Chrome o Edge**: icona di installazione nella barra degli indirizzi, oppure menu →
+  *Installa FotoFlash*.
+- **iPhone e iPad**: in Safari, *Condividi* → *Aggiungi alla schermata Home*.
+
+Quando esce una versione nuova, l'app lo dice e si aggiorna con un tocco su *Aggiorna* (mai durante
+una stampa). Chrome può ricordare la stampante tra una visita e l'altra solo se il browser lo consente;
+altrimenti, dopo una ricarica, basta un tocco per ricollegarla: Web Bluetooth chiede sempre un gesto
+dell'utente per scegliere un dispositivo.
+
+**Limiti su iOS.** Su iPhone e iPad tutti i browser usano WebKit, che non ha Web Bluetooth: la PWA
+scatta, compone, salva e condivide, ma **non stampa**, e lo dice. Per stampare usa l'app Android,
+oppure Chrome su Android o su un computer. Conviene aggiungerla alla schermata Home: Safari può
+cancellare i dati dei siti che non apri da qualche giorno, storico compreso.
+
+**Sviluppo locale.** Serve solo Node 20 o successivo: niente `npm install`, niente bundler,
+nessuna dipendenza. Le regole e i contratti dei moduli sono in [`docs/WEB.md`](docs/WEB.md).
+
+```bash
+node web/dev-server.mjs              # http://127.0.0.1:5173/ (PORT=8080 per un'altra porta)
+node --test web/tests/*.test.mjs     # test: motore (parità con Kotlin), store, stampante, import e testi
+node scripts/build-web.mjs dist      # il sito come su Pages; le icone PNG solo se c'è rsvg-convert
+```
+
+Il server locale serve `web/` e prende font, brand sheet e licenze direttamente dal repository; in
+locale il service worker va sempre in rete, così ogni modifica si vede ricaricando. `127.0.0.1` è un
+contesto sicuro, quindi fotocamera e Web Bluetooth funzionano senza HTTPS. Per provare sul telefono
+collegalo via USB con il debug attivo, apri `chrome://inspect` → *Port forwarding* `5173` →
+`127.0.0.1:5173` (il server ascolta solo lì) e sul telefono apri `http://localhost:5173/`: anche
+`localhost` è un contesto sicuro. Da Node 21 `node --test` non esplora
+più una cartella: passa i file (`web/tests/*.test.mjs`), come fanno i workflow.
+
+**Pubblicazione.** [`.github/workflows/pages.yml`](.github/workflows/pages.yml) gira a ogni push su
+`main`, cioè a ogni rilascio, e a mano (*Run workflow* scegliendo `main`; lanciato su un altro branch
+non pubblica nulla): test, icone PNG da
+`docs/brand/icon.svg` con `rsvg-convert`, `scripts/build-web.mjs` (versione di `gradle.properties` più
+lo sha corto del commit, nome della cache del service worker, verifica che manifest, precache,
+`index.html` e CSS puntino a file veri) e deploy su GitHub Pages. La CI di ogni push (`ci.yml`, job *Web
+(PWA)*) esegue gli stessi test e una build di controllo. Il commit di versione di `bump-version`
+contiene `[skip ci]`, quindi il sito pubblicato al merge mostra ancora il numero precedente (con lo sha
+giusto): per allinearlo, *Run workflow* di `pages.yml` su `main` dopo la release.
+
 ## Sviluppo
 
 | Modulo | Contenuto |
@@ -151,6 +228,8 @@ gradle --no-daemon :core-thermal:test :app:testDebugUnitTest :app:assembleDebug
 ```
 
 In locale serve lo stesso Gradle (o Android Studio Ladybug o successivo), JDK 17 e l'SDK 35.
+La versione web invece si sviluppa e si testa con il solo Node: vedi
+[Versione web (PWA)](#versione-web-pwa) e [`docs/WEB.md`](docs/WEB.md).
 
 **Leggere il «FotoFlash build report».** Quando la CI fallisce, il workflow `ci.yml` pubblica sul
 commit un check run chiamato *FotoFlash build report* con: errori Kotlin con file e riga (anche come
@@ -169,10 +248,12 @@ I report HTML completi dei test sono nell'artifact `test-reports-<n>`.
 fotoflash/
 ├── app/                    app Android (Compose)
 ├── core-thermal/           motore di stampa termica, JVM puro
-├── docs/                   SPEC, ARCHITECTURE, brand, licenze, ROADMAP
+├── web/                    versione web (PWA): moduli ES senza dipendenze, test node --test
+├── scripts/                build-web.mjs, la build del sito di GitHub Pages
+├── docs/                   SPEC, ARCHITECTURE, WEB, brand, licenze, ROADMAP
 ├── issue_plans/            piani pronti per l'agente
 ├── signing/                keystore di debug condiviso (la chiave di release non sta mai qui)
-├── .github/workflows/      ci, bump-version, release, opencode
+├── .github/workflows/      ci, bump-version, release, pages, opencode
 ├── AGENTS.md               regole per agenti e persone
 └── CHANGELOG.md
 ```
@@ -197,6 +278,8 @@ fotoflash/
   `applicationId` e versione, e pubblica la Release con `fotoflash-X.Y.Z.apk`, il suo SHA-256, le note
   generate da GitHub e la sezione del `CHANGELOG.md`. Se mancano i secret di firma si ferma con un
   errore: non ripiega mai sulla chiave di debug. Se la release esiste già, si ferma.
+- `pages.yml` pubblica la versione web a ogni push su `main`, in parallelo a `bump-version`: vedi
+  [Versione web (PWA)](#versione-web-pwa), *Pubblicazione*.
 
 | Commit (titolo della PR) | Bump |
 |---|---|
@@ -294,6 +377,13 @@ automatico, anche se un owner scrive `/oc`. L'unico controllo indipendente resta
      **Deploy keys**: `bump-version` pusha il commit di versione con la deploy key del secret
      `RELEASE_DEPLOY_KEY` (il `GITHUB_TOKEN` non può aggirare le regole). Senza deploy key, `main` non
      deve avere regole che blocchino quel push.
+   - Facoltativo: aggiungi a entrambe anche il check **Web (PWA)**, il job della versione web in
+     `ci.yml` (test di `web/` e build di controllo del sito).
+4. **GitHub Pages** (per la versione web): Settings → Pages → *Build and deployment* → Source
+   **GitHub Actions**. Poi Settings → Environments → **github-pages** → *Deployment branches and
+   tags*: aggiungi **`main`**. GitHub crea l'ambiente con una regola che di solito ammette solo il
+   branch di default (qui `dev`), e senza `main` il deploy fallisce con *Branch "main" is not allowed
+   to deploy to github-pages due to environment protection rules*.
 
 ### Secret (Settings → Secrets and variables → Actions → Secrets)
 
