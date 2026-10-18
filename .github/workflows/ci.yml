@@ -139,7 +139,7 @@ jobs:
       - name: Node 20
         uses: actions/setup-node@v7
         with:
-          node-version: "20"
+          node-version: "24"
           package-manager-cache: false
 
       # Motore, store, stampante e imports.test.mjs: ogni modulo si importa in Node senza DOM,
