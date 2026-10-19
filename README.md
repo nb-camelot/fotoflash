@@ -250,6 +250,18 @@ dell'app (il motore è il porting di `core-thermal`, verificato con gli stessi v
 Kotlin: stesse impostazioni, stessa carta), tiene lo storico e **stampa direttamente dal browser via
 Web Bluetooth (BLE)**. Si installa come un'app e, dopo il primo avvio, si apre anche offline.
 
+**Presentazione e lingue.** Da desktop o da uno schermo largo (≥ 960 px, nel browser) la pagina si apre su una
+**presentazione animata**:
+- casi d'uso illustrati;
+- «Prova il retino» col motore vero, anche su una tua foto che resta nel browser;
+- i quattro modelli resi dal renderer;
+- stampanti compatibili, installazione e download.
+
+«Apri l'app» la mostra dentro una cornice di telefono. Sul telefono e nell'app installata si va dritti all'app; la
+presentazione resta raggiungibile da `#/landing` e dalle impostazioni. Testi in **inglese, italiano, spagnolo,
+francese e tedesco**: la lingua segue il browser o si sceglie dal selettore. Brief e contratti sono in
+[`docs/LANDING.md`](docs/LANDING.md).
+
 **Browser supportati**
 
 | Browser | Scatto, modelli, storico, salvataggio | Stampa Bluetooth |
@@ -259,7 +271,8 @@ Web Bluetooth (BLE)**. Si installa come un'app e, dopo il primo avvio, si apre a
 | Samsung Internet, Opera su Android | Sì | Di solito sì, non verificato |
 | Chrome su Linux | Sì | Solo con `chrome://flags/#enable-experimental-web-platform-features` (BlueZ 5.41+) |
 | Firefox (ogni piattaforma), Safari su macOS | Sì | No: manca Web Bluetooth |
-| iPhone e iPad (ogni browser) | Sì | No: vedi *Limiti su iOS* |
+| iPhone e iPad: Safari, Chrome e gli altri browser comuni | Sì | No: vedi *Limiti su iOS* |
+| iPhone e iPad: Bluefy (browser con Web Bluetooth) | Sì | Consigliato, non ancora provato su carta |
 
 **Stampanti.** Il browser parla con la stampante via **Bluetooth LE**, non con il Bluetooth classico
 (SPP) dell'app Android. Usa gli **stessi driver dell'app, con gli stessi byte** (vedi
@@ -290,8 +303,10 @@ altrimenti, dopo una ricarica, basta un tocco per ricollegarla: Web Bluetooth ch
 dell'utente per scegliere un dispositivo.
 
 **Limiti su iOS.** Su iPhone e iPad tutti i browser usano WebKit, che non ha Web Bluetooth: la PWA
-scatta, compone, salva e condivide, ma **non stampa**, e lo dice. Per stampare usa l'app Android,
-oppure Chrome su Android o su un computer. Conviene aggiungerla alla schermata Home: Safari può
+scatta, compone, salva e condivide, ma **non stampa**, e lo dice. Per stampare da iPhone o iPad apri
+FotoFlash in un browser che aggiunge Web Bluetooth, come **Bluefy** (gratis: cerca «Bluefy» nell'App Store).
+È consigliato ma non ancora provato su carta. L'app aggiunta alla Home da Safari gira in WebKit e non stampa.
+In alternativa usa l'app Android, oppure Chrome su Android o su un computer. Conviene aggiungerla alla schermata Home: Safari può
 cancellare i dati dei siti che non apri da qualche giorno, storico compreso.
 
 **Sviluppo locale.** Serve solo Node 24 (come la CI): niente `npm install`, niente bundler,
@@ -311,15 +326,13 @@ collegalo via USB con il debug attivo, apri `chrome://inspect` → *Port forward
 `localhost` è un contesto sicuro. Da Node 21 `node --test` non esplora
 più una cartella: passa i file (`web/tests/*.test.mjs`), come fanno i workflow.
 
-**Pubblicazione.** [`.github/workflows/pages.yml`](.github/workflows/pages.yml) gira a ogni push su
-`main`, cioè a ogni rilascio, e a mano (*Run workflow* scegliendo `main`; lanciato su un altro branch
+**Pubblicazione.** [`.github/workflows/pages.yml`](.github/workflows/pages.yml) gira dopo ogni
+«Bump version» riuscito su `main`, cioè a ogni rilascio e con la versione già aggiornata, e a mano (*Run workflow* scegliendo `main`; lanciato su un altro branch
 non pubblica nulla): test, icone PNG da
 `docs/brand/icon.svg` con `rsvg-convert`, `scripts/build-web.mjs` (versione di `gradle.properties` più
 lo sha corto del commit, nome della cache del service worker, verifica che manifest, precache,
 `index.html` e CSS puntino a file veri) e deploy su GitHub Pages. La CI di ogni push (`ci.yml`, job *Web
-(PWA)*) esegue gli stessi test e una build di controllo. Il commit di versione di `bump-version`
-contiene `[skip ci]`, quindi il sito pubblicato al merge mostra ancora il numero precedente (con lo sha
-giusto): per allinearlo, *Run workflow* di `pages.yml` su `main` dopo la release.
+(PWA)*) esegue gli stessi test e una build di controllo.
 
 ## Sviluppo
 
@@ -399,7 +412,7 @@ fotoflash/
   `applicationId` e versione, e pubblica la Release con `fotoflash-X.Y.Z.apk`, il suo SHA-256, le note
   generate da GitHub e la sezione del `CHANGELOG.md`. Se mancano i secret di firma si ferma con un
   errore: non ripiega mai sulla chiave di debug. Se la release esiste già, si ferma.
-- `pages.yml` pubblica la versione web a ogni push su `main`, in parallelo a `bump-version`: vedi
+- `pages.yml` pubblica la versione web dopo `bump-version` (evento `workflow_run`): vedi
   [Versione web (PWA)](#versione-web-pwa), *Pubblicazione*.
 
 | Commit (titolo della PR) | Bump |

@@ -8,7 +8,8 @@
 // sheet in brand/ e le licenze in licenses/; scrive src/version.js con VERSION_NAME di
 // gradle.properties (+ "-" + sha corto se c'è GITHUB_SHA), mette la stessa versione nel nome della
 // cache del service worker (__FOTOFLASH_VERSION__), genera le icone PNG da docs/brand/icon.svg e
-// alla fine verifica che esista ogni file citato da manifest, precache del SW, index.html e CSS.
+// l'anteprima per i social icons/og.png (1200×630) da docs/brand/banner.svg, e alla fine verifica
+// che esista ogni file citato da manifest, precache del SW, index.html e CSS. Nessuna risorsa da CDN.
 // --no-icons salta le icone di proposito (build di controllo in CI) senza avvisi.
 import fs from 'node:fs';
 import os from 'node:os';
@@ -22,6 +23,7 @@ const FONT_DIR = path.join(REPO, 'app', 'src', 'main', 'res', 'font');
 const BRAND_DIR = path.join(REPO, 'docs', 'brand');
 const LICENSES_DIR = path.join(REPO, 'docs', 'licenses');
 const ICON_SVG = path.join(BRAND_DIR, 'icon.svg');
+const BANNER_SVG = path.join(BRAND_DIR, 'banner.svg');
 const GRADLE_PROPERTIES = path.join(REPO, 'gradle.properties');
 
 /** Voci di web/ che restano fuori dal sito pubblicato. */
@@ -39,6 +41,13 @@ export const ICONS = [
   { file: 'icons/icon-maskable-512.png', size: 512, maskable: true },
   { file: 'icons/apple-touch-icon.png', size: 180, maskable: false },
 ];
+
+/**
+ * Anteprima per social e chat (og:image e twitter:image di index.html, con l'URL assoluto del sito):
+ * il banner del brand riquadrato a 1200×630. Non è app shell: il service worker non la mette in cache.
+ */
+export const OG_IMAGE = { file: 'icons/og.png', width: 1200, height: 630 };
+const PAPER = '#FBF8F1';
 
 // Estensioni dei file che il sito serve: una stringa che finisce così, in sw.js, è un asset.
 const ASSET_EXT = /\.(?:html?|m?js|css|webmanifest|json|svg|png|jpe?g|webp|gif|ico|ttf|otf|woff2?|txt|md|wasm)$/i;
@@ -206,6 +215,29 @@ export function maskableSvg(iconSvg) {
   ].join('\n');
 }
 
+/**
+ * Immagine Open Graph: il banner (1280×640, 2:1) dentro 1200×630 (1,9:1) senza deformarsi e senza
+ * tagli (`meet`): le due fasce di 15 px sopra e sotto hanno il fondo del banner, quindi non si vedono.
+ * Con `slice` lo scontrino e il puntino sul bordo destro restavano tagliati.
+ */
+export function ogSvg(bannerSvg, { width = OG_IMAGE.width, height = OG_IMAGE.height } = {}) {
+  const open = /<svg\b[^>]*>/i.exec(bannerSvg);
+  const close = bannerSvg.lastIndexOf('</svg>');
+  if (!open || close < 0) throw new BuildError('docs/brand/banner.svg non è un SVG valido');
+  const vb = /\bviewBox\s*=\s*"([^"]+)"/i.exec(open[0]);
+  const viewBox = vb ? vb[1].trim() : '0 0 1280 640';
+  const inner = bannerSvg.slice(open.index + open[0].length, close);
+  const fill = /<rect\b[^>]*\bfill\s*=\s*"(#[0-9a-f]{3,8})"/i.exec(inner);
+  const bg = fill ? fill[1] : PAPER;
+  return [
+    `<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 ${width} ${height}" width="${width}" height="${height}">`,
+    `<rect width="${width}" height="${height}" fill="${bg}"/>`,
+    `<svg x="0" y="0" width="${width}" height="${height}" viewBox="${viewBox}" preserveAspectRatio="xMidYMid meet">${inner}</svg>`,
+    '</svg>',
+    '',
+  ].join('\n');
+}
+
 /** Larghezza e altezza dall'intestazione IHDR di un PNG, o null se il file non è un PNG. */
 function pngSize(file) {
   const b = fs.readFileSync(file);
@@ -214,20 +246,44 @@ function pngSize(file) {
   return { width: b.readUInt32BE(16), height: b.readUInt32BE(20) };
 }
 
-/** Genera le PNG con rsvg-convert. Restituisce i percorsi non generati perché rsvg-convert manca. */
+/** Una PNG da un SVG con rsvg-convert, controllandone le misure. */
+function renderPng(dist, file, src, width, height) {
+  const out = path.join(dist, ...file.split('/'));
+  const run = spawnSync(
+    'rsvg-convert',
+    ['-w', String(width), '-h', String(height), '-f', 'png', '-o', out, src],
+    { encoding: 'utf8' },
+  );
+  if (run.status !== 0) {
+    fail(`rsvg-convert non ha generato ${file}: ${(run.stderr || run.error?.message || '').trim()}`);
+    return;
+  }
+  const size = fs.existsSync(out) ? pngSize(out) : null;
+  if (!size || size.width !== width || size.height !== height) {
+    fail(`${file}: atteso un PNG ${width}×${height}, ottenuto ${size ? `${size.width}×${size.height}` : 'altro'}`);
+  }
+}
+
+/**
+ * Genera le PNG con rsvg-convert: le icone da docs/brand/icon.svg e l'anteprima per i social
+ * (icons/og.png) da docs/brand/banner.svg. Restituisce i percorsi non generati.
+ */
 function buildIcons(dist, { skip }) {
   const skipped = new Set();
   if (skip) {
     for (const icon of ICONS) skipped.add(icon.file);
+    skipped.add(OG_IMAGE.file);
     console.log('icone: saltate (--no-icons)');
     return skipped;
   }
   const probe = spawnSync('rsvg-convert', ['--version'], { encoding: 'utf8' });
   if (probe.error) {
     for (const icon of ICONS) skipped.add(icon.file);
+    skipped.add(OG_IMAGE.file);
     warn(
-      'rsvg-convert non trovato: icone PNG non generate (in CI: sudo apt-get install -y librsvg2-bin). ' +
-        'Il sito funziona, ma senza le PNG la PWA non è installabile ovunque.',
+      'rsvg-convert non trovato: icone PNG e anteprima per i social (icons/og.png) non generate ' +
+        '(in CI: sudo apt-get install -y librsvg2-bin). Il sito funziona, ma senza le PNG la PWA non è ' +
+        'installabile ovunque e i link condivisi non hanno l\'immagine.',
     );
     return skipped;
   }
@@ -238,23 +294,17 @@ function buildIcons(dist, { skip }) {
     fs.writeFileSync(maskable, maskableSvg(iconSvg));
     fs.mkdirSync(path.join(dist, 'icons'), { recursive: true });
     for (const icon of ICONS) {
-      const out = path.join(dist, ...icon.file.split('/'));
-      const src = icon.maskable ? maskable : ICON_SVG;
-      const run = spawnSync(
-        'rsvg-convert',
-        ['-w', String(icon.size), '-h', String(icon.size), '-f', 'png', '-o', out, src],
-        { encoding: 'utf8' },
-      );
-      if (run.status !== 0) {
-        fail(`rsvg-convert non ha generato ${icon.file}: ${(run.stderr || run.error?.message || '').trim()}`);
-        continue;
-      }
-      const size = fs.existsSync(out) ? pngSize(out) : null;
-      if (!size || size.width !== icon.size || size.height !== icon.size) {
-        fail(`${icon.file}: atteso un PNG ${icon.size}×${icon.size}, ottenuto ${size ? `${size.width}×${size.height}` : 'altro'}`);
-      }
+      renderPng(dist, icon.file, icon.maskable ? maskable : ICON_SVG, icon.size, icon.size);
     }
-    console.log(`icone: ${ICONS.length} PNG generate con ${probe.stdout.trim().split('\n')[0]}`);
+    if (fs.existsSync(BANNER_SVG)) {
+      const og = path.join(tmp, 'og.svg');
+      fs.writeFileSync(og, ogSvg(fs.readFileSync(BANNER_SVG, 'utf8')));
+      renderPng(dist, OG_IMAGE.file, og, OG_IMAGE.width, OG_IMAGE.height);
+    } else {
+      skipped.add(OG_IMAGE.file);
+      warn(`manca ${rel(BANNER_SVG)}: niente anteprima per i social (${OG_IMAGE.file})`);
+    }
+    console.log(`icone: ${ICONS.length} PNG e l'anteprima ${OG_IMAGE.width}×${OG_IMAGE.height} generate con ${probe.stdout.trim().split('\n')[0]}`);
   } finally {
     fs.rmSync(tmp, { recursive: true, force: true });
   }
